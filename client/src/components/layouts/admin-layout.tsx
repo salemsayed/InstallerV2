@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import breegLogo from "@/assets/breeg-logo.svg";
+import breegLogo from "@/assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
 import {
   DropdownMenu,
@@ -40,8 +40,8 @@ export default function AdminLayout({
       <header className="bg-primary text-white shadow-sm">
         <div className="px-4 py-5 flex justify-between items-center">
           <div className="flex items-center">
-            <img src={breegLogo} alt="بريق" className="h-8 ml-2" />
-            <span className="font-bold">لوحة الإدارة</span>
+            <img src={breegLogo} alt="بريق" className="h-6 ml-2" />
+            <span className="font-bold mr-1">لوحة الإدارة</span>
           </div>
           
           <DropdownMenu>
