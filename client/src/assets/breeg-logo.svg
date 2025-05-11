@@ -1,18 +1,12 @@
-<svg width="800" height="260" viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg">
-  <!-- Circle with hand representing Breeg logo -->
-  <path d="M420 100C340 100 280 160 280 240S340 380 420 380s140-60 140-140S500 100 420 100zm0 220c-45 0-80-35-80-80s35-80 80-80 80 35 80 80-35 80-80 80z" fill="#1976D2"/>
-  
-  <!-- Hand representation in the logo -->
-  <path d="M390 230c-5-8-5-20 5-25s20 5 25 12c5 7 15 5 20-2 5-7 0-15-5-20-5-5-10-5-15 0-5 5-15 5-20 0s-5-15 0-20c5-5 15-5 20 0 5 5 15 5 20 0 5-5 5-15 0-20" stroke="#1976D2" stroke-width="10" fill="none" stroke-linecap="round"/>
-  
-  <!-- Horizontal bar in logo -->
-  <path d="M200 150H20v30h50v90h30v-90h100v-30z" fill="#1976D2"/>
-  
-  <!-- Rectangle blocks at top -->
-  <rect x="250" y="40" width="30" height="30" fill="#1976D2"/>
-  <rect x="290" y="40" width="30" height="30" fill="#1976D2"/>
-  
-  <!-- Text part of the logo -->
-  <path d="M590 140c0-20-15-40-35-40s-35 20-35 40h70zm-70 30c0 20 15 40 35 40s35-20 35-40h-70z" fill="#1976D2"/>
-  <path d="M670 140c-10-30-35-40-70-40v25c20 0 35 5 45 15 10 10 10 20 10 30h-20l35 35 35-35h-20c0-10-5-20-15-30z" fill="#1976D2"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="180px" viewBox="0 0 800 180" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g id="Breeg-Logo" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <path d="M665,12 L765,12 L765,38 L735,38 L735,160 L695,160 L695,38 L665,38 L665,12 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M545,12 L600,12 L600,160 L560,160 L560,38 L545,38 L545,12 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M415,12 L470,12 L470,160 L430,160 L430,38 L415,38 L415,12 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M290,12 L290,160 L250,160 L250,12 L290,12 Z M320,12 L360,12 L360,160 L320,160 L320,12 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M460,86 C460,51.2 488.2,12 548,12 C607.8,12 636,51.2 636,86 C636,120.8 607.8,160 548,160 C488.2,160 460,120.8 460,86 Z M548,130 C578,130 596,116 596,86 C596,56 578,42 548,42 C518,42 500,56 500,86 C500,116 518,130 548,130 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M0,96 L0,160 L40,160 L40,96 L0,96 Z" id="Path" fill="#1E78C8"></path>
+    <path d="M130,30 L90,70 L50,70 L50,12 L175,12 C235,12 245,52 245,80 C245,108 235,148 175,148 L130,148 L90,107 L130,67 L175,67 C190,67 205,64 205,80 C205,96 190,93 175,93 L130,93 L130,30 Z" id="Path" fill="#1E78C8"></path>
+  </g>
 </svg>
