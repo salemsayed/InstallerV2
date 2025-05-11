@@ -58,8 +58,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phone, otp } = verifyOtpSchema.parse(req.body);
       
+      // Format phone number - ensure it has the +2 prefix for Egyptian numbers
+      let formattedPhone = phone;
+      if (phone.startsWith('0')) {
+        formattedPhone = '+2' + phone;
+      }
+      
       // Verify the OTP
-      const isValid = smsService.verifyOtp(phone, otp);
+      const isValid = smsService.verifyOtp(formattedPhone, otp);
       
       if (!isValid) {
         return res.status(400).json({ 
@@ -67,8 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if user exists by phone number
-      const user = await storage.getUserByPhone(phone);
+      // Check if user exists by phone number (using the formatted phone)
+      const user = await storage.getUserByPhone(formattedPhone);
       
       // Only allow existing users to log in
       if (!user) {
