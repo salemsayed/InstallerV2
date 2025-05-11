@@ -12,97 +12,79 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
 import { Loader2 } from "lucide-react";
-import { User, UserStatus } from "@shared/schema";
+import type { User } from "@shared/schema";
+import { UserStatus } from "@shared/schema";
 
-// Form schema for editing users
+// Form schema
 const formSchema = z.object({
   name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
   phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
   region: z.string().optional(),
-  status: z.nativeEnum(UserStatus),
-  points: z.coerce.number().int().min(0),
+  status: z.string(),
+  points: z.coerce.number().int().min(0, { message: "يجب أن تكون النقاط رقم صحيح موجب" }),
 });
 
 interface EditUserDialogProps {
   user: User | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpen: boolean;
+  onClose: () => void;
   onSuccess?: () => void;
 }
 
 export default function EditUserDialog({ 
   user, 
-  open, 
-  onOpenChange,
+  isOpen, 
+  onClose,
   onSuccess 
 }: EditUserDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user: authUser } = useAuth();
   
-  console.log("EditUserDialog rendered with props:", { 
-    user: user ? { id: user.id, name: user.name } : null, 
-    open, 
-    onOpenChange: !!onOpenChange
-  });
-  
-  // Default form values
-  const defaultValues = {
-    name: "",
-    phone: "",
-    region: "",
-    status: UserStatus.ACTIVE,
-    points: 0,
-  };
+  console.log("EditUserDialog rendered with:", { isOpen, userId: user?.id, userName: user?.name });
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues
+    defaultValues: {
+      name: user?.name || "",
+      phone: user?.phone || "",
+      region: user?.region || "",
+      status: user?.status || UserStatus.ACTIVE,
+      points: user?.points || 0,
+    },
   });
-
-  // Reset form when user or open state changes
+  
+  // Reset form when user changes
   useEffect(() => {
-    console.log("EditUserDialog useEffect triggered:", { 
-      hasUser: !!user, 
-      open, 
-      userName: user?.name
-    });
-    
-    if (user && open) {
-      console.log("Resetting form with user data:", user.name);
+    if (user && isOpen) {
       form.reset({
-        name: user.name,
+        name: user.name || "",
         phone: user.phone || "",
         region: user.region || "",
-        status: user.status as UserStatus,
-        points: user.points,
+        status: user.status || UserStatus.ACTIVE,
+        points: user.points || 0,
       });
-    } else if (!open) {
-      // Reset to default values when dialog closes
-      form.reset(defaultValues);
     }
-  }, [user, open, form]);
-
-  // Get the auth user outside the function
-  const { user: authUser } = useAuth();
+  }, [user, isOpen, form]);
   
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
@@ -110,61 +92,59 @@ export default function EditUserDialog({
     setIsSubmitting(true);
     
     try {
-      // Check if we have admin ID
       const adminId = authUser?.id;
       
       if (!adminId) {
-        throw new Error("لم يتم العثور على بيانات المدير");
+        throw new Error("لم يتم العثور على بيانات المسؤول");
       }
       
-      const res = await apiRequest("PATCH", `/api/admin/users/${user.id}?userId=${adminId}`, values);
+      const res = await apiRequest(
+        "PATCH", 
+        `/api/admin/users/${user.id}?userId=${adminId}`, 
+        values
+      );
+      
       const data = await res.json();
       
       if (data.success) {
         toast({
-          title: "تم تحديث بيانات المستخدم بنجاح",
-          description: "تم تحديث بيانات المستخدم",
+          title: "تم تحديث البيانات بنجاح",
+          description: "تم تحديث بيانات المستخدم بنجاح",
         });
         
-        // Invalidate users query to refresh data
+        // Refresh data
         queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
         
         if (onSuccess) {
           onSuccess();
         }
         
-        onOpenChange(false);
+        onClose();
       } else {
         toast({
-          title: "فشل تحديث بيانات المستخدم",
-          description: data.message || "حدث خطأ أثناء تحديث بيانات المستخدم",
+          title: "حدث خطأ",
+          description: data.message || "حدث خطأ أثناء تحديث البيانات",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "فشل تحديث بيانات المستخدم",
-        description: "حدث خطأ أثناء تحديث بيانات المستخدم",
+        title: "حدث خطأ",
+        description: error.message || "حدث خطأ غير متوقع",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
-    <Dialog 
-      open={open} 
-      onOpenChange={(newOpen) => {
-        console.log("Dialog onOpenChange called with:", newOpen);
-        onOpenChange(newOpen);
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">تعديل بيانات المستخدم</DialogTitle>
           <DialogDescription>
-            قم بتعديل بيانات المستخدم ثم اضغط على حفظ لتأكيد التغييرات.
+            قم بتعديل بيانات المستخدم ثم اضغط على حفظ لتأكيد التغييرات
           </DialogDescription>
         </DialogHeader>
         
@@ -179,7 +159,7 @@ export default function EditUserDialog({
                     <FormLabel className="text-right block font-semibold">الاسم الكامل</FormLabel>
                     <FormControl>
                       <Input 
-                        className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        className="focus:ring-2 focus:ring-primary/20"
                         placeholder="أدخل اسم المستخدم" 
                         {...field} 
                       />
@@ -197,13 +177,11 @@ export default function EditUserDialog({
                     <FormLabel className="text-right block font-semibold">رقم الهاتف</FormLabel>
                     <FormControl>
                       <Input 
-                        className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        className="focus:ring-2 focus:ring-primary/20"
                         placeholder="مثال: 01012345678 أو +201012345678" 
                         type="tel" 
-                        {...field} 
                         dir="ltr"
-                        value={field.value || ""}
-                        title="رقم الهاتف يمكن أن يبدأ بـ 01 أو +201"
+                        {...field} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -221,9 +199,10 @@ export default function EditUserDialog({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value || ""}
+                        defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="focus:ring-2 focus:ring-primary/20 transition-all duration-200">
+                          <SelectTrigger className="focus:ring-2 focus:ring-primary/20">
                             <SelectValue placeholder="اختر المنطقة" />
                           </SelectTrigger>
                         </FormControl>
@@ -250,9 +229,10 @@ export default function EditUserDialog({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
+                        defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="focus:ring-2 focus:ring-primary/20 transition-all duration-200">
+                          <SelectTrigger className="focus:ring-2 focus:ring-primary/20">
                             <SelectValue placeholder="اختر الحالة" />
                           </SelectTrigger>
                         </FormControl>
@@ -276,11 +256,11 @@ export default function EditUserDialog({
                     <FormLabel className="text-right block font-semibold">النقاط</FormLabel>
                     <FormControl>
                       <Input 
-                        className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        className="focus:ring-2 focus:ring-primary/20"
                         placeholder="أدخل عدد النقاط" 
-                        type="number" 
-                        {...field}
+                        type="number"
                         min={0}
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -289,19 +269,19 @@ export default function EditUserDialog({
               />
             </div>
             
-            <DialogFooter className="mt-6 pt-4 border-t flex justify-between">
+            <DialogFooter className="mt-6 flex justify-between">
               <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-                className="border-gray-300 hover:bg-gray-100 transition-colors duration-200"
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="border-gray-300 hover:bg-gray-100"
               >
                 إلغاء
               </Button>
               <Button 
-                type="submit" 
+                type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-300 shadow-md hover:shadow-lg"
+                className="bg-primary hover:bg-primary/90"
               >
                 {isSubmitting ? (
                   <>

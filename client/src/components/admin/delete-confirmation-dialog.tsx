@@ -12,34 +12,28 @@ import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   userId: number | null;
   userName: string;
+  isOpen: boolean;
+  onClose: () => void;
   onSuccess?: () => void;
 }
 
 export default function DeleteConfirmationDialog({
-  open,
-  onOpenChange,
   userId,
   userName,
+  isOpen,
+  onClose,
   onSuccess,
 }: DeleteConfirmationDialogProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const { user: authUser } = useAuth();
   
-  console.log("DeleteConfirmationDialog rendered with props:", { 
-    open, 
-    onOpenChange: !!onOpenChange, 
-    userId, 
-    userName, 
-    onSuccess: !!onSuccess 
-  });
+  console.log("DeleteConfirmationDialog rendered with:", { isOpen, userId, userName });
 
   const handleDelete = async () => {
     if (!userId) return;
@@ -47,55 +41,53 @@ export default function DeleteConfirmationDialog({
     setIsDeleting(true);
 
     try {
-      // Get the admin ID from auth context
       const adminId = authUser?.id;
       
       if (!adminId) {
-        throw new Error("لم يتم العثور على بيانات المدير");
+        throw new Error("لم يتم العثور على بيانات المسؤول");
       }
       
-      const res = await apiRequest("DELETE", `/api/admin/users/${userId}?userId=${adminId}`);
+      const res = await apiRequest(
+        "DELETE", 
+        `/api/admin/users/${userId}?userId=${adminId}`
+      );
+      
       const data = await res.json();
 
       if (data.success) {
         toast({
-          title: "تم حذف المستخدم بنجاح",
+          title: "تم الحذف بنجاح",
           description: "تم حذف المستخدم من النظام",
         });
 
-        // Invalidate users query
+        // Refresh data
         queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
 
         if (onSuccess) {
           onSuccess();
         }
+        
+        onClose();
       } else {
         toast({
-          title: "فشل حذف المستخدم",
+          title: "فشلت عملية الحذف",
           description: data.message || "حدث خطأ أثناء حذف المستخدم",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "فشل حذف المستخدم",
-        description: "حدث خطأ أثناء حذف المستخدم",
+        title: "فشلت عملية الحذف",
+        description: error.message || "حدث خطأ غير متوقع",
         variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
-      onOpenChange(false);
     }
   };
 
   return (
-    <AlertDialog 
-      open={open} 
-      onOpenChange={(newOpen) => {
-        console.log("AlertDialog onOpenChange called with:", newOpen);
-        onOpenChange(newOpen);
-      }}
-    >
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>هل أنت متأكد من حذف هذا المستخدم؟</AlertDialogTitle>
@@ -116,7 +108,7 @@ export default function DeleteConfirmationDialog({
           >
             {isDeleting ? (
               <>
-                <Loader className="ml-2 h-4 w-4 animate-spin" />
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                 جارٍ الحذف...
               </>
             ) : (

@@ -17,10 +17,14 @@ export default function AdminUsers() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("all-users");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  console.log("AdminUsers component rendered, dialog states:", { editDialogOpen, deleteDialogOpen });
+  console.log("AdminUsers component rendered, dialog states:", { 
+    showEditDialog, 
+    showDeleteDialog, 
+    selectedUserId: selectedUser?.id 
+  });
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
@@ -47,27 +51,25 @@ export default function AdminUsers() {
     // Set the selected user first
     setSelectedUser(targetUser);
     
-    // Use setTimeout to ensure state updates before dialog opens
-    setTimeout(() => {
-      switch (action) {
-        case "edit":
-          console.log("Opening edit dialog for user:", targetUser.name);
-          setEditDialogOpen(true);
-          break;
-        case "delete":
-          console.log("Opening delete dialog for user:", targetUser.name);
-          setDeleteDialogOpen(true);
-          break;
-        case "points":
-          setActiveTab("add-points");
-          break;
-        case "view":
-          console.log("View user details:", targetUser);
-          break;
-        default:
-          break;
-      }
-    }, 0);
+    // Then perform the action
+    switch (action) {
+      case "edit":
+        console.log("Opening edit dialog for user:", targetUser.name);
+        setShowEditDialog(true);
+        break;
+      case "delete":
+        console.log("Opening delete dialog for user:", targetUser.name);
+        setShowDeleteDialog(true);
+        break;
+      case "points":
+        setActiveTab("add-points");
+        break;
+      case "view":
+        console.log("View user details:", targetUser);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleTabChange = (value: string) => {
@@ -76,6 +78,17 @@ export default function AdminUsers() {
 
   const handleSuccess = () => {
     refetchUsers();
+  };
+  
+  // Handle dialog close
+  const handleEditDialogClose = () => {
+    console.log("Closing edit dialog");
+    setShowEditDialog(false);
+  };
+  
+  const handleDeleteDialogClose = () => {
+    console.log("Closing delete dialog");
+    setShowDeleteDialog(false);
   };
 
   return (
@@ -144,28 +157,22 @@ export default function AdminUsers() {
       </Tabs>
       
       {/* Edit User Dialog */}
-      {editDialogOpen && (
+      {selectedUser && (
         <EditUserDialog
           user={selectedUser}
-          open={editDialogOpen}
-          onOpenChange={(open) => {
-            console.log("Setting editDialogOpen to:", open);
-            setEditDialogOpen(open);
-          }}
+          isOpen={showEditDialog}
+          onClose={handleEditDialogClose}
           onSuccess={handleSuccess}
         />
       )}
       
       {/* Delete Confirmation Dialog */}
-      {deleteDialogOpen && (
+      {selectedUser && (
         <DeleteConfirmationDialog
-          open={deleteDialogOpen}
-          onOpenChange={(open) => {
-            console.log("Setting deleteDialogOpen to:", open);
-            setDeleteDialogOpen(open);
-          }}
-          userId={selectedUser?.id || null}
-          userName={selectedUser?.name || ""}
+          userId={selectedUser.id}
+          userName={selectedUser.name}
+          isOpen={showDeleteDialog}
+          onClose={handleDeleteDialogClose}
           onSuccess={handleSuccess}
         />
       )}
