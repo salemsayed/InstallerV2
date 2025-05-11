@@ -176,6 +176,13 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
     mutationFn: async (values: BadgeFormValues & { id: number }) => {
       const { id, ...formData } = values;
       
+      console.log('[BADGE UPDATE] Original form data:', JSON.stringify(formData));
+      console.log('[BADGE UPDATE] Form data types:', {
+        requiredPoints: typeof formData.requiredPoints,
+        minInstallations: typeof formData.minInstallations,
+        active: typeof formData.active
+      });
+      
       // Ensure numeric fields are valid numbers or 0
       const data = {
         ...formData,
@@ -185,8 +192,17 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
           ? formData.minInstallations : 0
       };
       
-      const res = await apiRequest("PATCH", `/api/admin/badges/${id}`, data);
-      return res.json();
+      console.log('[BADGE UPDATE] Processed data to send:', JSON.stringify(data));
+      
+      try {
+        const res = await apiRequest("PATCH", `/api/admin/badges/${id}`, data);
+        const responseData = await res.json();
+        console.log('[BADGE UPDATE] Response:', JSON.stringify(responseData));
+        return responseData;
+      } catch (error) {
+        console.error('[BADGE UPDATE] Error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -231,9 +247,18 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
 
   // Handle form submission
   const onSubmit = (values: BadgeFormValues) => {
+    console.log('[BADGE FORM] Form values on submit:', JSON.stringify(values));
+    console.log('[BADGE FORM] Value types:', {
+      requiredPoints: typeof values.requiredPoints,
+      minInstallations: typeof values.minInstallations,
+      active: typeof values.active
+    });
+    
     if (editingBadge) {
+      console.log('[BADGE FORM] Editing badge ID:', editingBadge.id);
       updateBadgeMutation.mutate({ ...values, id: editingBadge.id });
     } else {
+      console.log('[BADGE FORM] Creating new badge');
       createBadgeMutation.mutate(values);
     }
   };
