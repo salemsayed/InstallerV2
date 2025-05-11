@@ -41,46 +41,83 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout>
-      <div className="flex flex-col-reverse md:flex-row rtl h-full min-h-[90vh]">
-        {/* Login Form */}
-        <div className="flex-1 flex items-center justify-center p-4 md:p-8">
+    <div className="min-h-screen flex flex-col md:flex-row rtl">
+      {/* Login Form */}
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-6 md:p-10 bg-white">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-8">
+            <img 
+              src={logoPath}
+              alt="برنامج مكافات بريق" 
+              className="h-16 object-contain"
+            />
+          </div>
+          
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 text-center text-gray-800">
+            تسجيل الدخول
+          </h1>
+          <p className="text-center text-gray-500 mb-8">
+            أدخل رقم الهاتف للوصول إلى حساب برنامج مكافات بريق
+          </p>
+          
           <PhoneLoginForm onSuccess={handleLoginSuccess} />
         </div>
+      </div>
 
-        {/* Hero Section */}
-        <div className="flex-1 bg-gradient-to-b from-primary/90 to-primary flex flex-col items-center justify-center p-8 text-white">
-          <div className="mb-8">
+      {/* Hero Section */}
+      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-blue-500 flex flex-col items-center justify-center p-6 md:p-10 text-white relative overflow-hidden">
+        {/* Abstract Background */}
+        <div className="absolute inset-0 z-0">
+          <svg className="opacity-10" width="100%" height="100%">
+            <pattern id="pattern-circles" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse">
+              <circle id="pattern-circle" cx="25" cy="25" r="12" fill="white"></circle>
+            </pattern>
+            <rect x="0" y="0" width="100%" height="100%" fill="url(#pattern-circles)"></rect>
+          </svg>
+        </div>
+        
+        <div className="relative z-10 max-w-md">
+          <div className="mb-8 flex justify-center">
             <img 
               src={logoPath} 
               alt="برنامج مكافات بريق" 
-              className="h-24 md:h-32 object-contain"
+              className="h-20 md:h-24 object-contain"
             />
           </div>
-          <Card className="bg-white/10 backdrop-blur-sm p-6 rounded-lg max-w-md shadow-lg border-0">
-            <h1 className="text-2xl md:text-4xl font-bold mb-4 text-center">
+          
+          <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl shadow-xl border-0">
+            <h1 className="text-2xl md:text-3xl font-bold mb-4 text-center">
               برنامج مكافات بريق
             </h1>
             <p className="text-lg text-center mb-6">
               نظام المكافآت الخاص بفنيي التركيب
             </p>
-            <ul className="space-y-3 text-sm md:text-base">
-              <li className="flex rtl items-start">
-                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/20 text-white mr-2 text-xs">1</span>
-                <span>تسجيل عمليات التركيب وكسب النقاط</span>
-              </li>
-              <li className="flex rtl items-start">
-                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/20 text-white mr-2 text-xs">2</span>
-                <span>متابعة نقاطك ومستوى الإنجاز</span>
-              </li>
-              <li className="flex rtl items-start">
-                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/20 text-white mr-2 text-xs">3</span>
-                <span>جمع الشارات ومتابعة تقدمك</span>
-              </li>
-            </ul>
-          </Card>
+            
+            <div className="space-y-4">
+              <div className="flex rtl items-center bg-white/5 p-3 rounded-lg">
+                <div className="flex-shrink-0 ml-3">
+                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-white font-semibold">١</span>
+                </div>
+                <p>تسجيل عمليات التركيب وكسب النقاط</p>
+              </div>
+              
+              <div className="flex rtl items-center bg-white/5 p-3 rounded-lg">
+                <div className="flex-shrink-0 ml-3">
+                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-white font-semibold">٢</span>
+                </div>
+                <p>متابعة نقاطك ومستوى الإنجاز</p>
+              </div>
+              
+              <div className="flex rtl items-center bg-white/5 p-3 rounded-lg">
+                <div className="flex-shrink-0 ml-3">
+                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-white font-semibold">٣</span>
+                </div>
+                <p>جمع الشارات ومتابعة تقدمك</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </AuthLayout>
+    </div>
   );
 }

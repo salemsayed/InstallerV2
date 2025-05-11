@@ -170,127 +170,124 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <div className="w-full">
       {step === "phone" ? (
         <>
-          <CardHeader className="text-right">
-            <CardTitle className="text-2xl font-bold">تسجيل الدخول</CardTitle>
-            <CardDescription>
-              أدخل رقم هاتفك لتلقي رمز التحقق
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...phoneForm}>
-              <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
-                <FormField
-                  control={phoneForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem dir="rtl">
-                      <FormLabel>رقم الهاتف</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            dir="ltr"
-                            placeholder="01xxxxxxxxx"
-                            className="pl-10 text-left"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      جاري الإرسال...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      إرسال رمز التحقق
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
+          <Form {...phoneForm}>
+            <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
+              <FormField
+                control={phoneForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem dir="rtl">
+                    <FormLabel className="text-gray-700">رقم الهاتف</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Smartphone className="absolute left-3 top-3 h-5 w-5 text-primary/60" />
+                        <Input
+                          dir="ltr"
+                          placeholder="01xxxxxxxxx"
+                          className="pl-10 text-left bg-gray-50 border-gray-200 h-12 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                className="w-full h-12 text-md font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    جاري الإرسال...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-5 w-5" />
+                    إرسال رمز التحقق
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
         </>
       ) : (
         <>
-          <CardHeader className="text-right">
-            <CardTitle className="text-2xl font-bold">التحقق من رقم الهاتف</CardTitle>
-            <CardDescription>
-              أدخل رمز التحقق المرسل إلى {phoneNumber}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...otpForm}>
-              <form onSubmit={otpForm.handleSubmit(onOTPSubmit)} className="space-y-6">
-                <FormField
-                  control={otpForm.control}
-                  name="otp"
-                  render={({ field }) => (
-                    <FormItem dir="rtl">
-                      <FormLabel>رمز التحقق</FormLabel>
-                      <FormControl>
-                        <Input
-                          dir="ltr"
-                          placeholder="000000"
-                          className="text-center text-2xl tracking-widest letter-spacing-4"
-                          maxLength={6}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
+              <Smartphone className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-700 mb-1">
+              تم إرسال رمز التأكيد
+            </h3>
+            <p className="text-gray-500 text-sm">
+              برجاء إدخال الرمز المرسل إلى {phoneNumber}
+            </p>
+          </div>
+          
+          <Form {...otpForm}>
+            <form onSubmit={otpForm.handleSubmit(onOTPSubmit)} className="space-y-6">
+              <FormField
+                control={otpForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem dir="rtl">
+                    <FormLabel className="text-gray-700">رمز التحقق</FormLabel>
+                    <FormControl>
+                      <Input
+                        dir="ltr"
+                        placeholder="000000"
+                        className="text-center text-2xl tracking-widest letter-spacing-4 bg-gray-50 border-gray-200 h-14 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        maxLength={6}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                className="w-full h-12 text-md font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    جاري التحقق...
+                  </>
+                ) : (
+                  "تحقق وتسجيل الدخول"
+                )}
+              </Button>
+              
+              <div className="flex justify-between flex-row-reverse pt-4">
                 <Button
-                  type="submit"
-                  className="w-full"
+                  variant="ghost"
+                  onClick={handleResendOTP}
                   disabled={isLoading}
+                  className="text-sm hover:text-primary hover:bg-primary/5"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      جاري التحقق...
-                    </>
-                  ) : (
-                    "تحقق وتسجيل الدخول"
-                  )}
+                  إعادة إرسال الرمز
                 </Button>
-              </form>
-            </Form>
-          </CardContent>
-          <CardFooter className="flex justify-between flex-row-reverse">
-            <Button
-              variant="ghost"
-              onClick={handleResendOTP}
-              disabled={isLoading}
-              className="text-sm"
-            >
-              إعادة إرسال الرمز
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={isLoading}
-              className="text-sm"
-            >
-              تغيير رقم الهاتف
-            </Button>
-          </CardFooter>
+                <Button
+                  variant="ghost"
+                  onClick={handleBack}
+                  disabled={isLoading}
+                  className="text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                >
+                  تغيير رقم الهاتف
+                </Button>
+              </div>
+            </form>
+          </Form>
         </>
       )}
-    </Card>
+    </div>
   );
 }
