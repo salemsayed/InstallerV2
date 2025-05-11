@@ -14,7 +14,7 @@ export default function AuthCallback() {
   useEffect(() => {
     if (isLoading) return;
 
-    if (isAuthenticated && user) {
+    if (user) {
       setStatus("success");
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -37,7 +37,7 @@ export default function AuthCallback() {
         description: "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.",
       });
     }
-  }, [isLoading, isAuthenticated, user, setLocation, toast]);
+  }, [isLoading, user, setLocation, toast]);
 
   return (
     <AuthLayout>

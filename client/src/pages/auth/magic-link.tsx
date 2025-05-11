@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export default function MagicLink() {
   const [, setLocation] = useLocation();
-  const { verifyToken, isLoading, error } = useAuth();
+  const { login, isLoading, error } = useAuth();
   const [status, setStatus] = useState<"loading" | "error" | "invalid" | "success">("loading");
   const [statusMessage, setStatusMessage] = useState("جارٍ التحقق من الرابط...");
   
@@ -25,25 +25,18 @@ export default function MagicLink() {
         return;
       }
       
-      try {
-        const success = await verifyToken(token, email);
-        
-        if (success) {
-          setStatus("success");
-          setStatusMessage("تم تسجيل الدخول بنجاح! جارٍ تحويلك...");
-          // Redirect is handled by the auth context
-        } else {
-          setStatus("error");
-          setStatusMessage("فشل التحقق من الرابط. يرجى طلب رابط جديد.");
-        }
-      } catch (err) {
-        setStatus("error");
-        setStatusMessage("حدث خطأ أثناء التحقق من الرابط. يرجى المحاولة مرة أخرى.");
-      }
+      // Magic links are no longer used, redirect to login page
+      setStatus("invalid");
+      setStatusMessage("رابط غير صالح. تم استبدال روابط التسجيل بنظام رمز التحقق عبر الهاتف. سيتم تحويلك للصفحة الرئيسية.");
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        setLocation("/auth/login");
+      }, 3000);
     };
     
     verifyMagicLink();
-  }, [verifyToken, setLocation]);
+  }, [setLocation]);
 
   return (
     <AuthLayout>
