@@ -641,6 +641,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Local Products API
+  
+  // Get all local products
+  app.get("/api/products", async (req: Request, res: Response) => {
+    try {
+      const products = await storage.listLocalProducts();
+      res.json({ success: true, products });
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch products",
+        error_code: "FETCH_ERROR"
+      });
+    }
+  });
+  
+  // Get a specific product by ID
+  app.get("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid product ID",
+          error_code: "INVALID_ID"
+        });
+      }
+      
+      const product = await storage.getLocalProduct(id);
+      if (!product) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Product not found",
+          error_code: "NOT_FOUND"
+        });
+      }
+      
+      res.json({ success: true, product });
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch product",
+        error_code: "FETCH_ERROR"
+      });
+    }
+  });
+  
+  // Get a product by name
+  app.get("/api/products/byName/:name", async (req: Request, res: Response) => {
+    try {
+      const name = req.params.name;
+      
+      const product = await storage.getLocalProductByName(name);
+      if (!product) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Product not found",
+          error_code: "NOT_FOUND"
+        });
+      }
+      
+      res.json({ success: true, product });
+    } catch (error) {
+      console.error("Error fetching product by name:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch product",
+        error_code: "FETCH_ERROR"
+      });
+    }
+  });
+  
+  // Create a new product (admin only)
+  app.post("/api/products", async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Unauthorized access",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      const productData = {
+        name: req.body.name,
+        rewardPoints: parseInt(req.body.rewardPoints),
+        isActive: req.body.isActive ? 1 : 0
+      };
+      
+      // Check if product with the same name already exists
+      const existingProduct = await storage.getLocalProductByName(productData.name);
+      if (existingProduct) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Product with this name already exists",
+          error_code: "DUPLICATE_NAME"
+        });
+      }
+      
+      const product = await storage.createLocalProduct(productData);
+      res.status(201).json({ success: true, product });
+    } catch (error) {
+      console.error("Error creating product:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to create product",
+        error_code: "CREATE_ERROR"
+      });
+    }
+  });
+  
+  // Update an existing product (admin only)
+  app.patch("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Unauthorized access",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid product ID",
+          error_code: "INVALID_ID"
+        });
+      }
+      
+      // Check if product exists
+      const existingProduct = await storage.getLocalProduct(id);
+      if (!existingProduct) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Product not found",
+          error_code: "NOT_FOUND"
+        });
+      }
+      
+      // If name is being updated, check for uniqueness
+      if (req.body.name && req.body.name !== existingProduct.name) {
+        const productWithSameName = await storage.getLocalProductByName(req.body.name);
+        if (productWithSameName) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Product with this name already exists",
+            error_code: "DUPLICATE_NAME"
+          });
+        }
+      }
+      
+      const updateData: any = {};
+      if (req.body.name) updateData.name = req.body.name;
+      if (req.body.rewardPoints !== undefined) updateData.rewardPoints = parseInt(req.body.rewardPoints);
+      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive ? 1 : 0;
+      
+      const updatedProduct = await storage.updateLocalProduct(id, updateData);
+      res.json({ success: true, product: updatedProduct });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to update product",
+        error_code: "UPDATE_ERROR"
+      });
+    }
+  });
+  
+  // Delete a product (admin only)
+  app.delete("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Unauthorized access",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid product ID",
+          error_code: "INVALID_ID"
+        });
+      }
+      
+      // Check if product exists
+      const existingProduct = await storage.getLocalProduct(id);
+      if (!existingProduct) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Product not found",
+          error_code: "NOT_FOUND"
+        });
+      }
+      
+      await storage.deleteLocalProduct(id);
+      res.json({ 
+        success: true, 
+        message: "Product deleted successfully"
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to delete product",
+        error_code: "DELETE_ERROR"
+      });
+    }
+  });
+  
   // Create the HTTP server
   const httpServer = createServer(app);
   return httpServer;

@@ -4,6 +4,7 @@ import {
   transactions, Transaction, InsertTransaction,
   rewards, Reward, InsertReward,
   badges, Badge, InsertBadge,
+  localProducts, LocalProduct, InsertLocalProduct,
   scannedCodes, ScannedCode, InsertScannedCode,
   UserRole, UserStatus, TransactionType
 } from "@shared/schema";
@@ -202,6 +203,61 @@ export class DatabaseStorage implements IStorage {
     return badgesList;
   }
   
+  // Local Products operations
+  async createLocalProduct(product: InsertLocalProduct): Promise<LocalProduct> {
+    const [localProduct] = await db
+      .insert(localProducts)
+      .values(product)
+      .returning();
+    return localProduct;
+  }
+
+  async getLocalProduct(id: number): Promise<LocalProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(localProducts)
+      .where(eq(localProducts.id, id));
+    return product;
+  }
+
+  async getLocalProductByName(name: string): Promise<LocalProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(localProducts)
+      .where(eq(localProducts.name, name));
+    return product;
+  }
+
+  async updateLocalProduct(id: number, data: Partial<LocalProduct>): Promise<LocalProduct | undefined> {
+    const [updatedProduct] = await db
+      .update(localProducts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(localProducts.id, id))
+      .returning();
+    return updatedProduct;
+  }
+
+  async deleteLocalProduct(id: number): Promise<boolean> {
+    try {
+      await db.delete(localProducts).where(eq(localProducts.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      return false;
+    }
+  }
+
+  async listLocalProducts(active?: boolean): Promise<LocalProduct[]> {
+    const query = db.select().from(localProducts);
+    
+    if (active !== undefined) {
+      query.where(eq(localProducts.isActive, active ? 1 : 0));
+    }
+    
+    const productsList = await query.orderBy(localProducts.name);
+    return productsList;
+  }
+
   // Scanned codes operations
   async checkScannedCode(uuid: string): Promise<ScannedCode | undefined> {
     const [code] = await db
@@ -211,13 +267,14 @@ export class DatabaseStorage implements IStorage {
     return code;
   }
   
-  async createScannedCode(data: { uuid: string; scannedBy: number; productName?: string }): Promise<ScannedCode> {
+  async createScannedCode(data: { uuid: string; scannedBy: number; productName?: string; productId?: number }): Promise<ScannedCode> {
     const [code] = await db
       .insert(scannedCodes)
       .values({
         uuid: data.uuid,
         scannedBy: data.scannedBy,
-        productName: data.productName
+        productName: data.productName,
+        productId: data.productId
       })
       .returning();
     return code;
@@ -264,6 +321,31 @@ async function initializeDatabase() {
         active: 1
       }
     ]);
+    
+    // Create sample products
+    const productCount = await db.select({ count: sql`count(*)` }).from(localProducts);
+    
+    if (productCount[0] && productCount[0].count === BigInt(0)) {
+      await db.insert(localProducts).values([
+        {
+          name: "BQ520 BAREEQ 50W",
+          rewardPoints: 20,
+          isActive: 1
+        },
+        {
+          name: "BQ360 BAREEQ 30W",
+          rewardPoints: 15,
+          isActive: 1
+        },
+        {
+          name: "BQ250 BAREEQ 25W",
+          rewardPoints: 10,
+          isActive: 1
+        }
+      ]);
+      
+      console.log("Database initialized with default products");
+    }
     
     console.log("Database initialized with default data");
   }
