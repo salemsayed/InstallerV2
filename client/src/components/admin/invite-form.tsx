@@ -176,12 +176,33 @@ export default function InviteForm({ onSuccess }: InviteFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="riyadh">الرياض</SelectItem>
-                        <SelectItem value="jeddah">جدة</SelectItem>
-                        <SelectItem value="dammam">الدمام</SelectItem>
                         <SelectItem value="cairo">القاهرة</SelectItem>
                         <SelectItem value="alexandria">الإسكندرية</SelectItem>
-                        <SelectItem value="other">أخرى</SelectItem>
+                        <SelectItem value="giza">الجيزة</SelectItem>
+                        <SelectItem value="sharkia">الشرقية</SelectItem>
+                        <SelectItem value="qalyubia">القليوبية</SelectItem>
+                        <SelectItem value="gharbia">الغربية</SelectItem>
+                        <SelectItem value="menoufia">المنوفية</SelectItem>
+                        <SelectItem value="beheira">البحيرة</SelectItem>
+                        <SelectItem value="kafr_el_sheikh">كفر الشيخ</SelectItem>
+                        <SelectItem value="damietta">دمياط</SelectItem>
+                        <SelectItem value="port_said">بورسعيد</SelectItem>
+                        <SelectItem value="ismailia">الإسماعيلية</SelectItem>
+                        <SelectItem value="suez">السويس</SelectItem>
+                        <SelectItem value="fayoum">الفيوم</SelectItem>
+                        <SelectItem value="beni_suef">بني سويف</SelectItem>
+                        <SelectItem value="minya">المنيا</SelectItem>
+                        <SelectItem value="asyut">أسيوط</SelectItem>
+                        <SelectItem value="sohag">سوهاج</SelectItem>
+                        <SelectItem value="qena">قنا</SelectItem>
+                        <SelectItem value="aswan">أسوان</SelectItem>
+                        <SelectItem value="luxor">الأقصر</SelectItem>
+                        <SelectItem value="red_sea">البحر الأحمر</SelectItem>
+                        <SelectItem value="north_sinai">شمال سيناء</SelectItem>
+                        <SelectItem value="south_sinai">جنوب سيناء</SelectItem>
+                        <SelectItem value="matrouh">مطروح</SelectItem>
+                        <SelectItem value="new_valley">الوادي الجديد</SelectItem>
+                        <SelectItem value="dakahlia">الدقهلية</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
