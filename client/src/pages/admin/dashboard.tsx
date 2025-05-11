@@ -90,7 +90,6 @@ export default function AdminDashboard() {
 
           {/* Points Allocation Form */}
           <PointsAllocationForm 
-            adminId={user.id} 
             users={installers}
             onSuccess={() => {}}
           />
@@ -112,7 +111,6 @@ export default function AdminDashboard() {
 
       {activeTab === "points" && (
         <PointsAllocationForm 
-          adminId={user.id} 
           users={installers}
           onSuccess={() => setActiveTab("overview")}
         />
