@@ -740,7 +740,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new product (admin only)
   app.post("/api/products", async (req: Request, res: Response) => {
     try {
-      if (!req.user || req.user.role !== UserRole.ADMIN) {
+      // Get user ID from request
+      const userId = req.body.userId || (req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "User ID is required",
+          error_code: "MISSING_USER_ID"
+        });
+      }
+      
+      // Verify the user is an admin
+      const user = await storage.getUser(parseInt(userId.toString()));
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ 
           success: false, 
           message: "Unauthorized access",
@@ -779,7 +792,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update an existing product (admin only)
   app.patch("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      if (!req.user || req.user.role !== UserRole.ADMIN) {
+      // Get user ID from request
+      const userId = req.body.userId || (req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "User ID is required",
+          error_code: "MISSING_USER_ID"
+        });
+      }
+      
+      // Verify the user is an admin
+      const user = await storage.getUser(parseInt(userId.toString()));
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ 
           success: false, 
           message: "Unauthorized access",
@@ -838,7 +864,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a product (admin only)
   app.delete("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      if (!req.user || req.user.role !== UserRole.ADMIN) {
+      // Get user ID from request
+      const userId = req.body.userId || (req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "User ID is required",
+          error_code: "MISSING_USER_ID"
+        });
+      }
+      
+      // Verify the user is an admin
+      const user = await storage.getUser(parseInt(userId.toString()));
+      if (!user || user.role !== "admin") {
         return res.status(403).json({ 
           success: false, 
           message: "Unauthorized access",

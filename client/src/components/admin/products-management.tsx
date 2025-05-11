@@ -109,8 +109,17 @@ export default function ProductsManagement({ products, onRefresh }: ProductsMana
         });
         return;
       }
+      
+      // Get the current user from local storage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Include the user ID in the request
+      const dataWithUserId = {
+        ...formData,
+        userId: currentUser.id
+      };
 
-      const response = await apiRequest("POST", "/api/products", formData);
+      const response = await apiRequest("POST", "/api/products", dataWithUserId);
       
       if (response.ok) {
         toast({
@@ -158,8 +167,17 @@ export default function ProductsManagement({ products, onRefresh }: ProductsMana
         });
         return;
       }
+      
+      // Get the current user from local storage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Include the user ID in the request
+      const dataWithUserId = {
+        ...formData,
+        userId: currentUser.id
+      };
 
-      const response = await apiRequest("PATCH", `/api/products/${selectedProduct.id}`, formData);
+      const response = await apiRequest("PATCH", `/api/products/${selectedProduct.id}`, dataWithUserId);
       
       if (response.ok) {
         toast({
@@ -189,8 +207,12 @@ export default function ProductsManagement({ products, onRefresh }: ProductsMana
   const handleDeleteProduct = async () => {
     try {
       if (!selectedProduct) return;
-
-      const response = await apiRequest("DELETE", `/api/products/${selectedProduct.id}`);
+      
+      // Get the current user from local storage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Add the user ID as a query parameter for DELETE request
+      const response = await apiRequest("DELETE", `/api/products/${selectedProduct.id}?userId=${currentUser.id}`);
       
       if (response.ok) {
         toast({
