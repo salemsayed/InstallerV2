@@ -147,9 +147,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsOpen(false);
       
       // Invalidate queries to refresh the data across the app
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      // Use more generalized pattern for transactions to ensure it matches the query key format
+      queryClient.invalidateQueries(); // Invalidate all queries to ensure everything refreshes
+      
+      // Log invalidation
+      console.log("Invalidating all queries after successful scan");
       
       toast({
         title: "Product Verified Successfully ✓",
