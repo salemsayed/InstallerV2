@@ -49,40 +49,36 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       </header>
       
       {/* Main Content */}
-      <main className="pb-20">
+      <main className="pb-24">
         {children}
       </main>
       
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/4">
-          <Link href="/installer/dashboard">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/installer/dashboard" ? "text-primary" : "text-neutral-500"
-            )}>
-              <span className="material-icons">home</span>
-              <span className="text-xs mt-1">الرئيسية</span>
-            </div>
-          </Link>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-between py-4 px-8">
+        <Link href="/installer/dashboard">
+          <div className={cn(
+            "flex flex-col items-center cursor-pointer px-4 pt-2",
+            location === "/installer/dashboard" ? "text-primary font-medium" : "text-neutral-500"
+          )}>
+            <span className="material-icons text-2xl">home</span>
+            <span className="text-xs mt-1">الرئيسية</span>
+          </div>
+        </Link>
+        
+        {/* Center space for QR Scanner button */}
+        <div className="w-28 h-16 flex-shrink-0 invisible">
+          {/* This invisible space creates room for the floating button */}
         </div>
         
-        {/* QR Scan Button placeholder - actual button is in QRScanner component */}
-        <div className="w-1/2 flex justify-center">
-          <div className="w-16 h-16"></div>
-        </div>
-        
-        <div className="w-1/4">
-          <Link href="/installer/profile">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/installer/profile" ? "text-primary" : "text-neutral-500"
-            )}>
-              <span className="material-icons">person</span>
-              <span className="text-xs mt-1">الملف الشخصي</span>
-            </div>
-          </Link>
-        </div>
+        <Link href="/installer/profile">
+          <div className={cn(
+            "flex flex-col items-center cursor-pointer px-4 pt-2",
+            location === "/installer/profile" ? "text-primary font-medium" : "text-neutral-500"
+          )}>
+            <span className="material-icons text-2xl">person</span>
+            <span className="text-xs mt-1">الملف الشخصي</span>
+          </div>
+        </Link>
       </nav>
     </div>
   );
