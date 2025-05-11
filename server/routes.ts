@@ -538,11 +538,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/admin/badges/:id", async (req: Request, res: Response) => {
     try {
-      const badgeId = parseInt(req.params.id);
-      const adminId = parseInt(req.query.userId as string);
-      const admin = await storage.getUser(adminId);
+      console.log('========= BADGE UPDATE ENDPOINT START =========');
+      console.log('Request body:', JSON.stringify(req.body));
+      console.log('Request params:', JSON.stringify(req.params));
       
-      if (!admin || admin.role !== UserRole.ADMIN) {
+      const badgeId = parseInt(req.params.id);
+      if (isNaN(badgeId)) {
+        console.error('Invalid badge ID:', req.params.id);
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid badge ID format",
+          details: { id: req.params.id }
+        });
+      }
+      
+      const adminId = parseInt(req.query.userId as string);
+      if (isNaN(adminId)) {
+        console.error('Invalid admin ID:', req.query.userId);
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid admin ID format",
+          details: { userId: req.query.userId }
+        });
+      }
+      
+      console.log(`Processing badge update: Badge ID ${badgeId}, Admin ID ${adminId}`);
+      
+      const admin = await storage.getUser(adminId);
+      if (!admin) {
+        console.error('Admin not found:', adminId);
+        return res.status(404).json({ 
+          success: false,
+          message: "Admin user not found" 
+        });
+      }
+      
+      if (admin.role !== UserRole.ADMIN) {
+        console.error('Non-admin attempted badge update:', admin);
         return res.status(403).json({ 
           success: false,
           message: "ليس لديك صلاحية للقيام بهذه العملية" 
@@ -550,41 +582,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const badge = await storage.getBadge(badgeId);
-      
       if (!badge) {
+        console.error('Badge not found:', badgeId);
         return res.status(404).json({ 
           success: false,
           message: "الشارة غير موجودة" 
         });
       }
       
-      const { name, description, icon, requiredPoints, minInstallations, active } = req.body;
+      console.log('Current badge data:', JSON.stringify(badge));
       
-      // Validate numeric fields and ensure they are numbers
+      // Extract data from request body with careful type checking
+      const { 
+        name = badge.name, 
+        description = badge.description, 
+        icon = badge.icon,
+        requiredPoints = badge.requiredPoints,
+        minInstallations = badge.minInstallations, 
+        active = badge.active
+      } = req.body;
+      
+      console.log('Extracted field values:');
+      console.log('- name:', name, typeof name);
+      console.log('- description:', description, typeof description);
+      console.log('- icon:', icon, typeof icon);
+      console.log('- requiredPoints:', requiredPoints, typeof requiredPoints);
+      console.log('- minInstallations:', minInstallations, typeof minInstallations);
+      console.log('- active:', active, typeof active);
+      
+      // Process numeric and boolean fields with extra care
+      let parsedRequiredPoints = 0;
+      let parsedMinInstallations = 0;
+      let parsedActive = 0;
+      
+      // Handle requiredPoints - try parsing if it's a string
+      if (typeof requiredPoints === 'number') {
+        parsedRequiredPoints = isNaN(requiredPoints) ? 0 : requiredPoints;
+      } else if (typeof requiredPoints === 'string') {
+        try {
+          parsedRequiredPoints = parseInt(requiredPoints, 10);
+          if (isNaN(parsedRequiredPoints)) parsedRequiredPoints = 0;
+        } catch (e) {
+          parsedRequiredPoints = 0;
+        }
+      }
+      
+      // Handle minInstallations - try parsing if it's a string
+      if (typeof minInstallations === 'number') {
+        parsedMinInstallations = isNaN(minInstallations) ? 0 : minInstallations;
+      } else if (typeof minInstallations === 'string') {
+        try {
+          parsedMinInstallations = parseInt(minInstallations, 10);
+          if (isNaN(parsedMinInstallations)) parsedMinInstallations = 0;
+        } catch (e) {
+          parsedMinInstallations = 0;
+        }
+      }
+      
+      // Handle active flag - ensure it's 0 or 1
+      if (active === true || active === 1 || active === '1') {
+        parsedActive = 1;
+      } else {
+        parsedActive = 0;
+      }
+      
+      // Validate text fields
+      if (!name || typeof name !== 'string') {
+        console.error('Invalid name field:', name);
+        return res.status(400).json({
+          success: false,
+          message: "اسم الشارة غير صالح"
+        });
+      }
+      
+      if (!icon || typeof icon !== 'string') {
+        console.error('Invalid icon field:', icon);
+        return res.status(400).json({
+          success: false,
+          message: "أيقونة الشارة غير صالحة"
+        });
+      }
+      
+      // Create validated data object
       const validatedData = {
         name,
-        description,
+        description: description || '',
         icon,
-        active: active === true || active === 1 ? 1 : 0,
-        requiredPoints: typeof requiredPoints === 'number' && !isNaN(requiredPoints) 
-          ? requiredPoints : 0,
-        minInstallations: typeof minInstallations === 'number' && !isNaN(minInstallations)
-          ? minInstallations : 0
+        active: parsedActive,
+        requiredPoints: parsedRequiredPoints,
+        minInstallations: parsedMinInstallations
       };
       
-      const updatedBadge = await storage.updateBadge(badgeId, validatedData);
+      console.log('Validated data to be sent:', JSON.stringify(validatedData));
       
-      return res.status(200).json({ 
-        success: true, 
-        message: "تم تحديث الشارة بنجاح",
-        badge: updatedBadge 
-      });
-      
+      try {
+        const updatedBadge = await storage.updateBadge(badgeId, validatedData);
+        
+        if (!updatedBadge) {
+          console.error('Badge update failed - storage returned undefined');
+          return res.status(500).json({
+            success: false,
+            message: "فشل تحديث الشارة - خطأ في قاعدة البيانات"
+          });
+        }
+        
+        console.log('Badge update successful:', JSON.stringify(updatedBadge));
+        return res.status(200).json({ 
+          success: true, 
+          message: "تم تحديث الشارة بنجاح",
+          badge: updatedBadge 
+        });
+      } catch (dbError: any) {
+        console.error('Database error during badge update:', dbError);
+        return res.status(500).json({
+          success: false,
+          message: "Database error during badge update",
+          error: dbError.message
+        });
+      }
     } catch (error: any) {
+      console.error('Unexpected error in badge update endpoint:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       return res.status(400).json({ 
         success: false,
-        message: error.message || "حدث خطأ أثناء تحديث الشارة" 
+        message: error.message || "حدث خطأ أثناء تحديث الشارة",
+        errorDetail: typeof error === 'object' ? JSON.stringify(error) : 'Unknown error'
       });
+    } finally {
+      console.log('========= BADGE UPDATE ENDPOINT END =========');
     }
   });
   
