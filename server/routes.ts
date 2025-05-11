@@ -11,128 +11,89 @@ import { createTransport } from "nodemailer";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth
-  await setupAuth(app);
-  
-  // Set up nodemailer with a mock transport for development
-  const emailTransport = createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    auth: {
-      user: process.env.EMAIL_USER || "mock_user",
-      pass: process.env.EMAIL_PASS || "mock_pass",
-    },
-  });
+  // Import SMS service
+  const { smsService } = await import('./sms');
 
   // AUTH ROUTES
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
+  // Request OTP for login/registration
+  app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
     try {
-      const { email } = loginSchema.parse(req.body);
+      const { phone } = req.body;
       
-      // Check if user exists
-      const user = await storage.getUserByEmail(email);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود. يرجى التواصل مع الإدارة للحصول على دعوة." });
+      if (!phone) {
+        return res.status(400).json({ message: "رقم الهاتف مطلوب" });
       }
       
-      // Generate a token
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 1); // Expires in 1 hour
+      // Send OTP to the phone number
+      const result = await smsService.sendOtp(phone);
       
-      // Store the magic link
-      await storage.createMagicLink({
-        token,
-        email,
-        expiresAt,
-        used: 0
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "فشل إرسال رمز التحقق. يرجى التحقق من رقم الهاتف وإعادة المحاولة." 
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: "تم إرسال رمز التحقق بنجاح",
+        // In development, return the OTP for easy testing
+        ...(process.env.NODE_ENV !== 'production' && { otp: result.otp })
       });
-      
-      // In a production app, send an actual email
-      // For development, we'll just return the token
-      // The frontend will simulate the email flow
-      
-      /*
-      await emailTransport.sendMail({
-        from: '"برنامج مكافآت بريق" <noreply@breeg-rewards.com>',
-        to: email,
-        subject: "رابط تسجيل الدخول إلى برنامج مكافآت بريق",
-        html: `
-          <div dir="rtl" style="text-align: right; font-family: Arial, sans-serif;">
-            <h2>مرحباً ${user.name},</h2>
-            <p>يرجى استخدام الرابط التالي لتسجيل الدخول إلى برنامج مكافآت بريق:</p>
-            <p>
-              <a href="${process.env.APP_URL || "http://localhost:5000"}/auth/magic-link?token=${token}&email=${encodeURIComponent(email)}" 
-                 style="display: inline-block; background-color: #1976D2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                تسجيل الدخول
-              </a>
-            </p>
-            <p>ينتهي هذا الرابط خلال ساعة واحدة.</p>
-            <p>إذا لم تطلب تسجيل الدخول، يرجى تجاهل هذا البريد الإلكتروني.</p>
-            <p>مع تحيات فريق بريق</p>
-          </div>
-        `
-      });
-      */
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "تم إرسال رابط تسجيل الدخول بنجاح",
-        // Only for development to simulate the email flow
-        token, 
-        email 
-      });
-      
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || "حدث خطأ أثناء تسجيل الدخول" });
+      return res.status(500).json({ 
+        message: error.message || "حدث خطأ أثناء إرسال رمز التحقق" 
+      });
     }
   });
   
-  app.post("/api/auth/verify", async (req: Request, res: Response) => {
+  // Verify OTP and login/register user
+  app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
     try {
-      const { token, email } = verifyTokenSchema.parse(req.body);
+      const { phone, otp } = req.body;
       
-      // Find the magic link
-      const magicLink = await storage.getMagicLinkByToken(token);
-      
-      if (!magicLink) {
-        return res.status(400).json({ message: "رابط غير صالح. يرجى طلب رابط جديد." });
+      if (!phone || !otp) {
+        return res.status(400).json({ message: "رقم الهاتف ورمز التحقق مطلوبان" });
       }
       
-      if (magicLink.email !== email) {
-        return res.status(400).json({ message: "البريد الإلكتروني غير متطابق. يرجى طلب رابط جديد." });
+      // Verify the OTP
+      const isValid = smsService.verifyOtp(phone, otp);
+      
+      if (!isValid) {
+        return res.status(400).json({ 
+          message: "رمز التحقق غير صحيح أو منتهي الصلاحية" 
+        });
       }
       
-      if (magicLink.used === 1) {
-        return res.status(400).json({ message: "تم استخدام هذا الرابط مسبقًا. يرجى طلب رابط جديد." });
-      }
+      // Check if user exists by phone number
+      let user = await storage.getUserByPhone(phone);
       
-      const now = new Date();
-      if (now > new Date(magicLink.expiresAt)) {
-        return res.status(400).json({ message: "انتهت صلاحية الرابط. يرجى طلب رابط جديد." });
-      }
-      
-      // Mark magic link as used
-      await storage.updateMagicLink(magicLink.id, { used: 1 });
-      
-      // Get user
-      const user = await storage.getUserByEmail(email);
-      
+      // If no user exists, create a new one
       if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
+        // Format phone to standard format for saving
+        const formattedPhone = phone.startsWith('0') ? '+2' + phone : phone;
+        
+        user = await storage.createUser({
+          phone: formattedPhone,
+          // Use a default email based on phone for systems that require email
+          email: `user_${formattedPhone.replace(/\+/g, '').replace(/\s/g, '')}@example.com`,
+          name: `مستخدم ${formattedPhone.slice(-4)}`, // Use last 4 digits as part of name
+          role: UserRole.INSTALLER,
+          status: UserStatus.ACTIVE,
+          points: 0,
+          level: 1,
+          badgeIds: [],
+        });
       }
       
-      // If account is pending, activate it
-      if (user.status === UserStatus.PENDING) {
-        await storage.updateUser(user.id, { status: UserStatus.ACTIVE });
-      }
+      // Create a JWT or session token here if needed
+      // For simplicity, we'll just return the user object
       
-      // Return user data
-      return res.status(200).json({
+      return res.json({
+        success: true,
         user: {
           id: user.id,
           name: user.name,
+          phone: user.phone,
           email: user.email,
           role: user.role,
           points: user.points,
@@ -140,29 +101,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           region: user.region
         }
       });
-      
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || "حدث خطأ أثناء التحقق من الرمز" });
+      return res.status(400).json({ 
+        message: error.message || "حدث خطأ أثناء التحقق من رمز OTP" 
+      });
     }
   });
   
   // USER ROUTES
-  // Endpoint for Replit Auth user
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserByEmail(req.user.claims.email);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
-      
-      return res.json(user);
-    } catch (error: any) {
-      console.error("Error fetching user:", error);
-      return res.status(500).json({ message: error.message || "حدث خطأ أثناء جلب بيانات المستخدم" });
-    }
-  });
 
   // Legacy endpoint for the old auth system
   app.get("/api/users/me", async (req: Request, res: Response) => {
