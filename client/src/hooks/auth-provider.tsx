@@ -7,6 +7,7 @@ interface User {
   id: number;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   points: number;
   level: number;
@@ -17,8 +18,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string) => Promise<{ success: boolean; token?: string; email?: string }>;
-  verifyToken: (token: string, email: string) => Promise<boolean>;
+  login: (userId: string, userRole: string) => void;
   logout: () => void;
 }
 
@@ -26,8 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: false,
   error: null,
-  login: async () => ({ success: false }),
-  verifyToken: async () => false,
+  login: () => {},
   logout: () => {}
 });
 

@@ -3,8 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { randomBytes } from "crypto";
 import {
-  UserRole, UserStatus, TransactionType,
-  loginSchema, verifyTokenSchema, insertUserSchema,
+  UserRole, UserStatus, TransactionType, ActivityType,
+  requestOtpSchema, verifyOtpSchema, insertUserSchema,
   pointsAllocationSchema
 } from "@shared/schema";
 import { createTransport } from "nodemailer";

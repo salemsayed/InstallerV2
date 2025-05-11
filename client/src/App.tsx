@@ -1,7 +1,5 @@
 import { Switch, Route } from "wouter";
-import Login from "@/pages/auth/login";
-import MagicLink from "@/pages/auth/magic-link";
-import AuthCallback from "@/pages/auth/callback";
+import LoginPage from "@/pages/auth/login-page";
 import InstallerDashboard from "@/pages/installer/dashboard";
 import InstallerStats from "@/pages/installer/stats";
 import InstallerProfile from "@/pages/installer/profile";
@@ -14,11 +12,11 @@ import { AuthProvider } from "@/hooks/auth-provider";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Login} />
-      <Route path="/auth/magic-link" component={MagicLink} />
-      <Route path="/auth/callback" component={AuthCallback} />
+      <Route path="/" component={LoginPage} />
+      <Route path="/auth/login" component={LoginPage} />
       
       {/* Installer Routes */}
+      <Route path="/installer/home" component={InstallerDashboard} />
       <Route path="/installer/dashboard" component={InstallerDashboard} />
       <Route path="/installer/stats" component={InstallerStats} />
       <Route path="/installer/profile" component={InstallerProfile} />
