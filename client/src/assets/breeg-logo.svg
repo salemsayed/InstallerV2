@@ -1,5 +1,18 @@
-<svg width="800" height="250" viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg">
-  <path d="M550 50C475 50 400 100 400 175S475 300 550 300s150-50 150-125S625 50 550 50zm0 200c-40 0-75-35-75-75s35-75 75-75 75 35 75 75-35 75-75 75z" fill="#1976D2"/>
-  <path d="M375 150H25v50h100v75h50v-75h200v-50zm25-25h25v25h-25v-25zm75 0h25v25h-25v-25zm50-25h25v-25h25v25h25v25h-75V100z" fill="#1976D2"/>
-  <path d="M700 125c-15-45-55-75-100-75v50c20 0 45 10 55 30 5 10 5 15 5 20h-30l50 50 50-50h-30v-25z" fill="#1976D2"/>
+<svg width="800" height="260" viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circle with hand representing Breeg logo -->
+  <path d="M420 100C340 100 280 160 280 240S340 380 420 380s140-60 140-140S500 100 420 100zm0 220c-45 0-80-35-80-80s35-80 80-80 80 35 80 80-35 80-80 80z" fill="#1976D2"/>
+  
+  <!-- Hand representation in the logo -->
+  <path d="M390 230c-5-8-5-20 5-25s20 5 25 12c5 7 15 5 20-2 5-7 0-15-5-20-5-5-10-5-15 0-5 5-15 5-20 0s-5-15 0-20c5-5 15-5 20 0 5 5 15 5 20 0 5-5 5-15 0-20" stroke="#1976D2" stroke-width="10" fill="none" stroke-linecap="round"/>
+  
+  <!-- Horizontal bar in logo -->
+  <path d="M200 150H20v30h50v90h30v-90h100v-30z" fill="#1976D2"/>
+  
+  <!-- Rectangle blocks at top -->
+  <rect x="250" y="40" width="30" height="30" fill="#1976D2"/>
+  <rect x="290" y="40" width="30" height="30" fill="#1976D2"/>
+  
+  <!-- Text part of the logo -->
+  <path d="M590 140c0-20-15-40-35-40s-35 20-35 40h70zm-70 30c0 20 15 40 35 40s35-20 35-40h-70z" fill="#1976D2"/>
+  <path d="M670 140c-10-30-35-40-70-40v25c20 0 35 5 45 15 10 10 10 20 10 30h-20l35 35 35-35h-20c0-10-5-20-15-30z" fill="#1976D2"/>
 </svg>
