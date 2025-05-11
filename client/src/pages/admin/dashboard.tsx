@@ -7,6 +7,8 @@ import InviteForm from "@/components/admin/invite-form";
 import UsersTable from "@/components/admin/users-table";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
 import ProductsManagement from "@/components/admin/products-management";
+import EditUserDialog from "@/components/admin/edit-user-dialog";
+import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { User, TransactionType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,6 +16,9 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Fetch users data
   const { data: usersData, isLoading: usersLoading } = useQuery({
