@@ -523,15 +523,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the code exists in the manufacturing database
-      const isValid = await checkSerialNumber(uuid);
+      console.log(`[DEBUG] About to check UUID in manufacturing database: "${uuid}"`);
+      
+      // Try different formats - sometimes UUIDs might be stored differently
+      const uuidNoHyphens = uuid.replace(/-/g, '');
+      console.log(`[DEBUG] UUID without hyphens: "${uuidNoHyphens}"`);
+      
+      // First try with normal UUID format
+      console.log(`[DEBUG] Checking with original UUID format`);
+      let isValid = await checkSerialNumber(uuid);
+      
+      // If not found, try without hyphens
       if (!isValid) {
+        console.log(`[DEBUG] Original UUID not found, trying without hyphens`);
+        isValid = await checkSerialNumber(uuidNoHyphens);
+      }
+      
+      if (!isValid) {
+        console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
         return res.status(400).json({ 
           success: false, 
           message: "This product is not registered in our manufacturing database",
           error_code: "INVALID_PRODUCT",
-          details: { uuid }
+          details: { uuid, uuidNoHyphens }
         });
       }
+      
+      console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
       
       // Get product details
       const productName = await getProductNameBySerialNumber(uuid);
