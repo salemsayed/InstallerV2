@@ -50,22 +50,61 @@ import { useToast } from "@/hooks/use-toast";
 
 // Icons for badges from Material Icons
 const AVAILABLE_ICONS = [
+  // Achievements
   "emoji_events", // Trophy
   "workspace_premium", // Premium badge
   "military_tech", // Medal
   "stars", // Stars
+  "diamond", // Diamond
+  "auto_awesome", // Sparkles
+  "local_fire_department", // Fire
+  "bolt", // Lightning bolt
+  "grade", // Star
+  "recommend", // Thumbs up in a circle
+  
+  // Work-related
   "badge", // Badge
   "verified", // Verified
   "thumb_up", // Thumbs up
   "rocket_launch", // Rocket
-  "diamond", // Diamond
   "psychology", // Brain/skill
   "engineering", // Tools
   "build", // Wrench
+  "construction", // Construction
+  "handyman", // Handyman
+  "home_repair_service", // Home repair
+  "hardware", // Hardware
   "architecture", // Architecture
+  "work", // Work briefcase
+  
+  // Conceptual
   "timer", // Speed
   "verified_user", // Shield with check
   "settings", // Gear
+  "account_circle", // User
+  "person", // Person
+  "groups", // Teams
+  "lightbulb", // Idea
+  "trending_up", // Trending up
+  "insights", // Insights
+  "speed", // Speedometer
+  
+  // Products
+  "light", // Light
+  "light_mode", // Sun
+  "wb_sunny", // Sunny
+  "highlight", // Highlight
+  "electric_bolt", // Electric bolt
+  "tungsten", // Tungsten light
+  "category", // Category
+  "inventory_2", // Inventory
+  
+  // Experience
+  "school", // Graduation
+  "auto_stories", // Book
+  "history_edu", // Scroll/education
+  "analytics", // Analytics
+  "leaderboard", // Leaderboard
 ];
 
 // Form schema for badge creation and editing
@@ -73,9 +112,9 @@ const badgeFormSchema = z.object({
   name: z.string().min(2, { message: "يجب أن يكون الاسم حرفين على الأقل" }),
   description: z.string().min(5, { message: "يجب أن يكون الوصف 5 أحرف على الأقل" }),
   icon: z.string().min(1, { message: "يرجى اختيار أيقونة" }),
-  requiredPoints: z.coerce.number().min(0, { message: "يجب أن تكون النقاط رقم صحيح موجب" }).optional(),
-  minLevel: z.coerce.number().min(1, { message: "يجب أن يكون المستوى رقم صحيح موجب" }).optional(),
-  minInstallations: z.coerce.number().min(0, { message: "يجب أن يكون عدد التركيبات رقم صحيح موجب" }).optional(),
+  requiredPoints: z.coerce.number().min(0, { message: "يجب أن تكون النقاط رقم صحيح موجب" }),
+  minInstallations: z.coerce.number().min(0, { message: "يجب أن يكون عدد التركيبات رقم صحيح موجب" }),
+  active: z.boolean().default(true),
 });
 
 type BadgeFormValues = z.infer<typeof badgeFormSchema>;
@@ -89,7 +128,6 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   const { toast } = useToast();
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<"badges" | "levels">("badges");
 
   // Form setup
   const form = useForm<BadgeFormValues>({
@@ -99,8 +137,8 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       description: "",
       icon: "emoji_events",
       requiredPoints: 0,
-      minLevel: 1,
       minInstallations: 0,
+      active: true,
     },
   });
 
