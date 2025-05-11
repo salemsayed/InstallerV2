@@ -99,10 +99,10 @@ export class MockSmsService {
       this.storeOtp(formattedPhone, otp);
       
       const message = `رمز التحقق الخاص بك لبرنامج مكافآت بريق هو: ${otp}`;
-      const sent = await this.sendSms(phoneNumber, message);
+      const sent = await this.sendSms(formattedPhone, message);
       
       if (sent) {
-        log(`OTP sent to ${phoneNumber}: ${otp}`, 'sms');
+        log(`OTP sent to ${formattedPhone}: ${otp}`, 'sms');
         // Return OTP in development for easy testing
         return { success: true, otp };
       } else {
