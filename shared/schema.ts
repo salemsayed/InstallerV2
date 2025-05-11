@@ -102,7 +102,6 @@ export const badges = pgTable("badges", {
   icon: text("icon").notNull(),
   description: text("description"),
   requiredPoints: integer("required_points"),
-  minLevel: integer("min_level"),
   minInstallations: integer("min_installations"),
   active: integer("active").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),

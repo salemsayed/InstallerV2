@@ -140,7 +140,16 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
 
   // Create new badge
   const createBadgeMutation = useMutation({
-    mutationFn: async (values: BadgeFormValues) => {
+    mutationFn: async (formValues: BadgeFormValues) => {
+      // Ensure numeric fields are valid numbers or 0
+      const values = {
+        ...formValues,
+        requiredPoints: typeof formValues.requiredPoints === 'number' && !isNaN(formValues.requiredPoints) 
+          ? formValues.requiredPoints : 0,
+        minInstallations: typeof formValues.minInstallations === 'number' && !isNaN(formValues.minInstallations)
+          ? formValues.minInstallations : 0
+      };
+      
       const res = await apiRequest("POST", "/api/admin/badges", values);
       return res.json();
     },
@@ -165,7 +174,17 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   // Update existing badge
   const updateBadgeMutation = useMutation({
     mutationFn: async (values: BadgeFormValues & { id: number }) => {
-      const { id, ...data } = values;
+      const { id, ...formData } = values;
+      
+      // Ensure numeric fields are valid numbers or 0
+      const data = {
+        ...formData,
+        requiredPoints: typeof formData.requiredPoints === 'number' && !isNaN(formData.requiredPoints) 
+          ? formData.requiredPoints : 0,
+        minInstallations: typeof formData.minInstallations === 'number' && !isNaN(formData.minInstallations)
+          ? formData.minInstallations : 0
+      };
+      
       const res = await apiRequest("PATCH", `/api/admin/badges/${id}`, data);
       return res.json();
     },
