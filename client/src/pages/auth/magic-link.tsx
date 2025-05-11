@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import AuthLayout from "@/components/layouts/auth-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-provider";
 import { Button } from "@/components/ui/button";
 
 export default function MagicLink() {

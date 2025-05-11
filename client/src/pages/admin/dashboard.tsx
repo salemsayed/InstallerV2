@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-provider";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
 import InviteForm from "@/components/admin/invite-form";
