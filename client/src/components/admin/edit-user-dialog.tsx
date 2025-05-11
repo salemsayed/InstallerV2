@@ -170,11 +170,12 @@ export default function EditUserDialog({
                     <FormControl>
                       <Input 
                         className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                        placeholder="مثال: 01012345678" 
+                        placeholder="مثال: 01012345678 أو +201012345678" 
                         type="tel" 
                         {...field} 
                         dir="ltr"
                         value={field.value || ""}
+                        title="رقم الهاتف يمكن أن يبدأ بـ 01 أو +201"
                       />
                     </FormControl>
                     <FormMessage />

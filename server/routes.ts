@@ -20,8 +20,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phone } = requestOtpSchema.parse(req.body);
       
+      // Format phone number - ensure it has the +2 prefix for Egyptian numbers
+      let formattedPhone = phone;
+      if (phone.startsWith('0')) {
+        formattedPhone = '+2' + phone;
+      }
+      
       // Send OTP to the phone number
-      const result = await smsService.sendOtp(phone);
+      const result = await smsService.sendOtp(formattedPhone);
       
       if (!result.success) {
         return res.status(400).json({ 

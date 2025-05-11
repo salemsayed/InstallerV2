@@ -57,11 +57,18 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
   const onPhoneSubmit = async (data: z.infer<typeof phoneSchema>) => {
     setIsLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/auth/request-otp", data);
+      // Ensure phone is in international format
+      let phone = data.phone;
+      if (phone.startsWith('0')) {
+        phone = '+2' + phone;
+      }
+      
+      const response = await apiRequest("POST", "/api/auth/request-otp", { phone });
       const result = await response.json();
       
       if (result.success) {
-        setPhoneNumber(data.phone);
+        // Store the formatted phone number
+        setPhoneNumber(phone);
         setStep("otp");
         toast({
           title: "تم إرسال رمز التحقق",
@@ -131,7 +138,13 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
   const handleResendOTP = async () => {
     setIsLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/auth/request-otp", { phone: phoneNumber });
+      // Ensure phone has proper format (should already be formatted, but double-check)
+      let phone = phoneNumber;
+      if (phone.startsWith('0')) {
+        phone = '+2' + phone;
+      }
+      
+      const response = await apiRequest("POST", "/api/auth/request-otp", { phone });
       const result = await response.json();
       
       if (result.success) {
