@@ -26,6 +26,7 @@ export interface IStorage {
   // Transaction operations
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransactionsByUserId(userId: number, limit?: number): Promise<Transaction[]>;
+  getAllTransactions(limit?: number): Promise<Transaction[]>;
   
   // Reward operations
   createReward(reward: InsertReward): Promise<Reward>;
@@ -144,6 +145,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.userId, userId))
       .orderBy(desc(transactions.createdAt))
       .limit(limit);
+    return result;
+  }
+  
+  async getAllTransactions(limit = 100): Promise<Transaction[]> {
+    // For admin dashboard - get all transactions across all users
+    console.log(`[DEBUG] getAllTransactions called with limit ${limit}`);
+    const result = await db
+      .select()
+      .from(transactions)
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit);
+    
+    console.log(`[DEBUG] getAllTransactions found ${result.length} transactions`);
     return result;
   }
 

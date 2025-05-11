@@ -463,6 +463,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ADMIN TRANSACTIONS ENDPOINT - Gets all transactions
+  app.get("/api/admin/transactions", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
+    try {
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
+      
+      // Verify this is an admin user
+      if (admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه البيانات." });
+      }
+      
+      // Get all transactions - need to add this method to storage
+      console.log("[DEBUG] Fetching all transactions for admin dashboard");
+      const transactions = await storage.getAllTransactions();
+      console.log(`[DEBUG] Found ${transactions.length} total transactions`);
+      
+      return res.status(200).json({ transactions });
+      
+    } catch (error: any) {
+      console.error("[ERROR] Error fetching admin transactions:", error);
+      return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المعاملات" });
+    }
+  });
+  
 
   
   app.get("/api/badges", async (req: Request, res: Response) => {

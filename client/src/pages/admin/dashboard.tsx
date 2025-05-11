@@ -32,13 +32,13 @@ export default function AdminDashboard() {
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
-  // Fetch transactions data
+  // Fetch transactions data for ALL users (admin-specific endpoint)
   const { 
     data: transactionsData, 
     isLoading: transactionsLoading,
     refetch: refetchTransactions 
   } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+    queryKey: [`/api/admin/transactions?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
