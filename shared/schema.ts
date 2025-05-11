@@ -54,10 +54,10 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
-  phone: text("phone"),
+  phone: text("phone").unique(), // Egyptian phone numbers, can be optional for legacy data
   region: text("region"),
   role: text("role").notNull().default(UserRole.INSTALLER),
-  status: text("status").notNull().default(UserStatus.PENDING),
+  status: text("status").notNull().default(UserStatus.ACTIVE), // Changed default to ACTIVE since we're using direct auth
   points: integer("points").notNull().default(0),
   invitedBy: integer("invited_by").references(() => users.id),
   level: integer("level").notNull().default(1),
@@ -173,13 +173,22 @@ export type Reward = typeof rewards.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 
 // AUTH SCHEMAS
-export const loginSchema = z.object({
-  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
+// Egyptian phone number validation (01xxxxxxxxx or +201xxxxxxxxx format)
+const egyptianPhoneRegex = /^(\+20|0)1[0-2,5]{1}[0-9]{8}$/;
+
+export const requestOtpSchema = z.object({
+  phone: z.string().regex(egyptianPhoneRegex, {
+    message: "يرجى إدخال رقم هاتف مصري صالح (يبدأ بـ 01)"
+  }),
 });
 
-export const verifyTokenSchema = z.object({
-  token: z.string().min(10),
-  email: z.string().email(),
+export const verifyOtpSchema = z.object({
+  phone: z.string().regex(egyptianPhoneRegex, {
+    message: "يرجى إدخال رقم هاتف مصري صالح"
+  }),
+  otp: z.string().length(6, {
+    message: "رمز التحقق يجب أن يتكون من 6 أرقام"
+  }),
 });
 
 // ALLOCATION SCHEMA

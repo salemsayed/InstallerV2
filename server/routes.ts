@@ -18,11 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request OTP for login/registration
   app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
     try {
-      const { phone } = req.body;
-      
-      if (!phone) {
-        return res.status(400).json({ message: "رقم الهاتف مطلوب" });
-      }
+      const { phone } = requestOtpSchema.parse(req.body);
       
       // Send OTP to the phone number
       const result = await smsService.sendOtp(phone);
@@ -40,6 +36,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(process.env.NODE_ENV !== 'production' && { otp: result.otp })
       });
     } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "رقم الهاتف غير صالح. يرجى إدخال رقم هاتف مصري صحيح."
+        });
+      }
       return res.status(500).json({ 
         message: error.message || "حدث خطأ أثناء إرسال رمز التحقق" 
       });
@@ -49,11 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Verify OTP and login/register user
   app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
     try {
-      const { phone, otp } = req.body;
-      
-      if (!phone || !otp) {
-        return res.status(400).json({ message: "رقم الهاتف ورمز التحقق مطلوبان" });
-      }
+      const { phone, otp } = verifyOtpSchema.parse(req.body);
       
       // Verify the OTP
       const isValid = smsService.verifyOtp(phone, otp);
@@ -102,6 +99,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "بيانات غير صالحة. يرجى التحقق من رقم الهاتف ورمز التحقق."
+        });
+      }
       return res.status(400).json({ 
         message: error.message || "حدث خطأ أثناء التحقق من رمز OTP" 
       });

@@ -50,6 +50,13 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
     return result[0];
   }
+  
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    // Format phone to international format if it starts with 0
+    const formattedPhone = phone.startsWith('0') ? '+2' + phone : phone;
+    const result = await db.select().from(users).where(eq(users.phone, formattedPhone));
+    return result[0];
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values({
