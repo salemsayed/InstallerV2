@@ -112,8 +112,8 @@ export default function InstallerDashboard() {
           });
           
           toast({
-            title: "تم تسجيل المنتج بنجاح",
-            description: `تمت إضافة 10 نقاط لرصيدك لتركيب ${productName || "منتج جديد"}`,
+            title: "Product Registered Successfully",
+            description: `10 points added to your balance for installing ${productName || "a new product"}`,
             variant: "default",
           });
         }} 

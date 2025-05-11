@@ -66,7 +66,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      setError("فشل في تشغيل الكاميرا. الرجاء منح الإذن للوصول إلى الكاميرا.");
+      setError("Failed to start camera. Please grant camera permission. (ERROR_CODE: CAMERA_PERMISSION)");
       setIsScanning(false);
     }
   };
@@ -93,7 +93,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const match = url.match(urlRegex);
     
     if (!match) {
-      setError("الرمز غير صالح. الرجاء التأكد من مسح رمز الضمان الصحيح.");
+      setError("Invalid QR code format. Please scan a valid warranty code. (ERROR_CODE: INVALID_FORMAT)\n\nExpected format: https://warranty.bareeq.lighting/p/[UUID]");
       setIsValidating(false);
       return;
     }
@@ -103,7 +103,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
     // Step 2: UUID validation
     if (!isValidUUIDv4(uuid)) {
-      setError("معرف الكود غير صالح.");
+      setError("Invalid product code UUID. Please scan a valid warranty code. (ERROR_CODE: INVALID_UUID)\n\nDetected UUID: " + uuid);
       setIsValidating(false);
       return;
     }
@@ -147,8 +147,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsOpen(false);
       
       toast({
-        title: "تم التحقق بنجاح ✓",
-        description: `المنتج: ${result.productName}`,
+        title: "Product Verified Successfully ✓",
+        description: `Product: ${result.productName || "Unknown"}\nPoints awarded: ${result.pointsAwarded || 10}`,
         variant: "default",
       });
       
@@ -156,9 +156,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         onScanSuccess(result.productName);
       }
       
-    } catch (err) {
+    } catch (err: any) {
       console.error("Validation error:", err);
-      setError("حدث خطأ أثناء التحقق من الكود. الرجاء المحاولة مرة أخرى.");
+      setError(`Error validating QR code. Please try again. (ERROR_CODE: VALIDATION_ERROR)\n\nDetails: ${err.message || "Unknown error"}`);
       setIsValidating(false);
     }
   };
