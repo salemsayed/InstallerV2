@@ -161,6 +161,7 @@ export default function AdminDashboard() {
             <BadgesManagement
               badges={badgesData?.badges || []}
               onRefresh={refetchBadges}
+              userId={user?.id}
             />
           )}
         </>
