@@ -111,45 +111,41 @@ export default function AdminLayout({
       
       {/* Admin Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <Link href="/admin/dashboard">
-          <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/admin/dashboard" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">dashboard</span>
-            <span className="text-xs mt-1">اللوحة</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/admin/dashboard">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/admin/dashboard" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">dashboard</span>
+              <span className="text-xs mt-1">اللوحة</span>
+            </div>
+          </Link>
+        </div>
         
-        <Link href="/admin/users">
-          <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/admin/users" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">people</span>
-            <span className="text-xs mt-1">الفنيين</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/admin/users">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/admin/users" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">people</span>
+              <span className="text-xs mt-1">الفنيين</span>
+            </div>
+          </Link>
+        </div>
         
-        <Link href="/admin/rewards">
-          <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/admin/rewards" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">card_giftcard</span>
-            <span className="text-xs mt-1">المكافآت</span>
-          </a>
-        </Link>
-        
-        <Link href="/admin/settings">
-          <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/admin/settings" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">settings</span>
-            <span className="text-xs mt-1">الإعدادات</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/admin/settings">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/admin/settings" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">settings</span>
+              <span className="text-xs mt-1">الإعدادات</span>
+            </div>
+          </Link>
+        </div>
       </nav>
     </div>
   );

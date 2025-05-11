@@ -37,7 +37,7 @@ export interface IStorage {
 
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { Json } from "drizzle-orm/pg-core";
+import { json } from "drizzle-orm/pg-core";
 
 export class DatabaseStorage implements IStorage {
   // User operations

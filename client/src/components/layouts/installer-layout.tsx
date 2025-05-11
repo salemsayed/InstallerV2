@@ -55,35 +55,41 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <Link href="/installer/dashboard">
-          <a className={cn(
-            "flex flex-col items-center w-1/3",
-            location === "/installer/dashboard" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">home</span>
-            <span className="text-xs mt-1">الرئيسية</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/installer/dashboard">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/installer/dashboard" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">home</span>
+              <span className="text-xs mt-1">الرئيسية</span>
+            </div>
+          </Link>
+        </div>
         
-        <Link href="/installer/stats">
-          <a className={cn(
-            "flex flex-col items-center w-1/3",
-            location === "/installer/stats" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">insights</span>
-            <span className="text-xs mt-1">الإحصائيات</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/installer/stats">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/installer/stats" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">insights</span>
+              <span className="text-xs mt-1">الإحصائيات</span>
+            </div>
+          </Link>
+        </div>
         
-        <Link href="/installer/profile">
-          <a className={cn(
-            "flex flex-col items-center w-1/3",
-            location === "/installer/profile" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">person</span>
-            <span className="text-xs mt-1">الملف الشخصي</span>
-          </a>
-        </Link>
+        <div className="w-1/3">
+          <Link href="/installer/profile">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/installer/profile" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">person</span>
+              <span className="text-xs mt-1">الملف الشخصي</span>
+            </div>
+          </Link>
+        </div>
       </nav>
     </div>
   );
