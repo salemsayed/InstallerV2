@@ -252,19 +252,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all users
       const users = await storage.listUsers();
       
-      // Filter out sensitive information
-      const filteredUsers = users.map(user => ({
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        region: user.region,
-        role: user.role,
-        status: user.status,
-        points: user.points,
-        level: user.level
+      // Create a new array with calculated point balances
+      const usersWithCalculatedPoints = await Promise.all(users.map(async user => {
+        // Only calculate points for installers to save performance
+        let calculatedPoints = user.points;
+        if (user.role === UserRole.INSTALLER) {
+          calculatedPoints = await storage.calculateUserPointsBalance(user.id);
+        }
+        
+        return {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          region: user.region,
+          role: user.role,
+          status: user.status,
+          points: calculatedPoints, // Use calculated points instead of stored value
+          level: user.level
+        };
       }));
       
-      return res.status(200).json({ users: filteredUsers });
+      return res.status(200).json({ users: usersWithCalculatedPoints });
       
     } catch (error: any) {
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المستخدمين" });

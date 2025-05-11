@@ -27,6 +27,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransactionsByUserId(userId: number, limit?: number): Promise<Transaction[]>;
   getAllTransactions(limit?: number): Promise<Transaction[]>;
+  calculateUserPointsBalance(userId: number): Promise<number>;
   
   // Reward operations
   createReward(reward: InsertReward): Promise<Reward>;
@@ -159,6 +160,32 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[DEBUG] getAllTransactions found ${result.length} transactions`);
     return result;
+  }
+  
+  async calculateUserPointsBalance(userId: number): Promise<number> {
+    // Calculate the user's actual points balance from transactions
+    const earningTransactions = await db
+      .select({ sum: sql<number>`sum(${transactions.amount})` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, TransactionType.EARNING)
+      ));
+      
+    const redemptionTransactions = await db
+      .select({ sum: sql<number>`sum(${transactions.amount})` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, TransactionType.REDEMPTION)
+      ));
+    
+    const totalEarnings = earningTransactions[0]?.sum || 0;
+    const totalRedemptions = redemptionTransactions[0]?.sum || 0;
+    
+    console.log(`[DEBUG] User ${userId} points calculation: earnings=${totalEarnings}, redemptions=${totalRedemptions}`);
+    
+    return totalEarnings - totalRedemptions;
   }
 
   // Reward operations
