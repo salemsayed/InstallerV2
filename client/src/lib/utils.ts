@@ -94,3 +94,38 @@ export function isEmailValid(email: string): boolean {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
 }
+
+// Function to check if a user qualifies for a badge
+export function checkBadgeQualification(
+  userStats: { 
+    points: number; 
+    level: number; 
+    installationCount?: number; 
+  },
+  badge: {
+    id: number;
+    requiredPoints?: number | null;
+    minLevel?: number | null;
+    minInstallations?: number | null;
+  }
+): boolean {
+  // Check points requirement
+  if (badge.requiredPoints && userStats.points < badge.requiredPoints) {
+    return false;
+  }
+  
+  // Check level requirement
+  if (badge.minLevel && userStats.level < badge.minLevel) {
+    return false;
+  }
+  
+  // Check installations requirement
+  if (badge.minInstallations && 
+      (userStats.installationCount === undefined || 
+       userStats.installationCount < badge.minInstallations)) {
+    return false;
+  }
+  
+  // If all requirements are met or there are no requirements
+  return true;
+}

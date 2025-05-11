@@ -7,6 +7,7 @@ import InviteForm from "@/components/admin/invite-form";
 import UsersTable from "@/components/admin/users-table";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
 import ProductsManagement from "@/components/admin/products-management";
+import BadgesManagement from "@/components/admin/badges-management";
 import EditUserDialog from "@/components/admin/edit-user-dialog";
 import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { User, TransactionType } from "@shared/schema";
@@ -39,6 +40,16 @@ export default function AdminDashboard() {
     refetch: refetchProducts
   } = useQuery({
     queryKey: ['/api/products'],
+    enabled: !!user?.id && user.role === "admin",
+  });
+  
+  // Fetch badges data
+  const { 
+    data: badgesData, 
+    isLoading: badgesLoading,
+    refetch: refetchBadges
+  } = useQuery({
+    queryKey: [`/api/badges?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
   });
 
@@ -140,6 +151,19 @@ export default function AdminDashboard() {
           users={installers}
           onSuccess={() => setActiveTab("overview")}
         />
+      )}
+
+      {activeTab === "badges" && (
+        <>
+          {badgesLoading ? (
+            <Skeleton className="h-96 rounded-xl" />
+          ) : (
+            <BadgesManagement
+              badges={badgesData?.badges || []}
+              onRefresh={refetchBadges}
+            />
+          )}
+        </>
       )}
 
       {activeTab === "rewards" && (
