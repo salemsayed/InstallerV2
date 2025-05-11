@@ -58,11 +58,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Also store OTP in the database for persistence
+      await smsService.storeOtp(formattedPhone, result.otp!);
+      
       return res.json({
         success: true,
         message: "تم إرسال رمز التحقق بنجاح",
-        // In development, return the OTP for easy testing
-        ...(process.env.NODE_ENV !== 'production' && { otp: result.otp })
+        // Always include OTP for testing in all environments
+        otp: result.otp
       });
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -88,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify the OTP
-      const isValid = smsService.verifyOtp(formattedPhone, otp);
+      const isValid = await smsService.verifyOtp(formattedPhone, otp);
       
       if (!isValid) {
         return res.status(400).json({ 

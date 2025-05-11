@@ -1,23 +1,47 @@
 import { log } from './vite';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
 
 // Mock SMS service for development
 // In production, this would use Twilio or another SMS provider
 export class MockSmsService {
-  // Store OTPs with expiration for verification
-  private otpStore: Map<string, { otp: string; expires: number }> = new Map();
+  // We'll store OTPs in the database for persistence across instances
   
   constructor() {
     log('Mock SMS Service initialized', 'sms');
+    this.initializeOtpTable();
     
     // Cleanup expired OTPs every minute
     setInterval(() => {
-      const now = Date.now();
-      for (const [phone, data] of this.otpStore.entries()) {
-        if (data.expires < now) {
-          this.otpStore.delete(phone);
-        }
-      }
+      this.cleanupExpiredOtps();
     }, 60000);
+  }
+  
+  // Initialize OTP table if it doesn't exist
+  private async initializeOtpTable() {
+    try {
+      // Create otps table if it doesn't exist
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS otps (
+          phone_number VARCHAR(15) PRIMARY KEY,
+          otp VARCHAR(6) NOT NULL,
+          expires BIGINT NOT NULL
+        )
+      `);
+      log('OTP table initialized', 'sms');
+    } catch (error) {
+      log(`Error initializing OTP table: ${error}`, 'sms');
+    }
+  }
+  
+  // Clean up expired OTPs from the database
+  private async cleanupExpiredOtps() {
+    try {
+      const now = Date.now();
+      await db.execute(sql`DELETE FROM otps WHERE expires < ${now}`);
+    } catch (error) {
+      log(`Error cleaning up OTPs: ${error}`, 'sms');
+    }
   }
   
   // Generate a 6-digit OTP
@@ -25,8 +49,8 @@ export class MockSmsService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
   
-  // Store OTP with 5-minute expiration
-  storeOtp(phoneNumber: string, otp: string): void {
+  // Store OTP with 5-minute expiration in database
+  async storeOtp(phoneNumber: string, otp: string): Promise<void> {
     // Format phone to international format if needed
     let formattedPhone = phoneNumber;
     if (phoneNumber.startsWith('0')) {
@@ -35,35 +59,59 @@ export class MockSmsService {
     
     // 5 minutes expiration
     const expires = Date.now() + 5 * 60 * 1000;
-    this.otpStore.set(formattedPhone, { otp, expires });
+    
+    try {
+      // Insert or update the OTP
+      await db.execute(sql`
+        INSERT INTO otps (phone_number, otp, expires)
+        VALUES (${formattedPhone}, ${otp}, ${expires})
+        ON CONFLICT (phone_number) 
+        DO UPDATE SET otp = ${otp}, expires = ${expires}
+      `);
+    } catch (error) {
+      log(`Error storing OTP: ${error}`, 'sms');
+    }
   }
   
-  // Verify OTP for phone number
-  verifyOtp(phoneNumber: string, otp: string): boolean {
+  // Verify OTP for phone number from database
+  async verifyOtp(phoneNumber: string, otp: string): Promise<boolean> {
     // Format phone to international format if needed
     let formattedPhone = phoneNumber;
     if (phoneNumber.startsWith('0')) {
       formattedPhone = '+2' + phoneNumber;
     }
     
-    const record = this.otpStore.get(formattedPhone);
-    
-    if (!record) {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM otps WHERE phone_number = ${formattedPhone}
+      `);
+      
+      const records = result.rows;
+      if (!records || records.length === 0) {
+        return false;
+      }
+      
+      const record = records[0];
+      const storedOtp = record.otp;
+      const expires = Number(record.expires);
+      
+      if (expires < Date.now()) {
+        // Delete expired OTP
+        await db.execute(sql`DELETE FROM otps WHERE phone_number = ${formattedPhone}`);
+        return false;
+      }
+      
+      if (storedOtp !== otp) {
+        return false;
+      }
+      
+      // OTP verified, delete it to prevent reuse
+      await db.execute(sql`DELETE FROM otps WHERE phone_number = ${formattedPhone}`);
+      return true;
+    } catch (error) {
+      log(`Error verifying OTP: ${error}`, 'sms');
       return false;
     }
-    
-    if (record.expires < Date.now()) {
-      this.otpStore.delete(phoneNumber);
-      return false;
-    }
-    
-    if (record.otp !== otp) {
-      return false;
-    }
-    
-    // OTP verified, delete it to prevent reuse
-    this.otpStore.delete(phoneNumber);
-    return true;
   }
   
   // Mock sending an SMS - in development just log to console
