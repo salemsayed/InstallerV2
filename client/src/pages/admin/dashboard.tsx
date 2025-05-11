@@ -43,16 +43,7 @@ export default function AdminDashboard() {
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
   
-  // Fetch scanned products data to get actual installation count
-  const { 
-    data: scannedProductsData, 
-    isLoading: scannedProductsLoading,
-    refetch: refetchScannedProducts 
-  } = useQuery({
-    queryKey: [`/api/scanned-products?userId=${user?.id}`],
-    enabled: !!user?.id && user.role === "admin",
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
-  });
+  // Note: We no longer need to fetch scanned products since we're using transaction data for installation count
   
   // Fetch products data
   const { 
@@ -78,14 +69,21 @@ export default function AdminDashboard() {
     return null;
   }
 
+  // Get transaction data
+  const transactions = transactionsData?.transactions ? transactionsData.transactions : [];
+  
   // Calculate overview stats
   const installers = usersData?.users ? usersData.users.filter((u: User) => u.role === "installer") : [];
   const totalInstallers = installers.length;
   
-  // Get actual installation count from scanned products
-  const totalInstallations = scannedProductsData?.scannedCodes?.length || 0;
-
-  const transactions = transactionsData?.transactions ? transactionsData.transactions : [];
+  // Get actual installation count from transactions
+  // Filter transactions to only include those related to product installations
+  const installationTransactions = transactions.filter((t: any) => 
+    t.type === TransactionType.EARNING && 
+    t.description && 
+    (t.description.includes("تم تركيب منتج") || t.description.includes("تركيب منتج جديد"))
+  );
+  const totalInstallations = installationTransactions.length;
   const pointsAwarded = transactions
     .filter((t: any) => t.type === TransactionType.EARNING)
     .reduce((sum: number, t: any) => sum + t.amount, 0);
