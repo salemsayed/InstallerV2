@@ -71,6 +71,27 @@ export default function InstallerDashboard() {
           />
         )}
       </section>
+      
+      {/* QR Scanner */}
+      <QrScanner 
+        onScanSuccess={(productName) => {
+          // Refresh data after successful scan
+          queryClient.invalidateQueries({
+            queryKey: [`/api/transactions?userId=${user?.id}`]
+          });
+          
+          // Also refresh user data to update points
+          queryClient.invalidateQueries({
+            queryKey: ["/api/users/me"]
+          });
+          
+          toast({
+            title: "Product Registered Successfully",
+            description: `10 points added to your balance for installing ${productName || "a new product"}`,
+            variant: "default",
+          });
+        }} 
+      />
     </InstallerLayout>
   );
 }
