@@ -83,10 +83,7 @@ export class DatabaseStorage implements IStorage {
 
   // Magic link operations
   async createMagicLink(insertMagicLink: InsertMagicLink): Promise<MagicLink> {
-    const [magicLink] = await db.insert(magicLinks).values({
-      ...insertMagicLink,
-      email: insertMagicLink.email.toLowerCase()
-    }).returning();
+    const [magicLink] = await db.insert(magicLinks).values(insertMagicLink).returning();
     return magicLink;
   }
 
@@ -185,12 +182,12 @@ export class DatabaseStorage implements IStorage {
 // Initialize database with default data
 async function initializeDatabase() {
   // Check if admin user exists
-  const adminCheck = await db.select().from(users).where(eq(users.email, "admin@breeg.com"));
+  const adminCheck = await db.select().from(users).where(eq(users.phone, "01234567890"));
   
   if (adminCheck.length === 0) {
     // Create admin user
     await db.insert(users).values({
-      email: "admin@breeg.com",
+      phone: "01234567890",
       name: "مدير النظام",
       role: UserRole.ADMIN,
       status: UserStatus.ACTIVE,

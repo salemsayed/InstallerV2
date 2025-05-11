@@ -69,7 +69,7 @@ export const users = pgTable("users", {
 export const magicLinks = pgTable("magic_links", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
-  email: text("email").notNull(),
+  phone: text("phone").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   used: integer("used").notNull().default(0),
 });
