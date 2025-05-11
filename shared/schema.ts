@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, timestamp, jsonb, real } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -92,6 +93,23 @@ export const badges = pgTable("badges", {
   requirements: jsonb("requirements"),
   active: integer("active").notNull().default(1),
 });
+
+// Define relations
+export const usersRelations = relations(users, ({ one, many }) => ({
+  inviter: one(users, {
+    fields: [users.invitedBy],
+    references: [users.id],
+  }),
+  invitees: many(users),
+  transactions: many(transactions),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  user: one(users, {
+    fields: [transactions.userId],
+    references: [users.id],
+  }),
+}));
 
 // INSERT SCHEMAS
 export const insertUserSchema = createInsertSchema(users)

@@ -35,34 +35,151 @@ export interface IStorage {
   listBadges(active?: boolean): Promise<Badge[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private magicLinks: Map<number, MagicLink>;
-  private transactions: Map<number, Transaction>;
-  private rewards: Map<number, Reward>;
-  private badges: Map<number, Badge>;
-  
-  private userCurrentId: number;
-  private magicLinkCurrentId: number;
-  private transactionCurrentId: number;
-  private rewardCurrentId: number;
-  private badgeCurrentId: number;
+import { db } from "./db";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { Json } from "drizzle-orm/pg-core";
 
-  constructor() {
-    this.users = new Map();
-    this.magicLinks = new Map();
-    this.transactions = new Map();
-    this.rewards = new Map();
-    this.badges = new Map();
-    
-    this.userCurrentId = 1;
-    this.magicLinkCurrentId = 1;
-    this.transactionCurrentId = 1;
-    this.rewardCurrentId = 1;
-    this.badgeCurrentId = 1;
-    
-    // Initialize with an admin user
-    this.createUser({
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      email: insertUser.email.toLowerCase()
+    }).returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const [updatedUser] = await db.update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async listUsers(limit = 100, offset = 0): Promise<User[]> {
+    return await db.select().from(users).limit(limit).offset(offset);
+  }
+
+  // Magic link operations
+  async createMagicLink(insertMagicLink: InsertMagicLink): Promise<MagicLink> {
+    const [magicLink] = await db.insert(magicLinks).values({
+      ...insertMagicLink,
+      email: insertMagicLink.email.toLowerCase()
+    }).returning();
+    return magicLink;
+  }
+
+  async getMagicLinkByToken(token: string): Promise<MagicLink | undefined> {
+    const result = await db.select().from(magicLinks).where(eq(magicLinks.token, token));
+    return result[0];
+  }
+
+  async updateMagicLink(id: number, data: Partial<MagicLink>): Promise<MagicLink | undefined> {
+    const [updatedMagicLink] = await db.update(magicLinks)
+      .set(data)
+      .where(eq(magicLinks.id, id))
+      .returning();
+    return updatedMagicLink;
+  }
+
+  // Transaction operations
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    // Start transaction to ensure user points update atomically with transaction creation
+    return await db.transaction(async (tx) => {
+      // Create the transaction
+      const [transaction] = await tx.insert(transactions)
+        .values(insertTransaction)
+        .returning();
+      
+      // Update user points
+      const [user] = await tx.select().from(users).where(eq(users.id, insertTransaction.userId));
+      
+      if (user) {
+        let newPoints = user.points;
+        
+        if (insertTransaction.type === TransactionType.EARNING) {
+          newPoints += insertTransaction.amount;
+        } else if (insertTransaction.type === TransactionType.REDEMPTION) {
+          newPoints -= insertTransaction.amount;
+        }
+        
+        await tx.update(users)
+          .set({ points: newPoints })
+          .where(eq(users.id, user.id));
+      }
+      
+      return transaction;
+    });
+  }
+
+  async getTransactionsByUserId(userId: number, limit = 10): Promise<Transaction[]> {
+    return await db.select()
+      .from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit);
+  }
+
+  // Reward operations
+  async createReward(insertReward: InsertReward): Promise<Reward> {
+    const [reward] = await db.insert(rewards).values(insertReward).returning();
+    return reward;
+  }
+
+  async getReward(id: number): Promise<Reward | undefined> {
+    const result = await db.select().from(rewards).where(eq(rewards.id, id));
+    return result[0];
+  }
+
+  async listRewards(active?: boolean): Promise<Reward[]> {
+    if (active !== undefined) {
+      return await db.select()
+        .from(rewards)
+        .where(eq(rewards.active, active ? 1 : 0));
+    }
+    return await db.select().from(rewards);
+  }
+
+  // Badge operations
+  async createBadge(insertBadge: InsertBadge): Promise<Badge> {
+    const [badge] = await db.insert(badges).values(insertBadge).returning();
+    return badge;
+  }
+
+  async getBadge(id: number): Promise<Badge | undefined> {
+    const result = await db.select().from(badges).where(eq(badges.id, id));
+    return result[0];
+  }
+
+  async listBadges(active?: boolean): Promise<Badge[]> {
+    if (active !== undefined) {
+      return await db.select()
+        .from(badges)
+        .where(eq(badges.active, active ? 1 : 0));
+    }
+    return await db.select().from(badges);
+  }
+}
+
+// Initialize database with default data
+async function initializeDatabase() {
+  // Check if admin user exists
+  const adminCheck = await db.select().from(users).where(eq(users.email, "admin@breeg.com"));
+  
+  if (adminCheck.length === 0) {
+    // Create admin user
+    await db.insert(users).values({
       email: "admin@breeg.com",
       name: "مدير النظام",
       role: UserRole.ADMIN,
@@ -71,207 +188,73 @@ export class MemStorage implements IStorage {
     });
     
     // Add sample rewards
-    this.createReward({
-      name: "كوبون هدية 200 ريال",
-      description: "صالح لمدة 3 أشهر من تاريخ الإصدار",
-      type: "voucher",
-      points: 500,
-      active: 1
-    });
-    
-    this.createReward({
-      name: "قسيمة شراء 500 ريال",
-      description: "صالحة لدى شركائنا المعتمدين",
-      type: "voucher",
-      points: 1000,
-      active: 1
-    });
-    
-    this.createReward({
-      name: "جهاز إلكتروني",
-      description: "تابلت أو هاتف ذكي",
-      type: "product",
-      points: 5000,
-      active: 1
-    });
-    
-    this.createReward({
-      name: "رحلة عمرة",
-      description: "شاملة التذاكر والإقامة",
-      type: "travel",
-      points: 10000,
-      active: 1
-    });
+    await db.insert(rewards).values([
+      {
+        name: "كوبون هدية 200 ريال",
+        description: "صالح لمدة 3 أشهر من تاريخ الإصدار",
+        type: "voucher",
+        points: 500,
+        active: 1
+      },
+      {
+        name: "قسيمة شراء 500 ريال",
+        description: "صالحة لدى شركائنا المعتمدين",
+        type: "voucher",
+        points: 1000,
+        active: 1
+      },
+      {
+        name: "جهاز إلكتروني",
+        description: "تابلت أو هاتف ذكي",
+        type: "product",
+        points: 5000,
+        active: 1
+      },
+      {
+        name: "رحلة عمرة",
+        description: "شاملة التذاكر والإقامة",
+        type: "travel",
+        points: 10000,
+        active: 1
+      }
+    ]);
     
     // Add sample badges
-    this.createBadge({
-      name: "فني متميز",
-      icon: "military_tech",
-      description: "حاصل على تقييمات ممتازة",
-      active: 1
-    });
-    
-    this.createBadge({
-      name: "50 تركيب",
-      icon: "handyman",
-      description: "أتم 50 عملية تركيب بنجاح",
-      active: 1
-    });
-    
-    this.createBadge({
-      name: "تقييم 5 نجوم",
-      icon: "thumb_up",
-      description: "حاصل على تقييم 5 نجوم من العملاء",
-      active: 1
-    });
-    
-    this.createBadge({
-      name: "فني معتمد",
-      icon: "verified",
-      description: "فني معتمد من بريق",
-      active: 1
-    });
-  }
-
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email.toLowerCase() === email.toLowerCase()
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userCurrentId++;
-    const timestamp = new Date();
-    const user: User = { 
-      ...insertUser, 
-      id, 
-      badgeIds: [],
-      createdAt: timestamp
-    };
-    this.users.set(id, user);
-    return user;
-  }
-
-  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...userData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
-  }
-
-  async listUsers(limit = 100, offset = 0): Promise<User[]> {
-    const users = Array.from(this.users.values());
-    return users.slice(offset, offset + limit);
-  }
-
-  // Magic link operations
-  async createMagicLink(insertMagicLink: InsertMagicLink): Promise<MagicLink> {
-    const id = this.magicLinkCurrentId++;
-    const magicLink: MagicLink = { ...insertMagicLink, id };
-    this.magicLinks.set(id, magicLink);
-    return magicLink;
-  }
-
-  async getMagicLinkByToken(token: string): Promise<MagicLink | undefined> {
-    return Array.from(this.magicLinks.values()).find(
-      (magicLink) => magicLink.token === token
-    );
-  }
-
-  async updateMagicLink(id: number, data: Partial<MagicLink>): Promise<MagicLink | undefined> {
-    const magicLink = this.magicLinks.get(id);
-    if (!magicLink) return undefined;
-    
-    const updatedMagicLink = { ...magicLink, ...data };
-    this.magicLinks.set(id, updatedMagicLink);
-    return updatedMagicLink;
-  }
-
-  // Transaction operations
-  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const id = this.transactionCurrentId++;
-    const timestamp = new Date();
-    const transaction: Transaction = { ...insertTransaction, id, createdAt: timestamp };
-    this.transactions.set(id, transaction);
-    
-    // Update user points
-    const user = await this.getUser(insertTransaction.userId);
-    if (user) {
-      let newPoints = user.points;
-      
-      if (insertTransaction.type === TransactionType.EARNING) {
-        newPoints += insertTransaction.amount;
-      } else if (insertTransaction.type === TransactionType.REDEMPTION) {
-        newPoints -= insertTransaction.amount;
+    await db.insert(badges).values([
+      {
+        name: "فني متميز",
+        icon: "military_tech",
+        description: "حاصل على تقييمات ممتازة",
+        active: 1
+      },
+      {
+        name: "50 تركيب",
+        icon: "handyman",
+        description: "أتم 50 عملية تركيب بنجاح",
+        active: 1
+      },
+      {
+        name: "تقييم 5 نجوم",
+        icon: "thumb_up",
+        description: "حاصل على تقييم 5 نجوم من العملاء",
+        active: 1
+      },
+      {
+        name: "فني معتمد",
+        icon: "verified",
+        description: "فني معتمد من بريق",
+        active: 1
       }
-      
-      await this.updateUser(user.id, { points: newPoints });
-    }
+    ]);
     
-    return transaction;
-  }
-
-  async getTransactionsByUserId(userId: number, limit = 10): Promise<Transaction[]> {
-    const transactions = Array.from(this.transactions.values())
-      .filter(transaction => transaction.userId === userId)
-      .sort((a, b) => {
-        // Sort by createdAt date in descending order (newest first)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-    
-    return transactions.slice(0, limit);
-  }
-
-  // Reward operations
-  async createReward(insertReward: InsertReward): Promise<Reward> {
-    const id = this.rewardCurrentId++;
-    const reward: Reward = { ...insertReward, id };
-    this.rewards.set(id, reward);
-    return reward;
-  }
-
-  async getReward(id: number): Promise<Reward | undefined> {
-    return this.rewards.get(id);
-  }
-
-  async listRewards(active?: boolean): Promise<Reward[]> {
-    let rewards = Array.from(this.rewards.values());
-    
-    if (active !== undefined) {
-      rewards = rewards.filter(reward => reward.active === (active ? 1 : 0));
-    }
-    
-    return rewards;
-  }
-
-  // Badge operations
-  async createBadge(insertBadge: InsertBadge): Promise<Badge> {
-    const id = this.badgeCurrentId++;
-    const badge: Badge = { ...insertBadge, id };
-    this.badges.set(id, badge);
-    return badge;
-  }
-
-  async getBadge(id: number): Promise<Badge | undefined> {
-    return this.badges.get(id);
-  }
-
-  async listBadges(active?: boolean): Promise<Badge[]> {
-    let badges = Array.from(this.badges.values());
-    
-    if (active !== undefined) {
-      badges = badges.filter(badge => badge.active === (active ? 1 : 0));
-    }
-    
-    return badges;
+    console.log("Database initialized with default data");
   }
 }
 
-export const storage = new MemStorage();
+// Create a new instance of DatabaseStorage
+export const storage = new DatabaseStorage();
+
+// Initialize the database (will be called when this module is imported)
+initializeDatabase().catch(error => {
+  console.error("Failed to initialize database:", error);
+});
