@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/auth-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 import { User } from "@shared/schema";
 
 export default function AdminUsers() {
@@ -62,22 +63,38 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout activeTab="users" onTabChange={handleTabChange}>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-primary">إدارة المستخدمين</h1>
+        <p className="text-gray-500 mt-1">إدارة المستخدمين في نظام مكافآت بريق وتخصيص النقاط</p>
+      </div>
+      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full">
-          <TabsTrigger value="all-users" className="flex-1">الفنيين</TabsTrigger>
-          <TabsTrigger value="invite-user" className="flex-1">إضافة فني</TabsTrigger>
-          <TabsTrigger value="add-points" className="flex-1">إضافة نقاط</TabsTrigger>
+        <TabsList className="w-full bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
+          <TabsTrigger value="all-users" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+            المستخدمين
+          </TabsTrigger>
+          <TabsTrigger value="invite-user" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+            إضافة مستخدم
+          </TabsTrigger>
+          <TabsTrigger value="add-points" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+            إضافة نقاط
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="all-users" className="pt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>قائمة الفنيين</CardTitle>
-              <CardDescription>إدارة فنيي بريق المسجلين في النظام</CardDescription>
+        <TabsContent value="all-users" className="pt-6">
+          <Card className="rounded-xl shadow-md border border-gray-100 bg-white/50 backdrop-blur-sm">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-xl font-bold text-primary">قائمة المستخدمين</CardTitle>
+              <CardDescription>إدارة مستخدمي بريق المسجلين في النظام</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {usersLoading ? (
-                <div className="text-center p-6">جاري التحميل...</div>
+                <div className="flex justify-center items-center h-40">
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="text-sm text-gray-500">جاري تحميل بيانات المستخدمين...</span>
+                  </div>
+                </div>
               ) : (
                 <UsersTable
                   users={usersData && Array.isArray(usersData.users) ? usersData.users : []}
@@ -88,30 +105,22 @@ export default function AdminUsers() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="invite-user" className="pt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>إضافة فني جديد</CardTitle>
-              <CardDescription>إضافة فني جديد إلى نظام مكافآت بريق</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user && (
-                <InviteForm
-                  adminId={user.id}
-                  onSuccess={handleSuccess}
-                />
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="invite-user" className="pt-6">
+          {user && (
+            <InviteForm
+              adminId={user.id}
+              onSuccess={handleSuccess}
+            />
+          )}
         </TabsContent>
         
-        <TabsContent value="add-points" className="pt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>إضافة نقاط للفنيين</CardTitle>
-              <CardDescription>مكافأة الفنيين على الأعمال المنجزة</CardDescription>
+        <TabsContent value="add-points" className="pt-6">
+          <Card className="rounded-xl shadow-md border border-gray-100 bg-white/50 backdrop-blur-sm">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-xl font-bold text-primary">إضافة نقاط</CardTitle>
+              <CardDescription>إضافة نقاط للمستخدمين بناءً على الأنشطة المكتملة</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {user && (
                 <PointsAllocationForm
                   adminId={user.id}
