@@ -151,7 +151,16 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       };
       
       // Get the current user ID from localStorage for authentication
-      const userId = localStorage.getItem('userId');
+      let userId = null;
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+        } catch (e) {
+          console.error('[BADGE CREATE] Error parsing user from localStorage:', e);
+        }
+      }
       console.log('[BADGE CREATE] Using userId:', userId);
       
       // Include userId as a query parameter
@@ -203,7 +212,16 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       
       try {
         // Get the current user ID from localStorage for authentication
-        const userId = localStorage.getItem('userId');
+        let userId = null;
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const user = JSON.parse(storedUser);
+            userId = user.id;
+          } catch (e) {
+            console.error('[BADGE UPDATE] Error parsing user from localStorage:', e);
+          }
+        }
         console.log('[BADGE UPDATE] Using userId:', userId);
         
         // Include userId as a query parameter
@@ -239,7 +257,16 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   const deleteBadgeMutation = useMutation({
     mutationFn: async (id: number) => {
       // Get the current user ID from localStorage for authentication
-      const userId = localStorage.getItem('userId');
+      let userId = null;
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+        } catch (e) {
+          console.error('[BADGE DELETE] Error parsing user from localStorage:', e);
+        }
+      }
       console.log('[BADGE DELETE] Using userId:', userId);
       
       // Include userId as a query parameter
