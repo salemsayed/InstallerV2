@@ -118,9 +118,10 @@ type BadgeFormValues = z.infer<typeof badgeFormSchema>;
 interface BadgesManagementProps {
   badges: Badge[];
   onRefresh: () => void;
+  userId?: number; // Add userId as an optional prop
 }
 
-export default function BadgesManagement({ badges, onRefresh }: BadgesManagementProps) {
+export default function BadgesManagement({ badges, onRefresh, userId }: BadgesManagementProps) {
   const { toast } = useToast();
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -150,17 +151,7 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
           ? formValues.minInstallations : 0
       };
       
-      // Get the current user ID from localStorage for authentication
-      let userId = null;
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          userId = user.id;
-        } catch (e) {
-          console.error('[BADGE CREATE] Error parsing user from localStorage:', e);
-        }
-      }
+      // Use the userId passed through props
       console.log('[BADGE CREATE] Using userId:', userId);
       
       // Include userId as a query parameter
@@ -211,17 +202,7 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       console.log('[BADGE UPDATE] Processed data to send:', JSON.stringify(data));
       
       try {
-        // Get the current user ID from localStorage for authentication
-        let userId = null;
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const user = JSON.parse(storedUser);
-            userId = user.id;
-          } catch (e) {
-            console.error('[BADGE UPDATE] Error parsing user from localStorage:', e);
-          }
-        }
+        // Use the userId passed through props
         console.log('[BADGE UPDATE] Using userId:', userId);
         
         // Include userId as a query parameter
@@ -256,17 +237,7 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   // Delete badge
   const deleteBadgeMutation = useMutation({
     mutationFn: async (id: number) => {
-      // Get the current user ID from localStorage for authentication
-      let userId = null;
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          userId = user.id;
-        } catch (e) {
-          console.error('[BADGE DELETE] Error parsing user from localStorage:', e);
-        }
-      }
+      // Use the userId passed through props
       console.log('[BADGE DELETE] Using userId:', userId);
       
       // Include userId as a query parameter
