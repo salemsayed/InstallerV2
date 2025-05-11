@@ -14,38 +14,38 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions with aggressive refresh settings
+  // Fetch user's transactions with frequent refresh 
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id,
-    staleTime: 0, // Always consider data stale
-    refetchInterval: 3000, // Refetch every 3 seconds
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    refetchOnReconnect: true,
+    refetchInterval: 2000 // Refresh every 2 seconds
   });
 
-  // Fetch user's badges with aggressive refresh settings
+  // Fetch user's badges with frequent refresh
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
     queryKey: ['/api/badges', user?.id],
     queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
-    staleTime: 0, // Always consider data stale
-    refetchInterval: 3000, // Refetch every 3 seconds
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    refetchOnReconnect: true,
+    refetchInterval: 2000 // Refresh every 2 seconds
   });
   
-  // Refresh user data from auth context regularly
+  // Keep user data fresh with frequent refresh
   useQuery({
     queryKey: ['/api/users/me'],
     enabled: !!user?.id,
-    staleTime: 0, // Always consider data stale
-    refetchInterval: 3000, // Refetch every 3 seconds
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    refetchOnReconnect: true,
+    refetchInterval: 2000 // Refresh every 2 seconds
   });
 
   if (!user) {
@@ -71,26 +71,18 @@ export default function InstallerDashboard() {
 
       {/* Achievement Card */}
       <section className="px-4 mb-8">
-        {badgesLoading ? (
-          <Skeleton className="h-80 w-full rounded-2xl" />
-        ) : (
-          <AchievementCard
-            points={user.points}
-            badges={badgesData?.badges ? badgesData.badges : []}
-          />
-        )}
+        <AchievementCard
+          points={user.points}
+          badges={badgesData?.badges ? badgesData.badges : []}
+        />
       </section>
 
       {/* Recent Transactions */}
       <section className="px-4 mb-8">
-        {transactionsLoading ? (
-          <Skeleton className="h-60 w-full rounded-2xl" />
-        ) : (
-          <TransactionsList 
-            transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
-            onViewAll={() => {/* Implement view all transactions */}}
-          />
-        )}
+        <TransactionsList 
+          transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
+          onViewAll={() => {/* Implement view all transactions */}}
+        />
       </section>
       
       {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}

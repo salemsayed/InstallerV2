@@ -149,17 +149,31 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Log success and product name
       console.log("Scanned product:", result.productName);
       
+      // Aggressively invalidate and immediately refetch all relevant queries
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
+      // Force instant refetch of all invalidated queries
+      queryClient.refetchQueries({ 
+        queryKey: [`/api/transactions?userId=${user?.id}`],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/badges', user?.id],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/users/me'],
+        exact: true 
+      });
+      
       // Show success toast
       toast({
         title: "Product Verified Successfully ✓",
         description: `Product: ${result.productName || "Unknown"}\nPoints awarded: ${result.pointsAwarded || 10}`,
         variant: "default",
       });
-      
-      // Force a refresh of the entire page to ensure data is updated
-      setTimeout(() => {
-        window.location.reload();
-      }, 500); // Brief delay to ensure API operations are complete
       
       if (onScanSuccess) {
         onScanSuccess(result.productName);
