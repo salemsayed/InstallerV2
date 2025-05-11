@@ -52,9 +52,8 @@ export enum RewardType {
 // Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
   name: text("name").notNull(),
-  phone: text("phone").unique(), // Egyptian phone numbers, can be optional for legacy data
+  phone: text("phone").notNull().unique(), // Egyptian phone numbers, required for authentication
   region: text("region"),
   role: text("role").notNull().default(UserRole.INSTALLER),
   status: text("status").notNull().default(UserStatus.ACTIVE), // Changed default to ACTIVE since we're using direct auth

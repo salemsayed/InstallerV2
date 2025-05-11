@@ -10,7 +10,7 @@ import {
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
@@ -47,11 +47,6 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    return result[0];
-  }
-  
   async getUserByPhone(phone: string): Promise<User | undefined> {
     // Format phone to international format if it starts with 0
     const formattedPhone = phone.startsWith('0') ? '+2' + phone : phone;
@@ -60,10 +55,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values({
-      ...insertUser,
-      email: insertUser.email.toLowerCase()
-    }).returning();
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 

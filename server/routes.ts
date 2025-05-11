@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Verify OTP and login/register user
+  // Verify OTP and login existing user
   app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
     try {
       const { phone, otp } = verifyOtpSchema.parse(req.body);
@@ -62,23 +62,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user exists by phone number
-      let user = await storage.getUserByPhone(phone);
+      const user = await storage.getUserByPhone(phone);
       
-      // If no user exists, create a new one
+      // Only allow existing users to log in
       if (!user) {
-        // Format phone to standard format for saving
-        const formattedPhone = phone.startsWith('0') ? '+2' + phone : phone;
-        
-        user = await storage.createUser({
-          phone: formattedPhone,
-          // Use a default email based on phone for systems that require email
-          email: `user_${formattedPhone.replace(/\+/g, '').replace(/\s/g, '')}@example.com`,
-          name: `مستخدم ${formattedPhone.slice(-4)}`, // Use last 4 digits as part of name
-          role: UserRole.INSTALLER,
-          status: UserStatus.ACTIVE,
-          points: 0,
-          level: 1,
-          badgeIds: [],
+        return res.status(401).json({ 
+          message: "رقم الهاتف غير مسجل. يرجى التواصل مع المسؤول لإضافة حسابك." 
+        });
+      }
+      
+      // Check if user is active
+      if (user.status !== UserStatus.ACTIVE) {
+        return res.status(403).json({ 
+          message: "الحساب غير نشط. يرجى التواصل مع المسؤول لتفعيل حسابك." 
         });
       }
       
@@ -91,11 +87,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: user.id,
           name: user.name,
           phone: user.phone,
-          email: user.email,
           role: user.role,
           points: user.points,
           level: user.level,
-          region: user.region
+          region: user.region,
+          status: user.status
         }
       });
     } catch (error: any) {
