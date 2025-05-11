@@ -505,18 +505,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { name, description, icon, requiredPoints, minLevel, minInstallations } = req.body;
+      const { name, description, icon, requiredPoints, minInstallations, active } = req.body;
       
-      const newBadge = await storage.createBadge({
+      // Validate numeric fields and ensure they are numbers
+      const validatedData = {
         name,
         description,
         icon,
-        active: true,
+        active: active === true || active === 1 ? 1 : 0,
         createdAt: new Date(),
-        requiredPoints,
-        minLevel,
-        minInstallations
-      });
+        requiredPoints: typeof requiredPoints === 'number' && !isNaN(requiredPoints) 
+          ? requiredPoints : 0,
+        minInstallations: typeof minInstallations === 'number' && !isNaN(minInstallations)
+          ? minInstallations : 0
+      };
+      
+      const newBadge = await storage.createBadge(validatedData);
       
       return res.status(201).json({ 
         success: true, 
@@ -554,17 +558,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { name, description, icon, requiredPoints, minLevel, minInstallations, active } = req.body;
+      const { name, description, icon, requiredPoints, minInstallations, active } = req.body;
       
-      const updatedBadge = await storage.updateBadge(badgeId, {
+      // Validate numeric fields and ensure they are numbers
+      const validatedData = {
         name,
         description,
         icon,
-        requiredPoints,
-        minLevel,
-        minInstallations,
-        active
-      });
+        active: active === true || active === 1 ? 1 : 0,
+        requiredPoints: typeof requiredPoints === 'number' && !isNaN(requiredPoints) 
+          ? requiredPoints : 0,
+        minInstallations: typeof minInstallations === 'number' && !isNaN(minInstallations)
+          ? minInstallations : 0
+      };
+      
+      const updatedBadge = await storage.updateBadge(badgeId, validatedData);
       
       return res.status(200).json({ 
         success: true, 
