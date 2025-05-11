@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import Login from "@/pages/auth/login";
 import MagicLink from "@/pages/auth/magic-link";
+import AuthCallback from "@/pages/auth/callback";
 import InstallerDashboard from "@/pages/installer/dashboard";
 import InstallerStats from "@/pages/installer/stats";
 import InstallerProfile from "@/pages/installer/profile";
@@ -15,6 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Login} />
       <Route path="/auth/magic-link" component={MagicLink} />
+      <Route path="/auth/callback" component={AuthCallback} />
       
       {/* Installer Routes */}
       <Route path="/installer/dashboard" component={InstallerDashboard} />

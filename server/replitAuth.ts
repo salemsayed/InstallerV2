@@ -127,19 +127,23 @@ export async function setupAuth(app: Express) {
   app.get("/api/callback", (req, res, next) => {
     const hostname = req.hostname || "localhost:5000";
     passport.authenticate(`replitauth:${hostname}`, {
-      successReturnToOrRedirect: "/",
+      successRedirect: "/auth/callback",
       failureRedirect: "/",
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
+      // Clear server-side session
+      req.session.destroy(() => {
+        // Build OpenID Connect end session URL
+        const logoutUrl = client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+        }).href;
+        
+        res.redirect(logoutUrl);
+      });
     });
   });
 }
