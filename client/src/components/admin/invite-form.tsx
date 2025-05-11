@@ -66,8 +66,8 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
       
       if (data.success) {
         toast({
-          title: "تمت إضافة الفني بنجاح",
-          description: "تم إضافة الفني إلى النظام",
+          title: "تمت إضافة المستخدم بنجاح",
+          description: "تم إضافة المستخدم إلى النظام",
         });
         
         // Reset form
@@ -88,15 +88,15 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
         }
       } else {
         toast({
-          title: "فشل إضافة الفني",
-          description: data.message || "حدث خطأ أثناء إضافة الفني",
+          title: "فشل إضافة المستخدم",
+          description: data.message || "حدث خطأ أثناء إضافة المستخدم",
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "فشل إضافة الفني",
-        description: "حدث خطأ أثناء إضافة الفني",
+        title: "فشل إضافة المستخدم",
+        description: "حدث خطأ أثناء إضافة المستخدم",
         variant: "destructive",
       });
     } finally {

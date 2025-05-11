@@ -37,7 +37,15 @@ export default function DeleteConfirmationDialog({
     setIsDeleting(true);
 
     try {
-      const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      // Get the admin ID from localStorage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const adminId = currentUser?.id;
+      
+      if (!adminId) {
+        throw new Error("لم يتم العثور على بيانات المدير");
+      }
+      
+      const res = await apiRequest("DELETE", `/api/admin/users/${userId}?userId=${adminId}`);
       const data = await res.json();
 
       if (data.success) {
