@@ -43,7 +43,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const qrContainer = document.getElementById(qrCodeId);
     
     if (!qrContainer) {
-      setError("لم يتم العثور على عنصر القارئ");
+      setError("QR scanner element not found (ERROR_CODE: ELEMENT_NOT_FOUND)");
       setIsScanning(false);
       return;
     }
@@ -122,10 +122,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       const result = await scanResult.json();
       
       if (!result.success) {
-        setError(result.message);
+        const errorDetails = result.details ? JSON.stringify(result.details, null, 2) : '';
+        const errorCode = result.error_code ? ` (${result.error_code})` : '';
+        
+        setError(`${result.message}${errorCode}\n${errorDetails}`);
         setIsValidating(false);
         
-        if (result.duplicate) {
+        console.error('QR Validation Error:', {
+          message: result.message,
+          code: result.error_code,
+          details: result.details
+        });
+        
+        if (result.details?.duplicate) {
           // If it's a duplicate, allow user to scan again
           startScanner();
         }
@@ -190,7 +199,15 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           <div className="my-4">
             {error && (
               <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm">
-                {error}
+                <div className="whitespace-pre-wrap font-mono text-xs">{error}</div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 w-full" 
+                  onClick={() => setError(null)}
+                >
+                  Dismiss Error
+                </Button>
               </div>
             )}
 

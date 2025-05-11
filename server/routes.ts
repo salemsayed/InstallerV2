@@ -500,7 +500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!uuid || !userId) {
         return res.status(400).json({ 
           success: false, 
-          message: "يرجى توفير معرف المستخدم والرمز المطلوب" 
+          message: "Please provide both user ID and QR code",
+          error_code: "MISSING_PARAMS",
+          details: { missing: !uuid ? "uuid" : "userId" } 
         });
       }
       
@@ -509,7 +511,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingCode) {
         return res.status(400).json({ 
           success: false, 
-          message: "تم مسح هذا الرمز من قبل" 
+          message: "This product code has already been scanned",
+          error_code: "DUPLICATE_SCAN",
+          details: { 
+            scanned_by: existingCode.scannedBy,
+            scanned_at: existingCode.scannedAt,
+            duplicate: true
+          }
         });
       }
       
@@ -518,7 +526,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isValid) {
         return res.status(400).json({ 
           success: false, 
-          message: "هذا المنتج غير معتمد أو غير مسجل" 
+          message: "This product is not registered in our manufacturing database",
+          error_code: "INVALID_PRODUCT",
+          details: { uuid }
         });
       }
       
@@ -559,7 +569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(404).json({
           success: false,
-          message: "لم يتم العثور على المستخدم"
+          message: "User not found",
+          error_code: "USER_NOT_FOUND",
+          details: { userId }
         });
       }
       
@@ -567,7 +579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("QR scanning error:", error);
       return res.status(500).json({
         success: false,
-        message: "حدث خطأ أثناء معالجة الرمز"
+        message: "An error occurred while processing the QR code",
+        error_code: "PROCESSING_ERROR",
+        details: { error: error.message || "Unknown error" }
       });
     }
   });
@@ -578,7 +592,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.query.userId as string);
       
       if (!userId) {
-        return res.status(400).json({ message: "يرجى توفير معرف المستخدم" });
+        return res.status(400).json({ 
+          success: false,
+          message: "Please provide a user ID",
+          error_code: "MISSING_USER_ID"
+        });
       }
       
       // Get the transactions related to product scanning for this user
@@ -594,9 +612,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
+      console.error("Error fetching scanned products:", error);
       return res.status(500).json({
         success: false,
-        message: "حدث خطأ أثناء استرجاع المنتجات المثبتة"
+        message: "Error retrieving installed products",
+        error_code: "FETCH_ERROR",
+        details: { error: error.message || "Unknown error" }
       });
     }
   });
