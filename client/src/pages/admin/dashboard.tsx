@@ -26,6 +26,16 @@ export default function AdminDashboard() {
     queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
   });
+  
+  // Fetch products data
+  const { 
+    data: productsData, 
+    isLoading: productsLoading,
+    refetch: refetchProducts
+  } = useQuery({
+    queryKey: ['/api/products'],
+    enabled: !!user?.id && user.role === "admin",
+  });
 
   if (!user || user.role !== "admin") {
     return null;
@@ -131,6 +141,19 @@ export default function AdminDashboard() {
           <h2 className="text-xl font-bold mb-2">قريباً</h2>
           <p>ستتمكن من عرض إحصائيات مفصلة قريباً</p>
         </div>
+      )}
+      
+      {activeTab === "products" && (
+        <>
+          {productsLoading ? (
+            <Skeleton className="h-96 rounded-xl" />
+          ) : (
+            <ProductsManagement
+              products={productsData?.products || []}
+              onRefresh={refetchProducts}
+            />
+          )}
+        </>
       )}
     </AdminLayout>
   );
