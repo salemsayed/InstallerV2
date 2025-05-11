@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/auth-provider";
@@ -6,9 +5,7 @@ import InstallerLayout from "@/components/layouts/installer-layout";
 import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
 import TransactionsList from "@/components/installer/transactions-list";
-import RewardsModal from "@/components/installer/rewards-modal";
 import QrScanner from "@/components/installer/qr-scanner";
-import { Reward, Transaction } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,17 +13,10 @@ export default function InstallerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [rewardsModalOpen, setRewardsModalOpen] = useState(false);
 
   // Fetch user's transactions
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: [`/api/transactions?userId=${user?.id}`],
-    enabled: !!user?.id,
-  });
-
-  // Fetch available rewards
-  const { data: rewardsData, isLoading: rewardsLoading } = useQuery({
-    queryKey: [`/api/rewards?userId=${user?.id}`],
     enabled: !!user?.id,
   });
 
@@ -36,10 +26,6 @@ export default function InstallerDashboard() {
     queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
   });
-
-  const handleRedeemClick = () => {
-    setRewardsModalOpen(true);
-  };
 
   if (!user) {
     return null;
@@ -58,7 +44,7 @@ export default function InstallerDashboard() {
         {!user ? (
           <Skeleton className="h-36 w-full rounded-2xl" />
         ) : (
-          <PointsCard points={user.points} onRedeemClick={handleRedeemClick} />
+          <PointsCard points={user.points} />
         )}
       </section>
 
@@ -69,7 +55,6 @@ export default function InstallerDashboard() {
         ) : (
           <AchievementCard
             points={user.points}
-            level={user.level || 1}
             badges={badgesData?.badges ? badgesData.badges : []}
           />
         )}
@@ -86,17 +71,6 @@ export default function InstallerDashboard() {
           />
         )}
       </section>
-
-      {/* Rewards Modal */}
-      {rewardsData && (
-        <RewardsModal
-          open={rewardsModalOpen}
-          onOpenChange={setRewardsModalOpen}
-          userPoints={user.points}
-          rewards={rewardsData.rewards ? rewardsData.rewards : []}
-          userId={user.id}
-        />
-      )}
       
       {/* QR Scanner */}
       <QrScanner 
