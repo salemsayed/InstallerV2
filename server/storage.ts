@@ -222,31 +222,58 @@ export class DatabaseStorage implements IStorage {
   
   async updateBadge(id: number, data: Partial<Badge>): Promise<Badge | undefined> {
     try {
+      console.log('===== BADGE UPDATE DEBUG =====');
+      console.log('Original input data:', JSON.stringify(data));
+      
       // Convert potential NaN values to 0
       const cleanData = { ...data };
       
+      // Remove any minLevel if it's somehow still in the data
+      if ('minLevel' in cleanData) {
+        console.log('Removing minLevel property from data');
+        delete cleanData.minLevel;
+      }
+      
       if (cleanData.requiredPoints !== undefined) {
+        console.log('requiredPoints before:', cleanData.requiredPoints, 'type:', typeof cleanData.requiredPoints);
         cleanData.requiredPoints = typeof cleanData.requiredPoints === 'number' && !isNaN(cleanData.requiredPoints) 
           ? cleanData.requiredPoints : 0;
+        console.log('requiredPoints after:', cleanData.requiredPoints);
       }
       
       if (cleanData.minInstallations !== undefined) {
+        console.log('minInstallations before:', cleanData.minInstallations, 'type:', typeof cleanData.minInstallations);
         cleanData.minInstallations = typeof cleanData.minInstallations === 'number' && !isNaN(cleanData.minInstallations) 
           ? cleanData.minInstallations : 0;
+        console.log('minInstallations after:', cleanData.minInstallations);
       }
       
       if (cleanData.active !== undefined) {
+        console.log('active before:', cleanData.active, 'type:', typeof cleanData.active);
         cleanData.active = cleanData.active === true || cleanData.active === 1 ? 1 : 0;
+        console.log('active after:', cleanData.active);
       }
       
-      const [badge] = await db
-        .update(badges)
-        .set(cleanData)
-        .where(eq(badges.id, id))
-        .returning();
-      return badge;
+      console.log('Cleaned data being sent to database:', JSON.stringify(cleanData));
+      
+      try {
+        const [badge] = await db
+          .update(badges)
+          .set(cleanData)
+          .where(eq(badges.id, id))
+          .returning();
+        console.log('Badge update successful:', badge);
+        return badge;
+      } catch (dbError) {
+        console.error('Database error during badge update:', dbError);
+        if (dbError.message) console.error('Error message:', dbError.message);
+        if (dbError.stack) console.error('Error stack:', dbError.stack);
+        throw dbError;
+      }
     } catch (error) {
       console.error('Error updating badge:', error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.stack) console.error('Error stack:', error.stack);
       return undefined;
     }
   }
