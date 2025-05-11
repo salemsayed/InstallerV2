@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import breegLogo from "@/assets/breeg-logo.svg";
+import arOnlyLogo from "@assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="px-4 py-5 flex justify-between items-center">
-          <img src={breegLogo} alt="بريق" className="h-8" />
+          <img src={arOnlyLogo} alt="بريق" className="h-10" />
           
           {/* Profile Button */}
           <DropdownMenu>

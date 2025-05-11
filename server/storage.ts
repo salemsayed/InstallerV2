@@ -181,18 +181,11 @@ export class DatabaseStorage implements IStorage {
 
 // Initialize database with default data
 async function initializeDatabase() {
-  // Check if admin user exists
-  const adminCheck = await db.select().from(users).where(eq(users.phone, "01234567890"));
+  // Check if we need to initialize sample data
+  const badgesCheck = await db.select().from(badges);
   
-  if (adminCheck.length === 0) {
-    // Create admin user
-    await db.insert(users).values({
-      phone: "01234567890",
-      name: "مدير النظام",
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      points: 0
-    });
+  if (badgesCheck.length === 0) {
+    console.log("Initializing sample badges and rewards data");
     
     // Add sample rewards
     await db.insert(rewards).values([
