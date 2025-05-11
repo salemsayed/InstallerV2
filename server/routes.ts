@@ -147,6 +147,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // USER ROUTES
+  // Endpoint for Replit Auth user
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUserByEmail(req.user.claims.email);
+      
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
+      
+      return res.json(user);
+    } catch (error: any) {
+      console.error("Error fetching user:", error);
+      return res.status(500).json({ message: error.message || "حدث خطأ أثناء جلب بيانات المستخدم" });
+    }
+  });
+
+  // Legacy endpoint for the old auth system
   app.get("/api/users/me", async (req: Request, res: Response) => {
     // This would typically check session/token
     // For demo, we'll use a query param

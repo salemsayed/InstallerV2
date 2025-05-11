@@ -2,7 +2,9 @@ import { useState } from "react";
 import AuthLayout from "@/components/layouts/auth-layout";
 import LoginForm from "@/components/auth/login-form";
 import MagicLinkSent from "@/components/auth/magic-link-sent";
+import ReplitLoginButton from "@/components/auth/replit-login-button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default function Login() {
   const [showMagicLinkSent, setShowMagicLinkSent] = useState(false);
@@ -34,6 +36,15 @@ export default function Login() {
           <CardContent className="p-8">
             <h1 className="text-2xl font-bold text-center mb-6">مرحباً بك في برنامج مكافآت بريق</h1>
             <p className="text-neutral-600 text-center mb-8">برنامج المكافآت الخاص بالفنيين المعتمدين</p>
+            
+            <ReplitLoginButton />
+            
+            <div className="relative my-6">
+              <Separator />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-white px-2 text-muted-foreground text-sm">أو</span>
+              </div>
+            </div>
             
             <LoginForm onSuccess={handleLoginSuccess} />
             
