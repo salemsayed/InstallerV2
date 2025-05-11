@@ -81,17 +81,57 @@ export default function AdminDashboard() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   
+  console.log("DEBUG: Total transactions received:", transactions.length);
+  console.log("DEBUG: All transactions:", JSON.stringify(transactions));
+  
+  // First, let's log the API response data
+  console.log("DEBUG: Raw transactions data:", JSON.stringify(transactionsData));
+  
+  // Let's examine what's in the transaction array
+  if (transactions.length > 0) {
+    console.log("DEBUG: First transaction sample:", JSON.stringify(transactions[0]));
+    console.log("DEBUG: First transaction type:", transactions[0].type);
+    console.log("DEBUG: First transaction date:", transactions[0].createdAt);
+  }
+  
   const installationTransactions = transactions.filter((t: any) => {
+    // Log every transaction we're examining for debugging
+    console.log(`DEBUG: Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
+    
     // First check if it's an earning transaction
-    if (t.type !== TransactionType.EARNING) return false;
+    if (t.type !== TransactionType.EARNING) {
+      console.log(`DEBUG: Transaction ${t.id} rejected - not an EARNING type`);
+      return false;
+    }
     
     // Then check if it's from the current month
-    const transactionDate = new Date(t.createdAt);
-    return (
+    let transactionDate;
+    try {
+      transactionDate = new Date(t.createdAt);
+      console.log(`DEBUG: Transaction ${t.id} date parsed as:`, 
+        transactionDate.toISOString(), 
+        `Month: ${transactionDate.getMonth()}, Year: ${transactionDate.getFullYear()}`);
+    } catch (e) {
+      console.error(`DEBUG: Error parsing date for transaction ${t.id}:`, e);
+      return false;
+    }
+    
+    const isCurrentMonth = (
       transactionDate.getMonth() === currentMonth && 
       transactionDate.getFullYear() === currentYear
     );
+    
+    console.log(`DEBUG: Transaction ${t.id} current month check:`, 
+      isCurrentMonth,
+      `(${transactionDate.getMonth()} === ${currentMonth} && ${transactionDate.getFullYear()} === ${currentYear})`
+    );
+    
+    return isCurrentMonth;
   });
+  
+  console.log("DEBUG: Current month/year:", currentMonth, currentYear);
+  console.log("DEBUG: Filtered installation transactions:", installationTransactions.length);
+  console.log("DEBUG: Installation transactions:", JSON.stringify(installationTransactions));
   
   const totalInstallations = installationTransactions.length;
   const pointsAwarded = transactions
