@@ -10,6 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import QrScanner from "@/components/installer/qr-scanner";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface InstallerLayoutProps {
   children: ReactNode;
@@ -19,6 +22,7 @@ interface InstallerLayoutProps {
 export default function InstallerLayout({ children, className }: InstallerLayoutProps) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
+  const { toast } = useToast();
 
   return (
     <div className={cn("min-h-screen bg-neutral-50", className)}>
@@ -80,6 +84,27 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </div>
         </Link>
       </nav>
+      
+      {/* QR Scanner - available on all installer pages */}
+      <QrScanner 
+        onScanSuccess={(productName) => {
+          // Refresh queries to update data
+          queryClient.invalidateQueries({
+            queryKey: [`/api/transactions?userId=${user?.id}`]
+          });
+          
+          // Also refresh user data to update points
+          queryClient.invalidateQueries({
+            queryKey: ["/api/users/me"]
+          });
+          
+          toast({
+            title: "تم التسجيل بنجاح",
+            description: `تم إضافة 10 نقاط إلى رصيدك لتركيب ${productName || "منتج جديد"}`,
+            variant: "default",
+          });
+        }} 
+      />
     </div>
   );
 }
