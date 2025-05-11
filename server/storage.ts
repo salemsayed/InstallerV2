@@ -4,6 +4,7 @@ import {
   transactions, Transaction, InsertTransaction,
   rewards, Reward, InsertReward,
   badges, Badge, InsertBadge,
+  scannedCodes, ScannedCode, InsertScannedCode,
   UserRole, UserStatus, TransactionType
 } from "@shared/schema";
 
@@ -34,6 +35,10 @@ export interface IStorage {
   createBadge(badge: InsertBadge): Promise<Badge>;
   getBadge(id: number): Promise<Badge | undefined>;
   listBadges(active?: boolean): Promise<Badge[]>;
+  
+  // Scanned codes operations
+  checkScannedCode(uuid: string): Promise<ScannedCode | undefined>;
+  createScannedCode(data: { uuid: string; scannedBy: number; productName?: string }): Promise<ScannedCode>;
 }
 
 import { db } from "./db";
