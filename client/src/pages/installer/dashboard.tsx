@@ -81,7 +81,7 @@ export default function InstallerDashboard() {
       <section className="px-4 mb-8">
         <TransactionsList 
           transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
-          onViewAll={() => {/* Implement view all transactions */}}
+          onViewAll={() => window.location.href = "/installer/stats"}
         />
       </section>
       

@@ -10,8 +10,8 @@ export function formatDate(date: Date | string): string {
   
   const d = typeof date === "string" ? new Date(date) : date;
   
-  // Format date in Arabic style (day-month-year)
-  return d.toLocaleDateString("ar-SA", {
+  // Format date in Arabic style with Gregorian calendar (day-month-year)
+  return d.toLocaleDateString("ar-EG", {
     year: "numeric",
     month: "long",
     day: "numeric",
