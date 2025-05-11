@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, jsonb, real, varchar, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, jsonb, real, varchar, index, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -105,6 +105,15 @@ export const badges = pgTable("badges", {
   active: integer("active").notNull().default(1),
 });
 
+// Scanned QR codes table
+export const scannedCodes = pgTable("scanned_codes", {
+  id: serial("id").primaryKey(),
+  uuid: uuid("uuid").notNull().unique(),
+  scannedAt: timestamp("scanned_at").defaultNow(),
+  scannedBy: integer("scanned_by").references(() => users.id),
+  productName: text("product_name"),
+});
+
 // Define relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   inviter: one(users, {
@@ -161,18 +170,26 @@ export const insertBadgeSchema = createInsertSchema(badges)
     name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
   });
 
+export const insertScannedCodeSchema = createInsertSchema(scannedCodes)
+  .omit({ id: true, scannedAt: true })
+  .extend({
+    uuid: z.string().uuid({ message: "يجب أن يكون المعرف بصيغة UUID صالحة" }),
+  });
+
 // TYPES
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertMagicLink = z.infer<typeof insertMagicLinkSchema>;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type InsertReward = z.infer<typeof insertRewardSchema>;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type InsertScannedCode = z.infer<typeof insertScannedCodeSchema>;
 
 export type User = typeof users.$inferSelect;
 export type MagicLink = typeof magicLinks.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Reward = typeof rewards.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
+export type ScannedCode = typeof scannedCodes.$inferSelect;
 
 // AUTH SCHEMAS
 // Egyptian phone number validation (01xxxxxxxxx or +201xxxxxxxxx format)
