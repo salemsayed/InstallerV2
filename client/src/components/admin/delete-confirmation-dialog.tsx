@@ -32,6 +32,14 @@ export default function DeleteConfirmationDialog({
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const { user: authUser } = useAuth();
+  
+  console.log("DeleteConfirmationDialog rendered with props:", { 
+    open, 
+    onOpenChange: !!onOpenChange, 
+    userId, 
+    userName, 
+    onSuccess: !!onSuccess 
+  });
 
   const handleDelete = async () => {
     if (!userId) return;

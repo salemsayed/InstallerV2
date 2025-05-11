@@ -58,6 +58,8 @@ export default function EditUserDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  console.log("EditUserDialog rendered with props:", { user, open, onOpenChange: !!onOpenChange, onSuccess: !!onSuccess });
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {

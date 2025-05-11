@@ -25,6 +25,7 @@ interface UsersTableProps {
 }
 
 export default function UsersTable({ users, onViewAll, onUserAction }: UsersTableProps) {
+  console.log("UsersTable rendered with users:", users);
   const getStatusBadge = (status: string) => {
     switch (status) {
       case UserStatus.ACTIVE:

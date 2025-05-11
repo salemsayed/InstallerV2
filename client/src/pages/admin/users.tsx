@@ -27,25 +27,35 @@ export default function AdminUsers() {
   });
 
   const handleUserAction = (action: string, userId: number) => {
-    if (!usersData || !Array.isArray(usersData.users)) return;
+    console.log("User action triggered:", action, "for userId:", userId);
+    
+    if (!usersData || !Array.isArray(usersData.users)) {
+      console.error("usersData missing or not an array:", usersData);
+      return;
+    }
     
     const targetUser = usersData.users.find((u: User) => u.id === userId);
-    if (!targetUser) return;
+    if (!targetUser) {
+      console.error("Target user not found for ID:", userId);
+      return;
+    }
     
+    console.log("Found target user:", targetUser);
     setSelectedUser(targetUser);
     
     switch (action) {
       case "edit":
+        console.log("Opening edit dialog for user:", targetUser.name);
         setEditDialogOpen(true);
         break;
       case "delete":
+        console.log("Opening delete dialog for user:", targetUser.name);
         setDeleteDialogOpen(true);
         break;
       case "points":
         setActiveTab("add-points");
         break;
       case "view":
-        // Implement user view action if needed
         console.log("View user details:", targetUser);
         break;
       default:
