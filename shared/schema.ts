@@ -127,7 +127,9 @@ export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, badgeIds: true, createdAt: true })
   .extend({
     name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
-    phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
+    phone: z.string().regex(/^(\+20|0)1[0-2,5]{1}[0-9]{8}$/, { 
+      message: "يرجى إدخال رقم هاتف مصري صالح (يبدأ بـ 01 أو +201)" 
+    }),
     region: z.string().optional(),
   });
 

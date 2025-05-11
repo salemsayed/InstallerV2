@@ -162,6 +162,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
       
+      // Format phone to international format if needed
+      if (userData.phone.startsWith('0')) {
+        userData.phone = '+2' + userData.phone;
+      }
+      
       // Check if phone is already in use
       const existingUser = await storage.getUserByPhone(userData.phone);
       if (existingUser) {
@@ -250,7 +255,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate input data
-      const { name, phone, region, status, points } = req.body;
+      let { name, phone, region, status, points } = req.body;
+      
+      // Format phone to international format if needed
+      if (phone && phone.startsWith('0')) {
+        phone = '+2' + phone;
+      }
       
       // Update user data
       const updatedUser = await storage.updateUser(targetUserId, {
