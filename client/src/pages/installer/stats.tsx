@@ -22,6 +22,9 @@ export default function InstallerStats() {
   const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
   const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
   
+  // Calculate actual points balance (earnings minus redemptions)
+  const pointsBalance = totalEarnings - totalRedemptions;
+  
   return (
     <InstallerLayout>
       <div className="p-4 space-y-4">
@@ -50,10 +53,10 @@ export default function InstallerStats() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">رصيد النقاط</CardTitle>
-            <CardDescription>إجمالي النقاط المكتسبة</CardDescription>
+            <CardDescription>إجمالي النقاط المتاحة (المكتسبة - المستخدمة)</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-center">{user?.points}</p>
+            <p className="text-3xl font-bold text-center">{pointsBalance}</p>
           </CardContent>
         </Card>
         
