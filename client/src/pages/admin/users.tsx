@@ -41,26 +41,31 @@ export default function AdminUsers() {
     }
     
     console.log("Found target user:", targetUser);
+    
+    // Set the selected user first
     setSelectedUser(targetUser);
     
-    switch (action) {
-      case "edit":
-        console.log("Opening edit dialog for user:", targetUser.name);
-        setEditDialogOpen(true);
-        break;
-      case "delete":
-        console.log("Opening delete dialog for user:", targetUser.name);
-        setDeleteDialogOpen(true);
-        break;
-      case "points":
-        setActiveTab("add-points");
-        break;
-      case "view":
-        console.log("View user details:", targetUser);
-        break;
-      default:
-        break;
-    }
+    // Use setTimeout to ensure state updates before dialog opens
+    setTimeout(() => {
+      switch (action) {
+        case "edit":
+          console.log("Opening edit dialog for user:", targetUser.name);
+          setEditDialogOpen(true);
+          break;
+        case "delete":
+          console.log("Opening delete dialog for user:", targetUser.name);
+          setDeleteDialogOpen(true);
+          break;
+        case "points":
+          setActiveTab("add-points");
+          break;
+        case "view":
+          console.log("View user details:", targetUser);
+          break;
+        default:
+          break;
+      }
+    }, 0);
   };
 
   const handleTabChange = (value: string) => {
