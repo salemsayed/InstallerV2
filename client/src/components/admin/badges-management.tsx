@@ -150,8 +150,15 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
           ? formValues.minInstallations : 0
       };
       
-      const res = await apiRequest("POST", "/api/admin/badges", values);
-      return res.json();
+      // Get the current user ID from localStorage for authentication
+      const userId = localStorage.getItem('userId');
+      console.log('[BADGE CREATE] Using userId:', userId);
+      
+      // Include userId as a query parameter
+      const res = await apiRequest("POST", `/api/admin/badges?userId=${userId}`, values);
+      const responseData = await res.json();
+      console.log('[BADGE CREATE] Response:', JSON.stringify(responseData));
+      return responseData;
     },
     onSuccess: () => {
       toast({
@@ -195,7 +202,12 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       console.log('[BADGE UPDATE] Processed data to send:', JSON.stringify(data));
       
       try {
-        const res = await apiRequest("PATCH", `/api/admin/badges/${id}`, data);
+        // Get the current user ID from localStorage for authentication
+        const userId = localStorage.getItem('userId');
+        console.log('[BADGE UPDATE] Using userId:', userId);
+        
+        // Include userId as a query parameter
+        const res = await apiRequest("PATCH", `/api/admin/badges/${id}?userId=${userId}`, data);
         const responseData = await res.json();
         console.log('[BADGE UPDATE] Response:', JSON.stringify(responseData));
         return responseData;
@@ -226,8 +238,15 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   // Delete badge
   const deleteBadgeMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/admin/badges/${id}`);
-      return res.json();
+      // Get the current user ID from localStorage for authentication
+      const userId = localStorage.getItem('userId');
+      console.log('[BADGE DELETE] Using userId:', userId);
+      
+      // Include userId as a query parameter
+      const res = await apiRequest("DELETE", `/api/admin/badges/${id}?userId=${userId}`);
+      const responseData = await res.json();
+      console.log('[BADGE DELETE] Response:', JSON.stringify(responseData));
+      return responseData;
     },
     onSuccess: () => {
       toast({
