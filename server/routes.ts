@@ -494,6 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // QR code scanning endpoint
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
+    console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);
     try {
       const { uuid, userId } = req.body;
       
