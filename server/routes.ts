@@ -497,6 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check each badge to see if user qualifies
       let userBadgesUpdated = false;
+      let updatedBadgeIds: number[] = [];
       
       for (const badge of allBadges) {
         const alreadyHasBadge = user.badgeIds.includes(badge.id);
@@ -507,12 +508,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
         );
         
-        // If user qualifies for badge but doesn't have it yet, add it
-        if (qualifies && !alreadyHasBadge) {
-          console.log(`[DEBUG] User ${userId} qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
-          user.badgeIds.push(badge.id);
+        if (qualifies) {
+          // If user qualifies for badge but doesn't have it yet, add it
+          if (!alreadyHasBadge) {
+            console.log(`[DEBUG] User ${userId} qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
+            updatedBadgeIds.push(badge.id);
+            userBadgesUpdated = true;
+          } else {
+            // User already has this badge and still qualifies
+            updatedBadgeIds.push(badge.id);
+          }
+        } else if (alreadyHasBadge) {
+          // User has badge but no longer qualifies - remove it
+          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
           userBadgesUpdated = true;
+          // Badge is not added to updatedBadgeIds, effectively removing it
         }
+      }
+      
+      // Replace user's badges with the updated list
+      if (userBadgesUpdated) {
+        user.badgeIds = updatedBadgeIds;
       }
       
       // Update user's badges in database if changes were made
@@ -954,8 +970,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check each badge to see if user qualifies
         let userBadgesUpdated = false;
         let newBadges = [];
+        let updatedBadgeIds: number[] = [];
         
         for (const badge of allBadges) {
+          if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
+            console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
+            break;
+          }
+          
           const alreadyHasBadge = updatedUser.badgeIds.includes(badge.id);
           
           // Check qualification
@@ -964,19 +986,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
           );
           
-          // If user qualifies for badge but doesn't have it yet, add it
-          if (qualifies && !alreadyHasBadge) {
-            console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
-            updatedUser.badgeIds.push(badge.id);
-            newBadges.push(badge);
+          if (qualifies) {
+            // If user qualifies for badge but doesn't have it yet, add it
+            if (!alreadyHasBadge) {
+              console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
+              updatedBadgeIds.push(badge.id);
+              newBadges.push(badge);
+              userBadgesUpdated = true;
+            } else {
+              // User already has this badge and still qualifies
+              updatedBadgeIds.push(badge.id);
+            }
+          } else if (alreadyHasBadge) {
+            // User has badge but no longer qualifies - remove it
+            console.log(`[DEBUG] User ${user.id} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
             userBadgesUpdated = true;
+            // Badge is not added to updatedBadgeIds, effectively removing it
           }
         }
         
         // Update user's badges in database if changes were made
-        if (userBadgesUpdated) {
-          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedUser.badgeIds);
-          await storage.updateUser(user.id, { badgeIds: updatedUser.badgeIds });
+        if (userBadgesUpdated && updatedUser) {
+          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedBadgeIds);
+          updatedUser.badgeIds = updatedBadgeIds;
+          await storage.updateUser(user.id, { badgeIds: updatedBadgeIds });
         }
         
         return res.status(200).json({
