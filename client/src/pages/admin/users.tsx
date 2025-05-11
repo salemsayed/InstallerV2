@@ -20,15 +20,15 @@ export default function AdminUsers() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch users
-  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
+  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
     queryKey: ['/api/admin/users'],
     enabled: !!user && user.role === "admin",
   });
 
   const handleUserAction = (action: string, userId: number) => {
-    if (!usersData?.users) return;
+    if (!usersData || !Array.isArray(usersData.users)) return;
     
-    const targetUser = usersData.users.find(u => u.id === userId);
+    const targetUser = usersData.users.find((u: User) => u.id === userId);
     if (!targetUser) return;
     
     setSelectedUser(targetUser);
@@ -80,7 +80,7 @@ export default function AdminUsers() {
                 <div className="text-center p-6">جاري التحميل...</div>
               ) : (
                 <UsersTable
-                  users={usersData?.users ? usersData.users : []}
+                  users={usersData && Array.isArray(usersData.users) ? usersData.users : []}
                   onUserAction={handleUserAction}
                 />
               )}
@@ -115,7 +115,8 @@ export default function AdminUsers() {
               {user && (
                 <PointsAllocationForm
                   adminId={user.id}
-                  users={usersData?.users ? usersData.users.filter(u => u.role === "installer") : []}
+                  users={usersData && Array.isArray(usersData.users) ? 
+                    usersData.users.filter((u: User) => u.role === "installer") : []}
                   onSuccess={handleSuccess}
                 />
               )}
