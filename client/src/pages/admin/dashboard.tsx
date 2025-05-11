@@ -33,15 +33,25 @@ export default function AdminDashboard() {
   });
 
   // Fetch transactions data
-  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+  const { 
+    data: transactionsData, 
+    isLoading: transactionsLoading,
+    refetch: refetchTransactions 
+  } = useQuery({
     queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
   
   // Fetch scanned products data to get actual installation count
-  const { data: scannedProductsData, isLoading: scannedProductsLoading } = useQuery({
+  const { 
+    data: scannedProductsData, 
+    isLoading: scannedProductsLoading,
+    refetch: refetchScannedProducts 
+  } = useQuery({
     queryKey: [`/api/scanned-products?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
   
   // Fetch products data
@@ -139,7 +149,10 @@ export default function AdminDashboard() {
           {/* Points Allocation Form */}
           <PointsAllocationForm 
             users={installers}
-            onSuccess={() => refetchUsers()}
+            onSuccess={() => {
+              refetchUsers();
+              refetchTransactions();
+            }}
           />
         </>
       )}
@@ -160,7 +173,11 @@ export default function AdminDashboard() {
       {activeTab === "points" && (
         <PointsAllocationForm 
           users={installers}
-          onSuccess={() => setActiveTab("overview")}
+          onSuccess={() => {
+            refetchUsers();
+            refetchTransactions();
+            setActiveTab("overview");
+          }}
         />
       )}
 
@@ -215,6 +232,7 @@ export default function AdminDashboard() {
         onSuccess={() => {
           setIsEditDialogOpen(false);
           setSelectedUser(null);
+          refetchUsers(); // Refresh user data
         }}
       />
       
@@ -227,6 +245,7 @@ export default function AdminDashboard() {
         onSuccess={() => {
           setIsDeleteDialogOpen(false);
           setSelectedUser(null);
+          refetchUsers(); // Refresh user data
         }}
       />
     </AdminLayout>

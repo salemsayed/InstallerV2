@@ -26,10 +26,11 @@ export default function AdminUsers() {
     selectedUserId: selectedUser?.id 
   });
 
-  // Fetch users
+  // Fetch users with auto-refresh
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
     queryKey: [`/api/admin/users?userId=${user?.id}`],
     enabled: !!user && user.role === "admin",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const handleUserAction = (action: string, userId: number) => {
