@@ -87,12 +87,21 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء الاتصال بالخادم",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Special handling for 401 (Unauthorized) or 403 (Forbidden) errors
+      if (error.status === 401 || error.status === 403) {
+        toast({
+          title: "غير مصرح",
+          description: error.message || "رقم الهاتف غير مسجل. يرجى التواصل مع المسؤول لإضافة حسابك.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: error.message || "حدث خطأ أثناء الاتصال بالخادم",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -123,12 +132,27 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء التحقق من رمز التأكيد",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Special handling for different error status codes
+      if (error.status === 400) {
+        toast({
+          title: "رمز غير صالح",
+          description: error.message || "رمز التحقق غير صحيح أو منتهي الصلاحية",
+          variant: "destructive",
+        });
+      } else if (error.status === 401 || error.status === 403) {
+        toast({
+          title: "غير مصرح",
+          description: error.message || "لا يمكن التحقق من حسابك. يرجى التواصل مع المسؤول.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: error.message || "حدث خطأ أثناء التحقق من رمز التأكيد",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

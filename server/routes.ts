@@ -26,11 +26,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         formattedPhone = '+2' + phone;
       }
       
+      // Check if user exists by phone number before sending OTP
+      const user = await storage.getUserByPhone(formattedPhone);
+      
+      // Only allow existing users to request OTP
+      if (!user) {
+        return res.status(401).json({ 
+          success: false,
+          message: "رقم الهاتف غير مسجل. يرجى التواصل مع المسؤول لإضافة حسابك." 
+        });
+      }
+      
+      // Check if user is active
+      if (user.status !== UserStatus.ACTIVE) {
+        return res.status(403).json({ 
+          success: false,
+          message: "الحساب غير نشط. يرجى التواصل مع المسؤول لتفعيل حسابك." 
+        });
+      }
+      
       // Send OTP to the phone number
       const result = await smsService.sendOtp(formattedPhone);
       
       if (!result.success) {
         return res.status(400).json({ 
+          success: false,
           message: "فشل إرسال رمز التحقق. يرجى التحقق من رقم الهاتف وإعادة المحاولة." 
         });
       }
@@ -69,24 +89,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!isValid) {
         return res.status(400).json({ 
+          success: false,
           message: "رمز التحقق غير صحيح أو منتهي الصلاحية" 
         });
       }
       
-      // Check if user exists by phone number (using the formatted phone)
+      // Get user information (we already verified the user exists in the request-otp step)
       const user = await storage.getUserByPhone(formattedPhone);
       
-      // Only allow existing users to log in
-      if (!user) {
+      // This is a safety check, just in case
+      if (!user || user.status !== UserStatus.ACTIVE) {
         return res.status(401).json({ 
-          message: "رقم الهاتف غير مسجل. يرجى التواصل مع المسؤول لإضافة حسابك." 
-        });
-      }
-      
-      // Check if user is active
-      if (user.status !== UserStatus.ACTIVE) {
-        return res.status(403).json({ 
-          message: "الحساب غير نشط. يرجى التواصل مع المسؤول لتفعيل حسابك." 
+          success: false,
+          message: "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى." 
         });
       }
       
