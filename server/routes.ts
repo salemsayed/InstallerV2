@@ -479,10 +479,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all badges
       const allBadges = await storage.listBadges(true);
       
+      // Get user's installation count (transactions of type EARNING that have product installations)
+      const transactions = await storage.getTransactionsByUserId(userId);
+      const installationCount = transactions.filter(t => 
+        t.type === TransactionType.EARNING && 
+        (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
+      ).length;
+      
+      console.log(`[DEBUG] User ${userId} has ${installationCount} installations and ${user.points} points`);
+      
+      // Initialize badgeIds array if it doesn't exist
+      if (!user.badgeIds) {
+        user.badgeIds = [];
+      } else if (!Array.isArray(user.badgeIds)) {
+        user.badgeIds = [];
+      }
+      
+      // Check each badge to see if user qualifies
+      let userBadgesUpdated = false;
+      
+      for (const badge of allBadges) {
+        const alreadyHasBadge = user.badgeIds.includes(badge.id);
+        
+        // Check qualification
+        const qualifies = (
+          (badge.requiredPoints === null || badge.requiredPoints === undefined || user.points >= badge.requiredPoints) &&
+          (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
+        );
+        
+        // If user qualifies for badge but doesn't have it yet, add it
+        if (qualifies && !alreadyHasBadge) {
+          console.log(`[DEBUG] User ${userId} qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
+          user.badgeIds.push(badge.id);
+          userBadgesUpdated = true;
+        }
+      }
+      
+      // Update user's badges in database if changes were made
+      if (userBadgesUpdated) {
+        console.log(`[DEBUG] Updating user ${userId} badges in database:`, user.badgeIds);
+        await storage.updateUser(userId, { badgeIds: user.badgeIds });
+      }
+      
       // Mark which ones the user has
       const badges = allBadges.map(badge => ({
         ...badge,
-        earned: user.badgeIds && Array.isArray(user.badgeIds) && user.badgeIds.includes(badge.id)
+        earned: user.badgeIds.includes(badge.id)
       }));
       
       return res.status(200).json({ badges });
@@ -892,13 +934,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: localProduct ? { productId: localProduct.id } : undefined
         });
         
+        // Check if user qualifies for any new badges after earning these points
+        const allBadges = await storage.listBadges(true);
+        
+        // Get user's installation count (transactions of type EARNING that have product installations)
+        const transactions = await storage.getTransactionsByUserId(user.id);
+        const installationCount = transactions.filter(t => 
+          t.type === TransactionType.EARNING && 
+          (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
+        ).length;
+        
+        console.log(`[DEBUG] After QR scan, user ${user.id} has ${installationCount} installations and ${updatedUser?.points} points`);
+        
+        // Initialize badgeIds array if it doesn't exist
+        if (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds)) {
+          updatedUser.badgeIds = [];
+        }
+        
+        // Check each badge to see if user qualifies
+        let userBadgesUpdated = false;
+        let newBadges = [];
+        
+        for (const badge of allBadges) {
+          const alreadyHasBadge = updatedUser.badgeIds.includes(badge.id);
+          
+          // Check qualification
+          const qualifies = (
+            (badge.requiredPoints === null || badge.requiredPoints === undefined || updatedUser.points >= badge.requiredPoints) &&
+            (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
+          );
+          
+          // If user qualifies for badge but doesn't have it yet, add it
+          if (qualifies && !alreadyHasBadge) {
+            console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
+            updatedUser.badgeIds.push(badge.id);
+            newBadges.push(badge);
+            userBadgesUpdated = true;
+          }
+        }
+        
+        // Update user's badges in database if changes were made
+        if (userBadgesUpdated) {
+          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedUser.badgeIds);
+          await storage.updateUser(user.id, { badgeIds: updatedUser.badgeIds });
+        }
+        
         return res.status(200).json({
           success: true,
           message: "تم التحقق من المنتج بنجاح وتمت إضافة النقاط",
           productName,
           pointsAwarded,
           productDetails: localProduct,
-          newPoints: updatedUser?.points || user.points + pointsAwarded
+          newPoints: updatedUser?.points || user.points + pointsAwarded,
+          newBadges: newBadges.length > 0 ? newBadges : undefined
         });
       } else {
         return res.status(404).json({
