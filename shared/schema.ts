@@ -1,7 +1,18 @@
-import { pgTable, text, serial, integer, timestamp, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, jsonb, real, varchar, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
 
 // User roles
 export enum UserRole {
@@ -51,6 +62,7 @@ export const users = pgTable("users", {
   invitedBy: integer("invited_by").references(() => users.id),
   level: integer("level").notNull().default(1),
   badgeIds: jsonb("badge_ids").default([]),
+  profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

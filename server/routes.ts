@@ -8,8 +8,12 @@ import {
   pointsAllocationSchema
 } from "@shared/schema";
 import { createTransport } from "nodemailer";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup Replit Auth
+  await setupAuth(app);
+  
   // Set up nodemailer with a mock transport for development
   const emailTransport = createTransport({
     host: "smtp.ethereal.email",
