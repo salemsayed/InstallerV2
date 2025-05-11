@@ -22,14 +22,25 @@ export default function AdminDashboard() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Fetch users data
-  const { data: usersData, isLoading: usersLoading } = useQuery({
+  const { 
+    data: usersData, 
+    isLoading: usersLoading,
+    refetch: refetchUsers
+  } = useQuery({
     queryKey: [`/api/admin/users?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   // Fetch transactions data
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: [`/api/transactions?userId=${user?.id}`],
+    enabled: !!user?.id && user.role === "admin",
+  });
+  
+  // Fetch scanned products data to get actual installation count
+  const { data: scannedProductsData, isLoading: scannedProductsLoading } = useQuery({
+    queryKey: [`/api/scanned-products?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
   });
   
@@ -61,8 +72,8 @@ export default function AdminDashboard() {
   const installers = usersData?.users ? usersData.users.filter((u: User) => u.role === "installer") : [];
   const totalInstallers = installers.length;
   
-  // Normally these would come from actual data, but for now we'll estimate
-  const totalInstallations = Math.round(totalInstallers * 2.5); // Assuming average of 2.5 installations per installer
+  // Get actual installation count from scanned products
+  const totalInstallations = scannedProductsData?.scannedCodes?.length || 0;
 
   const transactions = transactionsData?.transactions ? transactionsData.transactions : [];
   const pointsAwarded = transactions
@@ -128,7 +139,7 @@ export default function AdminDashboard() {
           {/* Points Allocation Form */}
           <PointsAllocationForm 
             users={installers}
-            onSuccess={() => {}}
+            onSuccess={() => refetchUsers()}
           />
         </>
       )}
