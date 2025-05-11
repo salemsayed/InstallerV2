@@ -182,10 +182,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 focus:ring-2 focus:ring-primary/50"
+        className="fixed bottom-3 left-1/2 transform -translate-x-1/2 w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90 focus:ring-2 focus:ring-primary/50 z-10 flex flex-col items-center justify-center"
         aria-label="فتح الماسح الضوئي"
       >
-        <QrCode className="h-6 w-6" />
+        <QrCode className="h-7 w-7" />
+        <span className="text-[10px] mt-1">مسح</span>
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
