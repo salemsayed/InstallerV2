@@ -65,60 +65,67 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
   console.log(`[MANUFACTURING_DB] Checking serial number: "${serialNumber}"`);
   
   try {
-    // First approach: direct match on serial_number
-    console.log(`[MANUFACTURING_DB] Approach 1: Direct match on serial_number`);
-    let query = manufacturingDb('po_items')
+    // Using the recommended EXISTS query approach for efficiency
+    console.log(`[MANUFACTURING_DB] Using EXISTS query with serial_number: "${serialNumber}"`);
+    
+    const sql = `
+      SELECT EXISTS (
+        SELECT 1
+        FROM po_items
+        WHERE serial_number = ?
+      ) AS po_item_exists
+    `;
+    
+    console.log(`[MANUFACTURING_DB] Raw SQL query: ${sql.replace('?', `'${serialNumber}'`)}`);
+    
+    const result = await manufacturingDb.raw(sql, [serialNumber]);
+    
+    // Debug what was returned
+    console.log(`[MANUFACTURING_DB] Query result:`, result);
+    
+    // For Postgres, the result format is different from other SQL engines
+    // It returns an array with objects, we need to extract the boolean value from it
+    if (result && result.rows && result.rows.length > 0) {
+      const exists = result.rows[0].po_item_exists === true;
+      console.log(`[MANUFACTURING_DB] Item exists: ${exists}`);
+      
+      if (exists) return true;
+    } else {
+      console.log(`[MANUFACTURING_DB] Unexpected result format or no result, checking fallbacks`);
+    }
+    
+    // Fallback to direct query if the EXISTS approach didn't work
+    console.log(`[MANUFACTURING_DB] Fallback: Direct select query`);
+    
+    const fallbackQuery = manufacturingDb('po_items')
       .select('serial_number')
-      .where('serial_number', serialNumber);
+      .where('serial_number', serialNumber)
+      .limit(1);
     
-    console.log(`[MANUFACTURING_DB] Query: ${query.toString()}`);
+    console.log(`[MANUFACTURING_DB] Fallback query: ${fallbackQuery.toString()}`);
     
-    let result = await query.first();
-    console.log(`[MANUFACTURING_DB] Query result: ${JSON.stringify(result)}`);
+    const fallbackResult = await fallbackQuery;
+    console.log(`[MANUFACTURING_DB] Fallback result:`, fallbackResult);
     
-    if (result) return true;
+    if (fallbackResult && fallbackResult.length > 0) {
+      console.log(`[MANUFACTURING_DB] Found via fallback: ${fallbackResult[0].serial_number}`);
+      return true;
+    }
     
-    // Second approach: Check in printed_url field
-    console.log(`[MANUFACTURING_DB] Approach 2: Check in printed_url field`);
-    query = manufacturingDb('po_items')
-      .select('serial_number', 'printed_url')
-      .whereRaw(`printed_url LIKE '%${serialNumber}%'`);
+    // Check for any entry with the printed_url containing our UUID (in case it's stored as part of URL)
+    console.log(`[MANUFACTURING_DB] Final check: Look for UUID in printed_url`);
     
-    console.log(`[MANUFACTURING_DB] Query: ${query.toString()}`);
+    const urlQuery = manufacturingDb('po_items')
+      .select('serial_number')
+      .whereRaw('printed_url LIKE ?', [`%${serialNumber}%`])
+      .limit(1);
     
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Query result: ${JSON.stringify(result)}`);
+    console.log(`[MANUFACTURING_DB] URL check query: ${urlQuery.toString()}`);
     
-    if (result) return true;
+    const urlResult = await urlQuery;
+    console.log(`[MANUFACTURING_DB] URL check result:`, urlResult);
     
-    // Third approach: Check if it's in the URL format we're extracting from
-    const urlToCheck = `https://warranty.bareeq.lighting/p/${serialNumber}`;
-    console.log(`[MANUFACTURING_DB] Approach 3: Check for URL ${urlToCheck}`);
-    
-    query = manufacturingDb('po_items')
-      .select('serial_number', 'printed_url')
-      .whereRaw(`printed_url = ?`, [urlToCheck]);
-    
-    console.log(`[MANUFACTURING_DB] Query: ${query.toString()}`);
-    
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Query result: ${JSON.stringify(result)}`);
-    
-    if (result) return true;
-    
-    // Fourth approach: special case check - Look for values in the view tables
-    console.log(`[MANUFACTURING_DB] Approach 4: Check in warranty view tables`);
-    
-    query = manufacturingDb('view_warranty_po_items')
-      .select('*')
-      .whereRaw(`serial_number = ? OR printed_url LIKE ?`, [serialNumber, `%${serialNumber}%`]);
-    
-    console.log(`[MANUFACTURING_DB] Query: ${query.toString()}`);
-    
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Query result: ${JSON.stringify(result)}`);
-    
-    return !!result;
+    return urlResult && urlResult.length > 0;
   } catch (error) {
     console.error('[MANUFACTURING_DB] Error checking serial number:', error);
     if (error instanceof Error) {
@@ -144,90 +151,81 @@ export async function getProductNameBySerialNumber(serialNumber: string): Promis
   console.log(`[MANUFACTURING_DB] Getting product name for serial number: "${serialNumber}"`);
   
   try {
-    // Approach 1: Direct join with the original serial number
-    console.log(`[MANUFACTURING_DB] Product Approach 1: Direct join with serial_number`);
-    let query = manufacturingDb('po_items as pi')
-      .join('products as p', 'p.pid', 'pi.product_id')
-      .select('p.name as product_name', 'pi.serial_number', 'pi.product_id')
-      .where('pi.serial_number', serialNumber);
+    // Simplified approach with direct SQL query
+    console.log(`[MANUFACTURING_DB] Using direct SQL query to get product name`);
     
-    console.log(`[MANUFACTURING_DB] Product query: ${query.toString()}`);
-    let result = await query.first();
-    console.log(`[MANUFACTURING_DB] Product query result: ${JSON.stringify(result)}`);
+    const sql = `
+      SELECT p.name as product_name
+      FROM po_items pi
+      JOIN products p ON p.pid = pi.product_id
+      WHERE pi.serial_number = ?
+      LIMIT 1
+    `;
     
-    if (result) return result.product_name;
+    console.log(`[MANUFACTURING_DB] Raw SQL query: ${sql.replace('?', `'${serialNumber}'`)}`);
     
-    // Approach 2: Check in the printed_url field
-    console.log(`[MANUFACTURING_DB] Product Approach 2: Check in printed_url field`);
-    query = manufacturingDb('po_items as pi')
-      .join('products as p', 'p.pid', 'pi.product_id')
-      .select('p.name as product_name', 'pi.serial_number', 'pi.product_id', 'pi.printed_url')
-      .whereRaw(`pi.printed_url LIKE '%${serialNumber}%'`);
+    const result = await manufacturingDb.raw(sql, [serialNumber]);
     
-    console.log(`[MANUFACTURING_DB] Product query: ${query.toString()}`);
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Product query result: ${JSON.stringify(result)}`);
+    // Debug what was returned
+    console.log(`[MANUFACTURING_DB] Query result:`, result);
     
-    if (result) return result.product_name;
+    // For Postgres, the result format is different from other SQL engines
+    if (result && result.rows && result.rows.length > 0) {
+      const productName = result.rows[0].product_name;
+      console.log(`[MANUFACTURING_DB] Found product name: ${productName}`);
+      return productName;
+    }
     
-    // Approach 3: Check with full URL
-    const urlToCheck = `https://warranty.bareeq.lighting/p/${serialNumber}`;
-    console.log(`[MANUFACTURING_DB] Product Approach 3: Check with URL ${urlToCheck}`);
+    // Fallback: Try to get product by searching printed_url
+    console.log(`[MANUFACTURING_DB] Fallback: Search by printed_url`);
     
-    query = manufacturingDb('po_items as pi')
-      .join('products as p', 'p.pid', 'pi.product_id')
-      .select('p.name as product_name', 'pi.serial_number', 'pi.product_id', 'pi.printed_url')
-      .where('pi.printed_url', urlToCheck);
+    const fallbackSql = `
+      SELECT p.name as product_name
+      FROM po_items pi
+      JOIN products p ON p.pid = pi.product_id
+      WHERE pi.printed_url LIKE ?
+      LIMIT 1
+    `;
     
-    console.log(`[MANUFACTURING_DB] Product query: ${query.toString()}`);
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Product query result: ${JSON.stringify(result)}`);
+    console.log(`[MANUFACTURING_DB] Fallback SQL query: ${fallbackSql.replace('?', `'%${serialNumber}%'`)}`);
     
-    if (result) return result.product_name;
+    const fallbackResult = await manufacturingDb.raw(fallbackSql, [`%${serialNumber}%`]);
     
-    // Approach 4: Try with warranty view tables
-    console.log(`[MANUFACTURING_DB] Product Approach 4: Check with warranty view tables`);
+    // Debug what was returned
+    console.log(`[MANUFACTURING_DB] Fallback query result:`, fallbackResult);
     
-    query = manufacturingDb('view_warranty_po_items as vpi')
-      .join('products as p', 'p.pid', 'vpi.product_id')
-      .select('p.name as product_name', 'vpi.serial_number')
-      .whereRaw(`vpi.serial_number = ? OR vpi.printed_url LIKE ?`, [serialNumber, `%${serialNumber}%`]);
+    if (fallbackResult && fallbackResult.rows && fallbackResult.rows.length > 0) {
+      const productName = fallbackResult.rows[0].product_name;
+      console.log(`[MANUFACTURING_DB] Found product name via fallback: ${productName}`);
+      return productName;
+    }
     
-    console.log(`[MANUFACTURING_DB] Product query: ${query.toString()}`);
-    result = await query.first();
-    console.log(`[MANUFACTURING_DB] Product query result: ${JSON.stringify(result)}`);
+    // Final attempt: directly query the po_items table to get product_id
+    console.log(`[MANUFACTURING_DB] Final attempt: Get product_id directly from po_items`);
     
-    if (result) return result.product_name;
+    const itemQuery = `SELECT product_id FROM po_items WHERE serial_number = ? LIMIT 1`;
+    console.log(`[MANUFACTURING_DB] Item SQL query: ${itemQuery.replace('?', `'${serialNumber}'`)}`);
     
-    // Last resort: Get any product as a fallback (only if product exists in database)
-    // For now, let's just return a generic product name for debugging
-    console.log(`[MANUFACTURING_DB] Product Approach 5: Check if item exists without product join`);
-    const itemQuery = manufacturingDb('po_items')
-      .select('*')
-      .where('serial_number', serialNumber)
-      .orWhereRaw(`printed_url LIKE ?`, [`%${serialNumber}%`]);
+    const itemResult = await manufacturingDb.raw(itemQuery, [serialNumber]);
+    console.log(`[MANUFACTURING_DB] Item query result:`, itemResult);
     
-    console.log(`[MANUFACTURING_DB] Item query: ${itemQuery.toString()}`);
-    const itemResult = await itemQuery.first();
-    console.log(`[MANUFACTURING_DB] Item query result: ${JSON.stringify(itemResult)}`);
-    
-    if (itemResult && itemResult.product_id) {
-      console.log(`[MANUFACTURING_DB] Item exists. Product ID: ${itemResult.product_id}`);
+    if (itemResult && itemResult.rows && itemResult.rows.length > 0 && itemResult.rows[0].product_id) {
+      const productId = itemResult.rows[0].product_id;
+      console.log(`[MANUFACTURING_DB] Found product_id: ${productId}`);
       
-      // Get the product directly
-      const productQuery = manufacturingDb('products')
-        .select('*')
-        .where('pid', itemResult.product_id);
+      // Get product name directly
+      const productQuery = `SELECT name FROM products WHERE pid = ? LIMIT 1`;
+      console.log(`[MANUFACTURING_DB] Product SQL query: ${productQuery.replace('?', productId)}`);
       
-      console.log(`[MANUFACTURING_DB] Direct product query: ${productQuery.toString()}`);
-      const productResult = await productQuery.first();
-      console.log(`[MANUFACTURING_DB] Direct product query result: ${JSON.stringify(productResult)}`);
+      const productResult = await manufacturingDb.raw(productQuery, [productId]);
+      console.log(`[MANUFACTURING_DB] Product query result:`, productResult);
       
-      if (productResult) {
-        return productResult.name;
+      if (productResult && productResult.rows && productResult.rows.length > 0) {
+        return productResult.rows[0].name;
       }
     }
     
+    console.log(`[MANUFACTURING_DB] Could not find product name for serial number: ${serialNumber}`);
     return null;
   } catch (error) {
     console.error('[MANUFACTURING_DB] Error getting product name:', error);
