@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, QrCode } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
@@ -145,6 +145,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Success path
       setIsValidating(false);
       setIsOpen(false);
+      
+      // Invalidate queries to refresh the data across the app
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
       
       toast({
         title: "Product Verified Successfully ✓",

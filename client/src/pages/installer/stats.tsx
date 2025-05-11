@@ -10,8 +10,8 @@ export default function InstallerStats() {
   
   // Fetch transactions
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['/api/transactions'],
-    enabled: !!user,
+    queryKey: [`/api/transactions?userId=${user?.id}`],
+    enabled: !!user?.id,
   });
   
   // Filter transactions by type
