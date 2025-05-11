@@ -91,6 +91,15 @@ export default function AdminLayout({
                 المنتجات
               </TabsTrigger>
               <TabsTrigger 
+                value="badges" 
+                className={cn(
+                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "badges" && "text-white/70"
+                )}
+              >
+                الشارات
+              </TabsTrigger>
+              <TabsTrigger 
                 value="stats" 
                 className={cn(
                   "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
