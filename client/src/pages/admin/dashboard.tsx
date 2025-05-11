@@ -31,13 +31,13 @@ export default function AdminDashboard() {
   }
 
   // Calculate overview stats
-  const installers = usersData?.users?.filter((u: User) => u.role === "installer") || [];
+  const installers = usersData?.users ? usersData.users.filter((u: User) => u.role === "installer") : [];
   const totalInstallers = installers.length;
   
   // Normally these would come from actual data, but for now we'll estimate
   const totalInstallations = Math.round(totalInstallers * 2.5); // Assuming average of 2.5 installations per installer
 
-  const transactions = transactionsData?.transactions || [];
+  const transactions = transactionsData?.transactions ? transactionsData.transactions : [];
   const pointsAwarded = transactions
     .filter((t: any) => t.type === TransactionType.EARNING)
     .reduce((sum: number, t: any) => sum + t.amount, 0);

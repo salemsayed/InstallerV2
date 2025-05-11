@@ -64,7 +64,7 @@ export default function InstallerDashboard() {
           <AchievementCard
             points={user.points}
             level={user.level || 1}
-            badges={badgesData?.badges || []}
+            badges={badgesData?.badges ? badgesData.badges : []}
           />
         )}
       </section>
@@ -75,7 +75,7 @@ export default function InstallerDashboard() {
           <Skeleton className="h-60 w-full rounded-2xl" />
         ) : (
           <TransactionsList 
-            transactions={transactionsData?.transactions || []} 
+            transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
             onViewAll={() => {/* Implement view all transactions */}}
           />
         )}
@@ -87,7 +87,7 @@ export default function InstallerDashboard() {
           open={rewardsModalOpen}
           onOpenChange={setRewardsModalOpen}
           userPoints={user.points}
-          rewards={rewardsData.rewards || []}
+          rewards={rewardsData.rewards ? rewardsData.rewards : []}
           userId={user.id}
         />
       )}
