@@ -19,6 +19,8 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  console.log("AdminUsers component rendered, dialog states:", { editDialogOpen, deleteDialogOpen });
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
@@ -142,21 +144,31 @@ export default function AdminUsers() {
       </Tabs>
       
       {/* Edit User Dialog */}
-      <EditUserDialog
-        user={selectedUser}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        onSuccess={handleSuccess}
-      />
+      {editDialogOpen && (
+        <EditUserDialog
+          user={selectedUser}
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            console.log("Setting editDialogOpen to:", open);
+            setEditDialogOpen(open);
+          }}
+          onSuccess={handleSuccess}
+        />
+      )}
       
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        userId={selectedUser?.id || null}
-        userName={selectedUser?.name || ""}
-        onSuccess={handleSuccess}
-      />
+      {deleteDialogOpen && (
+        <DeleteConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            console.log("Setting deleteDialogOpen to:", open);
+            setDeleteDialogOpen(open);
+          }}
+          userId={selectedUser?.id || null}
+          userName={selectedUser?.name || ""}
+          onSuccess={handleSuccess}
+        />
+      )}
     </AdminLayout>
   );
 }

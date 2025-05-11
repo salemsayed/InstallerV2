@@ -89,7 +89,13 @@ export default function DeleteConfirmationDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        console.log("AlertDialog onOpenChange called with:", newOpen);
+        onOpenChange(newOpen);
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>هل أنت متأكد من حذف هذا المستخدم؟</AlertDialogTitle>

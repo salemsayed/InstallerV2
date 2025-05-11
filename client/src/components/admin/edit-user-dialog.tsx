@@ -58,22 +58,36 @@ export default function EditUserDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  console.log("EditUserDialog rendered with props:", { user, open, onOpenChange: !!onOpenChange, onSuccess: !!onSuccess });
+  console.log("EditUserDialog rendered with props:", { 
+    user: user ? { id: user.id, name: user.name } : null, 
+    open, 
+    onOpenChange: !!onOpenChange
+  });
+  
+  // Default form values
+  const defaultValues = {
+    name: "",
+    phone: "",
+    region: "",
+    status: UserStatus.ACTIVE,
+    points: 0,
+  };
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      phone: "",
-      region: "",
-      status: UserStatus.ACTIVE,
-      points: 0,
-    },
+    defaultValues
   });
 
-  // Reset form when user changes
+  // Reset form when user or open state changes
   useEffect(() => {
-    if (user) {
+    console.log("EditUserDialog useEffect triggered:", { 
+      hasUser: !!user, 
+      open, 
+      userName: user?.name
+    });
+    
+    if (user && open) {
+      console.log("Resetting form with user data:", user.name);
       form.reset({
         name: user.name,
         phone: user.phone || "",
@@ -81,8 +95,11 @@ export default function EditUserDialog({
         status: user.status as UserStatus,
         points: user.points,
       });
+    } else if (!open) {
+      // Reset to default values when dialog closes
+      form.reset(defaultValues);
     }
-  }, [user, form]);
+  }, [user, open, form]);
 
   // Get the auth user outside the function
   const { user: authUser } = useAuth();
@@ -136,7 +153,13 @@ export default function EditUserDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        console.log("Dialog onOpenChange called with:", newOpen);
+        onOpenChange(newOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">تعديل بيانات المستخدم</DialogTitle>
