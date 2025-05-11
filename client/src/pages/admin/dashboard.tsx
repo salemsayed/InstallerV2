@@ -76,13 +76,23 @@ export default function AdminDashboard() {
   const installers = usersData?.users ? usersData.users.filter((u: User) => u.role === "installer") : [];
   const totalInstallers = installers.length;
   
-  // Get actual installation count from transactions
-  // Filter transactions to only include those related to product installations
-  const installationTransactions = transactions.filter((t: any) => 
-    t.type === TransactionType.EARNING && 
-    t.description && 
-    (t.description.includes("تم تركيب منتج") || t.description.includes("تركيب منتج جديد"))
-  );
+  // Count earning transactions from the current month as installations
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  const installationTransactions = transactions.filter((t: any) => {
+    // First check if it's an earning transaction
+    if (t.type !== TransactionType.EARNING) return false;
+    
+    // Then check if it's from the current month
+    const transactionDate = new Date(t.createdAt);
+    return (
+      transactionDate.getMonth() === currentMonth && 
+      transactionDate.getFullYear() === currentYear
+    );
+  });
+  
   const totalInstallations = installationTransactions.length;
   const pointsAwarded = transactions
     .filter((t: any) => t.type === TransactionType.EARNING)
