@@ -29,8 +29,11 @@ import { insertUserSchema, UserRole, UserStatus } from "@shared/schema";
 // Extend the schema to make the form fields required
 const formSchema = insertUserSchema.extend({
   name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
-  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
+  phone: z.string().min(11, { message: "يجب أن يكون رقم الهاتف صحيح" }),
   region: z.string().min(1, { message: "يرجى اختيار المنطقة" }),
+  role: z.nativeEnum(UserRole, { 
+    message: "يرجى اختيار نوع المستخدم"
+  }),
 });
 
 interface InviteFormProps {
@@ -46,7 +49,6 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      email: "",
       phone: "",
       region: "",
       role: UserRole.INSTALLER,
@@ -71,7 +73,6 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
         // Reset form
         form.reset({
           name: "",
-          email: "",
           phone: "",
           region: "",
           role: UserRole.INSTALLER,
@@ -104,41 +105,25 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
   };
 
   return (
-    <Card className="rounded-xl shadow-sm border-0 mb-6">
-      <CardHeader className="pb-0">
-        <CardTitle className="text-lg font-bold">إضافة فني جديد</CardTitle>
+    <Card className="rounded-xl shadow-md border border-gray-100 mb-6 bg-white/50 backdrop-blur-sm">
+      <CardHeader className="pb-2 border-b">
+        <CardTitle className="text-xl font-bold text-primary">إضافة مستخدم جديد</CardTitle>
       </CardHeader>
       <CardContent className="p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الاسم الكامل</FormLabel>
-                    <FormControl>
-                      <Input placeholder="أدخل اسم الفني" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormLabel className="text-right block font-semibold">الاسم الكامل</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="أدخل البريد الإلكتروني" 
-                        type="email" 
+                        className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        placeholder="أدخل اسم المستخدم" 
                         {...field} 
-                        dir="ltr"
-                        className="text-right"
                       />
                     </FormControl>
                     <FormMessage />
@@ -151,14 +136,14 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>رقم الهاتف</FormLabel>
+                    <FormLabel className="text-right block font-semibold">رقم الهاتف</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="أدخل رقم الهاتف" 
+                        className="focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        placeholder="مثال: 01012345678" 
                         type="tel" 
                         {...field} 
                         dir="ltr"
-                        className="text-right"
                       />
                     </FormControl>
                     <FormMessage />
@@ -171,13 +156,13 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
                 name="region"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>المنطقة</FormLabel>
+                    <FormLabel className="text-right block font-semibold">المنطقة</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="focus:ring-2 focus:ring-primary/20 transition-all duration-200">
                           <SelectValue placeholder="اختر المنطقة" />
                         </SelectTrigger>
                       </FormControl>
@@ -185,7 +170,34 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
                         <SelectItem value="riyadh">الرياض</SelectItem>
                         <SelectItem value="jeddah">جدة</SelectItem>
                         <SelectItem value="dammam">الدمام</SelectItem>
+                        <SelectItem value="cairo">القاهرة</SelectItem>
+                        <SelectItem value="alexandria">الإسكندرية</SelectItem>
                         <SelectItem value="other">أخرى</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-right block font-semibold">نوع المستخدم</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="focus:ring-2 focus:ring-primary/20 transition-all duration-200">
+                          <SelectValue placeholder="اختر نوع المستخدم" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={UserRole.INSTALLER}>فني (مستخدم عادي)</SelectItem>
+                        <SelectItem value={UserRole.ADMIN}>مدير النظام</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -194,15 +206,19 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
               />
             </div>
             
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex justify-end mt-6 pt-4 border-t">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="px-6 py-2 min-w-32 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-300 shadow-md hover:shadow-lg"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                     جارٍ الإضافة...
                   </>
                 ) : (
-                  "إضافة فني"
+                  "إضافة مستخدم جديد"
                 )}
               </Button>
             </div>
