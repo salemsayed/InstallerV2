@@ -1,5 +1,7 @@
 import knex from 'knex';
 
+console.log('[MANUFACTURING_DB] Initializing connection to external manufacturing database');
+
 // Create manufacturing database connection
 export const manufacturingDb = knex({
   client: 'pg',
@@ -11,8 +13,52 @@ export const manufacturingDb = knex({
     database: 'manufacturing',
     ssl: { rejectUnauthorized: false }
   },
-  pool: { min: 0, max: 7 }
+  pool: { 
+    min: 0, 
+    max: 7,
+    // Add event handlers for connection issues
+    afterCreate: (conn: any, done: Function) => {
+      console.log('[MANUFACTURING_DB] New connection established');
+      done(null, conn);
+    }
+  },
+  // Enable query debugging
+  debug: true,
+  // Log queries
+  log: {
+    warn(message: string) {
+      console.log('[MANUFACTURING_DB] Warning:', message);
+    },
+    error(message: string) {
+      console.error('[MANUFACTURING_DB] Error:', message);
+    },
+    deprecate(message: string) {
+      console.log('[MANUFACTURING_DB] Deprecated:', message);
+    },
+    debug(message: string) {
+      console.log('[MANUFACTURING_DB] Debug:', message);
+    },
+  }
 });
+
+// Test connection on startup
+manufacturingDb.raw('SELECT 1')
+  .then(() => {
+    console.log('[MANUFACTURING_DB] Connection test successful');
+    // Get table information
+    return manufacturingDb.raw("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+  })
+  .then((result) => {
+    console.log('[MANUFACTURING_DB] Available tables:', result.rows.map((r: any) => r.table_name));
+    // Check po_items table structure
+    return manufacturingDb.raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'po_items'");
+  })
+  .then((result) => {
+    console.log('[MANUFACTURING_DB] po_items table structure:', result.rows);
+  })
+  .catch(err => {
+    console.error('[MANUFACTURING_DB] Connection test failed:', err);
+  });
 
 // Function to check if a serial number exists in the manufacturing database
 export async function checkSerialNumber(serialNumber: string): Promise<boolean> {
