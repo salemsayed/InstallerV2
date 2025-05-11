@@ -109,10 +109,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
 
     try {
-      // Step 3: Check if the code has been scanned before
+      // Step 3: Send to server for validation and processing
       const scanResult = await apiRequest(
         "POST", 
-        "/api/scans/validate", 
+        "/api/scan-qr", 
         {
           uuid,
           userId: user?.id

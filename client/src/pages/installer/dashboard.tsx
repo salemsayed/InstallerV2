@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/auth-provider";
 import InstallerLayout from "@/components/layouts/installer-layout";
@@ -7,11 +7,15 @@ import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
 import TransactionsList from "@/components/installer/transactions-list";
 import RewardsModal from "@/components/installer/rewards-modal";
+import QrScanner from "@/components/installer/qr-scanner";
 import { Reward, Transaction } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InstallerDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [rewardsModalOpen, setRewardsModalOpen] = useState(false);
 
   // Fetch user's transactions
@@ -93,6 +97,27 @@ export default function InstallerDashboard() {
           userId={user.id}
         />
       )}
+      
+      {/* QR Scanner */}
+      <QrScanner 
+        onScanSuccess={(productName) => {
+          // Refresh data after successful scan
+          queryClient.invalidateQueries({
+            queryKey: [`/api/transactions?userId=${user?.id}`]
+          });
+          
+          // Also refresh user data to update points
+          queryClient.invalidateQueries({
+            queryKey: ["/api/users/me"]
+          });
+          
+          toast({
+            title: "تم تسجيل المنتج بنجاح",
+            description: `تمت إضافة 10 نقاط لرصيدك لتركيب ${productName || "منتج جديد"}`,
+            variant: "default",
+          });
+        }} 
+      />
     </InstallerLayout>
   );
 }

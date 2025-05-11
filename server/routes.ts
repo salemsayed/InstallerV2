@@ -543,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createTransaction({
           userId: user.id,
           type: TransactionType.EARNING,
-          points: 10,
+          amount: 10,
           description: productName 
             ? `تم تركيب منتج ${productName}`
             : "تم تركيب منتج جديد"
