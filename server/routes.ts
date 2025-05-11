@@ -239,6 +239,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update user
+  app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
+    const targetUserId = parseInt(req.params.userId);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
+    try {
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
+      
+      // Validate input data
+      const { name, email, phone, region, status, points } = req.body;
+      
+      // Update user data
+      const updatedUser = await storage.updateUser(targetUserId, {
+        name,
+        email,
+        phone,
+        region,
+        status,
+        points
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ 
+          success: false,
+          message: "لم يتم العثور على المستخدم."
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: "تم تحديث بيانات المستخدم بنجاح",
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          role: updatedUser.role,
+          status: updatedUser.status,
+          points: updatedUser.points,
+          level: updatedUser.level,
+          region: updatedUser.region
+        }
+      });
+      
+    } catch (error: any) {
+      return res.status(400).json({ 
+        success: false,
+        message: error.message || "حدث خطأ أثناء تحديث بيانات المستخدم" 
+      });
+    }
+  });
+  
+  // Delete user
+  app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
+    const targetUserId = parseInt(req.params.userId);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
+    try {
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
+      
+      // Check if user exists
+      const targetUser = await storage.getUser(targetUserId);
+      
+      if (!targetUser) {
+        return res.status(404).json({ 
+          success: false,
+          message: "لم يتم العثور على المستخدم."
+        });
+      }
+      
+      // Prevent deleting yourself
+      if (targetUserId === adminId) {
+        return res.status(400).json({
+          success: false,
+          message: "لا يمكن حذف حسابك الخاص."
+        });
+      }
+      
+      const result = await storage.deleteUser(targetUserId);
+      
+      if (!result) {
+        return res.status(500).json({
+          success: false,
+          message: "فشل حذف المستخدم. يرجى المحاولة مرة أخرى."
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: "تم حذف المستخدم بنجاح"
+      });
+      
+    } catch (error: any) {
+      return res.status(400).json({ 
+        success: false,
+        message: error.message || "حدث خطأ أثناء حذف المستخدم" 
+      });
+    }
+  });
+  
   app.post("/api/admin/points", async (req: Request, res: Response) => {
     // Check if the requester is an admin
     const adminId = parseInt(req.query.userId as string);
