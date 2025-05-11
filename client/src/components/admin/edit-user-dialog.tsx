@@ -35,8 +35,7 @@ import { User, UserStatus } from "@shared/schema";
 // Form schema for editing users
 const formSchema = z.object({
   name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
-  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
-  phone: z.string().optional(),
+  phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
   region: z.string().optional(),
   status: z.nativeEnum(UserStatus),
   points: z.coerce.number().int().min(0),

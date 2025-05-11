@@ -129,7 +129,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: {
           id: user.id,
           name: user.name,
-          email: user.email,
           phone: user.phone,
           role: user.role,
           points: user.points,
@@ -163,10 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
       
-      // Check if email is already in use
-      const existingUser = await storage.getUserByEmail(userData.email);
+      // Check if phone is already in use
+      const existingUser = await storage.getUserByPhone(userData.phone);
       if (existingUser) {
-        return res.status(400).json({ message: "البريد الإلكتروني مستخدم بالفعل." });
+        return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل." });
       }
       
       // Set invitedBy field and status to ACTIVE
@@ -183,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: {
           id: newUser.id,
           name: newUser.name,
-          email: newUser.email,
+          phone: newUser.phone,
           role: newUser.role,
           status: newUser.status,
           points: newUser.points,
@@ -219,7 +218,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filteredUsers = users.map(user => ({
         id: user.id,
         name: user.name,
-        email: user.email,
         phone: user.phone,
         region: user.region,
         role: user.role,
@@ -252,12 +250,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate input data
-      const { name, email, phone, region, status, points } = req.body;
+      const { name, phone, region, status, points } = req.body;
       
       // Update user data
       const updatedUser = await storage.updateUser(targetUserId, {
         name,
-        email,
         phone,
         region,
         status,
@@ -277,7 +274,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: {
           id: updatedUser.id,
           name: updatedUser.name,
-          email: updatedUser.email,
           phone: updatedUser.phone,
           role: updatedUser.role,
           status: updatedUser.status,
