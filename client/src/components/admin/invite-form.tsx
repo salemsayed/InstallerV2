@@ -50,7 +50,8 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
       phone: "",
       region: "",
       role: UserRole.INSTALLER,
-      status: UserStatus.PENDING,
+      status: UserStatus.ACTIVE,
+      points: 0,
     },
   });
 
@@ -64,7 +65,7 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
       if (data.success) {
         toast({
           title: "تمت إضافة الفني بنجاح",
-          description: "تم إرسال دعوة للفني بنجاح",
+          description: "تم إضافة الفني إلى النظام",
         });
         
         // Reset form
@@ -74,11 +75,12 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
           phone: "",
           region: "",
           role: UserRole.INSTALLER,
-          status: UserStatus.PENDING,
+          status: UserStatus.ACTIVE,
+          points: 0,
         });
         
         // Invalidate users query to refresh data
-        queryClient.invalidateQueries({ queryKey: [`/api/admin/users?userId=${adminId}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
         
         if (onSuccess) {
           onSuccess();
@@ -197,10 +199,10 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                    جارٍ الإرسال...
+                    جارٍ الإضافة...
                   </>
                 ) : (
-                  "إرسال دعوة"
+                  "إضافة فني"
                 )}
               </Button>
             </div>

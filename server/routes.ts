@@ -202,57 +202,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "البريد الإلكتروني مستخدم بالفعل." });
       }
       
-      // Set invitedBy field
+      // Set invitedBy field and status to ACTIVE
       userData.invitedBy = adminId;
+      userData.status = UserStatus.ACTIVE;
       
       // Create new user
       const newUser = await storage.createUser(userData);
       
-      // Generate a token for magic link
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days for invites
-      
-      // Store the magic link
-      await storage.createMagicLink({
-        token,
-        email: newUser.email,
-        expiresAt,
-        used: 0
-      });
-      
-      // In a production app, send invite email
-      // For development, we'll just return the token
-      
-      /*
-      await emailTransport.sendMail({
-        from: '"برنامج مكافآت بريق" <noreply@breeg-rewards.com>',
-        to: newUser.email,
-        subject: "دعوة للانضمام إلى برنامج مكافآت بريق",
-        html: `
-          <div dir="rtl" style="text-align: right; font-family: Arial, sans-serif;">
-            <h2>مرحباً ${newUser.name},</h2>
-            <p>تمت دعوتك للانضمام إلى برنامج مكافآت بريق - برنامج المكافآت الخاص بالفنيين المعتمدين.</p>
-            <p>يرجى استخدام الرابط التالي لإكمال تسجيلك:</p>
-            <p>
-              <a href="${process.env.APP_URL || "http://localhost:5000"}/auth/magic-link?token=${token}&email=${encodeURIComponent(newUser.email)}" 
-                 style="display: inline-block; background-color: #1976D2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                إكمال التسجيل
-              </a>
-            </p>
-            <p>ينتهي هذا الرابط خلال 7 أيام.</p>
-            <p>مع تحيات فريق بريق</p>
-          </div>
-        `
-      });
-      */
-      
       return res.status(201).json({
         success: true,
-        message: "تمت إضافة المستخدم وإرسال الدعوة بنجاح",
+        message: "تمت إضافة المستخدم بنجاح",
         userId: newUser.id,
-        // For development
-        inviteToken: token
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          status: newUser.status,
+          points: newUser.points,
+          level: newUser.level,
+          region: newUser.region,
+        }
       });
       
     } catch (error: any) {

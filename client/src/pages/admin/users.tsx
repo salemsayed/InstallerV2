@@ -37,7 +37,7 @@ export default function AdminUsers() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full">
           <TabsTrigger value="all-users" className="flex-1">الفنيين</TabsTrigger>
-          <TabsTrigger value="invite-user" className="flex-1">دعوة فني</TabsTrigger>
+          <TabsTrigger value="invite-user" className="flex-1">إضافة فني</TabsTrigger>
           <TabsTrigger value="add-points" className="flex-1">إضافة نقاط</TabsTrigger>
         </TabsList>
         
@@ -63,8 +63,8 @@ export default function AdminUsers() {
         <TabsContent value="invite-user" className="pt-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>دعوة فني جديد</CardTitle>
-              <CardDescription>إرسال دعوة للانضمام إلى نظام مكافآت بريق</CardDescription>
+              <CardTitle>إضافة فني جديد</CardTitle>
+              <CardDescription>إضافة فني جديد إلى نظام مكافآت بريق</CardDescription>
             </CardHeader>
             <CardContent>
               {user && (
