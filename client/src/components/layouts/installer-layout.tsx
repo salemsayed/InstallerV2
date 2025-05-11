@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import arOnlyLogo from "@assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
+import QrScanner from "@/components/installer/qr-scanner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,9 +54,12 @@ export default function InstallerLayout({ children, className }: InstallerLayout
         {children}
       </main>
       
+      {/* QR Scanner */}
+      <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+      
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/4">
+        <div className="w-1/3">
           <Link href="/installer/dashboard">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -67,12 +71,19 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </Link>
         </div>
         
-        {/* QR Scan Button placeholder - actual button is in QRScanner component */}
-        <div className="w-1/2 flex justify-center">
-          <div className="w-16 h-16"></div>
+        <div className="w-1/3">
+          <Link href="/installer/stats">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/installer/stats" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">insights</span>
+              <span className="text-xs mt-1">الإحصائيات</span>
+            </div>
+          </Link>
         </div>
         
-        <div className="w-1/4">
+        <div className="w-1/3">
           <Link href="/installer/profile">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
