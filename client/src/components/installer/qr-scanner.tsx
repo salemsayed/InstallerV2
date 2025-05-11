@@ -23,7 +23,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   let html5QrCode: Html5Qrcode | null = null;
 
@@ -148,6 +148,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       // Log success and product name
       console.log("Scanned product:", result.productName);
+      
+      // Call refreshUser to update user data directly in the auth context
+      refreshUser()
+        .then(() => console.log("User refreshed after successful scan"))
+        .catch(err => console.error("Error refreshing user after scan:", err));
       
       // Aggressively invalidate and immediately refetch all relevant queries
       queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });

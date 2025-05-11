@@ -19,6 +19,7 @@ interface AuthContextType {
   error: string | null;
   login: (userId: string, userRole: string) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -86,11 +87,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   };
 
+  const refreshUser = async (): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      const response = await apiRequest("GET", `/api/users/me?userId=${user.id}`);
+      const data = await response.json();
+      
+      if (data.user) {
+        // Update user state with fresh data from server
+        setUser(data.user);
+        // Also update localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
+        console.log("User data refreshed:", data.user);
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
     setLocation("/");
   };
+
+  // Set up auto-refresh for user data
+  useEffect(() => {
+    if (!user) return;
+    
+    // Refresh user data every 2 seconds
+    const intervalId = setInterval(() => {
+      refreshUser();
+    }, 2000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider
@@ -99,7 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         login,
-        logout
+        logout,
+        refreshUser
       }}
     >
       {children}
