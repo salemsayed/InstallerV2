@@ -13,6 +13,9 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import SMS service
   const { smsService } = await import('./sms');
+  
+  // Import manufacturing database functions
+  const { checkSerialNumber, getProductNameBySerialNumber } = await import('./manufacturing');
 
   // AUTH ROUTES
   // Request OTP for login/registration
@@ -486,6 +489,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error: any) {
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع الشارات" });
+    }
+  });
+  
+  // QR code scanning endpoint
+  app.post("/api/scan-qr", async (req: Request, res: Response) => {
+    try {
+      const { uuid, userId } = req.body;
+      
+      if (!uuid || !userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "يرجى توفير معرف المستخدم والرمز المطلوب" 
+        });
+      }
+      
+      // Check if this code has already been scanned
+      const existingCode = await storage.checkScannedCode(uuid);
+      if (existingCode) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "تم مسح هذا الرمز من قبل" 
+        });
+      }
+      
+      // Check if the code exists in the manufacturing database
+      const isValid = await checkSerialNumber(uuid);
+      if (!isValid) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "هذا المنتج غير معتمد أو غير مسجل" 
+        });
+      }
+      
+      // Get product details
+      const productName = await getProductNameBySerialNumber(uuid);
+      
+      // Save the scanned code to database
+      const scannedCode = await storage.createScannedCode({
+        uuid,
+        scannedBy: parseInt(userId.toString()),
+        productName: productName || undefined
+      });
+      
+      // Add points to the user for scanning
+      const user = await storage.getUser(parseInt(userId.toString()));
+      if (user) {
+        const updatedUser = await storage.updateUser(user.id, {
+          points: user.points + 10 // Award 10 points for scanning a valid product
+        });
+        
+        // Create a transaction record
+        await storage.createTransaction({
+          userId: user.id,
+          type: TransactionType.EARNING,
+          points: 10,
+          description: productName 
+            ? `تم تركيب منتج ${productName}`
+            : "تم تركيب منتج جديد"
+        });
+        
+        return res.status(200).json({
+          success: true,
+          message: "تم التحقق من المنتج بنجاح وتمت إضافة النقاط",
+          productName,
+          pointsAwarded: 10,
+          newPoints: updatedUser?.points || user.points + 10
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "لم يتم العثور على المستخدم"
+        });
+      }
+      
+    } catch (error: any) {
+      console.error("QR scanning error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "حدث خطأ أثناء معالجة الرمز"
+      });
+    }
+  });
+  
+  // Get scanned products for a user
+  app.get("/api/scanned-products", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(400).json({ message: "يرجى توفير معرف المستخدم" });
+      }
+      
+      // Get the transactions related to product scanning for this user
+      const transactions = await storage.getTransactionsByUserId(userId);
+      const scanTransactions = transactions.filter(t => 
+        t.type === TransactionType.EARNING && 
+        (t.description.includes("تم تركيب منتج") || t.description.includes("تركيب منتج جديد"))
+      );
+      
+      return res.status(200).json({ 
+        success: true,
+        scannedProducts: scanTransactions
+      });
+      
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "حدث خطأ أثناء استرجاع المنتجات المثبتة"
+      });
     }
   });
   
