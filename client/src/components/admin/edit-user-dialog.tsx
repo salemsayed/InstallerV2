@@ -61,7 +61,6 @@ export default function EditUserDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      email: "",
       phone: "",
       region: "",
       status: UserStatus.ACTIVE,
@@ -74,7 +73,6 @@ export default function EditUserDialog({
     if (user) {
       form.reset({
         name: user.name,
-        email: user.email || "",
         phone: user.phone || "",
         region: user.region || "",
         status: user.status as UserStatus,
@@ -151,25 +149,7 @@ export default function EditUserDialog({
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-right block">البريد الإلكتروني</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="أدخل البريد الإلكتروني" 
-                        type="email" 
-                        {...field} 
-                        dir="ltr"
-                        className="text-right"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
               
               <FormField
                 control={form.control}
