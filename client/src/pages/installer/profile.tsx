@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { calculateLevelProgress } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function InstallerProfile() {
   const { user, logout } = useAuth();
@@ -15,8 +16,9 @@ export default function InstallerProfile() {
   
   // Get badges data
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
-    queryKey: ['/api/badges'],
-    enabled: !!user,
+    queryKey: ['/api/badges', user?.id],
+    queryFn: () => user?.id ? apiRequest('GET', `/api/badges?userId=${user.id}`).then(res => res.json()) : null,
+    enabled: !!user?.id,
   });
   
   // Get level progress

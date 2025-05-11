@@ -2,8 +2,26 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const responseData = await res.text();
+    let errorMessage: string;
+    
+    try {
+      // Try to parse as JSON
+      const jsonError = JSON.parse(responseData);
+      errorMessage = jsonError.message || res.statusText;
+    } catch (e) {
+      // If not valid JSON, use text as is
+      errorMessage = responseData || res.statusText;
+    }
+    
+    // Format more user-friendly error for 401
+    if (res.status === 401) {
+      errorMessage = "غير مصرح لك بالوصول. تحقق من بياناتك أو تواصل مع المسؤول.";
+    }
+    
+    const error: any = new Error(errorMessage);
+    error.status = res.status;
+    throw error;
   }
 }
 

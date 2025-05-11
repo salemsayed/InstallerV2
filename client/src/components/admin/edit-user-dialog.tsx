@@ -29,6 +29,7 @@ import {
 import { useState, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/auth-provider";
 import { Loader2 } from "lucide-react";
 import { User, UserStatus } from "@shared/schema";
 
@@ -87,9 +88,9 @@ export default function EditUserDialog({
     setIsSubmitting(true);
     
     try {
-      // Get the admin ID from localStorage
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const adminId = currentUser?.id;
+      // Get the admin ID from the auth hook
+      const { user: authUser } = useAuth();
+      const adminId = authUser?.id;
       
       if (!adminId) {
         throw new Error("لم يتم العثور على بيانات المدير");
