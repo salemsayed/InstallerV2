@@ -556,7 +556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
       
       // Find matching product in our local database to determine reward points
-      let pointsAwarded = 10; // Default points if no match found
+      let pointsAwarded = 0;
       let localProduct = null;
       
       if (productName) {
@@ -569,8 +569,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pointsAwarded = localProduct.rewardPoints;
           console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
         } else {
-          console.log(`[DEBUG] No active local product match found for: "${productName}". Using default points.`);
+          console.log(`[DEBUG] No active local product match found for: "${productName}". Returning error.`);
+          return res.status(400).json({ 
+            success: false, 
+            message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
+            error_code: "INELIGIBLE_PRODUCT",
+            details: { 
+              productName,
+              reason: localProduct ? "Product is inactive" : "Product not found in rewards database"
+            }
+          });
         }
+      } else {
+        console.log(`[DEBUG] No product name found. Returning error.`);
+        return res.status(400).json({ 
+          success: false, 
+          message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
+          error_code: "INELIGIBLE_PRODUCT",
+          details: { reason: "No product name found" }
+        });
       }
       
       // Save the scanned code to database with product reference if available
