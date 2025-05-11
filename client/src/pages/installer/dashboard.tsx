@@ -14,17 +14,38 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions
+  // Fetch user's transactions with aggressive refresh settings
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id,
+    staleTime: 0, // Always consider data stale
+    refetchInterval: 3000, // Refetch every 3 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
   });
 
-  // Fetch user's badges (preventing duplicates with a stable query key)
+  // Fetch user's badges with aggressive refresh settings
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
     queryKey: ['/api/badges', user?.id],
     queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
+    staleTime: 0, // Always consider data stale
+    refetchInterval: 3000, // Refetch every 3 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
+  });
+  
+  // Refresh user data from auth context regularly
+  useQuery({
+    queryKey: ['/api/users/me'],
+    enabled: !!user?.id,
+    staleTime: 0, // Always consider data stale
+    refetchInterval: 3000, // Refetch every 3 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
   });
 
   if (!user) {
@@ -72,26 +93,8 @@ export default function InstallerDashboard() {
         )}
       </section>
       
-      {/* QR Scanner */}
-      <QrScanner 
-        onScanSuccess={(productName) => {
-          // Refresh data after successful scan
-          queryClient.invalidateQueries({
-            queryKey: [`/api/transactions?userId=${user?.id}`]
-          });
-          
-          // Also refresh user data to update points
-          queryClient.invalidateQueries({
-            queryKey: ["/api/users/me"]
-          });
-          
-          toast({
-            title: "Product Registered Successfully",
-            description: `10 points added to your balance for installing ${productName || "a new product"}`,
-            variant: "default",
-          });
-        }} 
-      />
+      {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}
+      <QrScanner />
     </InstallerLayout>
   );
 }

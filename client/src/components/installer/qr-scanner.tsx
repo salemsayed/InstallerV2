@@ -146,18 +146,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsValidating(false);
       setIsOpen(false);
       
-      // Invalidate queries to refresh the data across the app
-      // Use more generalized pattern for transactions to ensure it matches the query key format
-      queryClient.invalidateQueries(); // Invalidate all queries to ensure everything refreshes
+      // Log success and product name
+      console.log("Scanned product:", result.productName);
       
-      // Log invalidation
-      console.log("Invalidating all queries after successful scan");
-      
+      // Show success toast
       toast({
         title: "Product Verified Successfully ✓",
         description: `Product: ${result.productName || "Unknown"}\nPoints awarded: ${result.pointsAwarded || 10}`,
         variant: "default",
       });
+      
+      // Force a refresh of the entire page to ensure data is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Brief delay to ensure API operations are complete
       
       if (onScanSuccess) {
         onScanSuccess(result.productName);
