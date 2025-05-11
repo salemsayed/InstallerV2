@@ -82,7 +82,7 @@ export default function AdminDashboard() {
             <Skeleton className="h-96 rounded-xl mb-6" />
           ) : (
             <UsersTable
-              users={usersData?.users?.slice(0, 5) || []}
+              users={usersData?.users ? usersData.users.slice(0, 5) : []}
               onViewAll={() => setActiveTab("users")}
               onUserAction={handleUserAction}
             />
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
             <Skeleton className="h-96 rounded-xl" />
           ) : (
             <UsersTable
-              users={usersData?.users || []}
+              users={usersData?.users ? usersData.users : []}
               onUserAction={handleUserAction}
             />
           )}
