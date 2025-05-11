@@ -63,8 +63,18 @@ export default function AdminDashboard() {
     .reduce((sum: number, t: any) => sum + t.amount, 0);
 
   const handleUserAction = (action: string, userId: number) => {
+    // Find the user in the users array
+    const targetUser = usersData?.users?.find((u: User) => u.id === userId);
+    
     setSelectedUserId(userId);
-    if (action === "points") {
+    
+    if (action === "edit" && targetUser) {
+      setSelectedUser(targetUser);
+      setIsEditDialogOpen(true);
+    } else if (action === "delete" && targetUser) {
+      setSelectedUser(targetUser);
+      setIsDeleteDialogOpen(true);
+    } else if (action === "points") {
       setActiveTab("points");
     }
   };
@@ -160,6 +170,29 @@ export default function AdminDashboard() {
           )}
         </>
       )}
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={selectedUser}
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSuccess={() => {
+          setIsEditDialogOpen(false);
+          setSelectedUser(null);
+        }}
+      />
+      
+      {/* Delete User Dialog */}
+      <DeleteConfirmationDialog
+        userId={selectedUser?.id || null}
+        userName={selectedUser?.name || ""}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onSuccess={() => {
+          setIsDeleteDialogOpen(false);
+          setSelectedUser(null);
+        }}
+      />
     </AdminLayout>
   );
 }
