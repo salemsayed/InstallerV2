@@ -126,16 +126,15 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, badgeIds: true, createdAt: true })
   .extend({
-    email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
     name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
-    phone: z.string().optional(),
+    phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
     region: z.string().optional(),
   });
 
 export const insertMagicLinkSchema = createInsertSchema(magicLinks)
   .omit({ id: true })
   .extend({
-    email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
+    phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
   });
 
 export const insertTransactionSchema = createInsertSchema(transactions)
