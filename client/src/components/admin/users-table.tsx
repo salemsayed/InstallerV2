@@ -110,6 +110,15 @@ export default function UsersTable({ users, onViewAll, onUserAction }: UsersTabl
                               <span className="material-icons ml-2 text-sm">add_circle</span>
                               <span>إضافة نقاط</span>
                             </DropdownMenuItem>
+                            {user.role !== "admin" && (
+                              <DropdownMenuItem 
+                                onClick={() => onUserAction("delete", user.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <span className="material-icons ml-2 text-sm">delete</span>
+                                <span>حذف</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}

@@ -4,14 +4,20 @@ import AdminLayout from "@/components/layouts/admin-layout";
 import UsersTable from "@/components/admin/users-table";
 import InviteForm from "@/components/admin/invite-form";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
+import EditUserDialog from "@/components/admin/edit-user-dialog";
+import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { useAuth } from "@/hooks/auth-provider";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User } from "@shared/schema";
 
 export default function AdminUsers() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("all-users");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -20,8 +26,30 @@ export default function AdminUsers() {
   });
 
   const handleUserAction = (action: string, userId: number) => {
-    console.log(`Action: ${action}, User ID: ${userId}`);
-    // Implement user actions here
+    if (!usersData?.users) return;
+    
+    const targetUser = usersData.users.find(u => u.id === userId);
+    if (!targetUser) return;
+    
+    setSelectedUser(targetUser);
+    
+    switch (action) {
+      case "edit":
+        setEditDialogOpen(true);
+        break;
+      case "delete":
+        setDeleteDialogOpen(true);
+        break;
+      case "points":
+        setActiveTab("add-points");
+        break;
+      case "view":
+        // Implement user view action if needed
+        console.log("View user details:", targetUser);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleTabChange = (value: string) => {
@@ -52,7 +80,7 @@ export default function AdminUsers() {
                 <div className="text-center p-6">جاري التحميل...</div>
               ) : (
                 <UsersTable
-                  users={usersData?.users || []}
+                  users={usersData?.users ? usersData.users : []}
                   onUserAction={handleUserAction}
                 />
               )}
@@ -87,7 +115,7 @@ export default function AdminUsers() {
               {user && (
                 <PointsAllocationForm
                   adminId={user.id}
-                  users={usersData?.users?.filter(u => u.role === "installer") || []}
+                  users={usersData?.users ? usersData.users.filter(u => u.role === "installer") : []}
                   onSuccess={handleSuccess}
                 />
               )}
@@ -95,6 +123,23 @@ export default function AdminUsers() {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={selectedUser}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={handleSuccess}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        userId={selectedUser?.id || null}
+        userName={selectedUser?.name || ""}
+        onSuccess={handleSuccess}
+      />
     </AdminLayout>
   );
 }
