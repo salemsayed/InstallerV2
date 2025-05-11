@@ -22,7 +22,7 @@ export default function AdminUsers() {
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
-    queryKey: ['/api/admin/users'],
+    queryKey: [`/api/admin/users?userId=${user?.id}`],
     enabled: !!user && user.role === "admin",
   });
 
