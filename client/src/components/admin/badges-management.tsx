@@ -5,13 +5,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +17,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -231,8 +227,8 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       description: badge.description || "",
       icon: badge.icon,
       requiredPoints: badge.requiredPoints || 0,
-      minLevel: badge.minLevel || 1,
       minInstallations: badge.minInstallations || 0,
+      active: !!badge.active,
     });
     setIsDialogOpen(true);
   };
@@ -245,8 +241,8 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
       description: "",
       icon: "emoji_events",
       requiredPoints: 0,
-      minLevel: 1,
       minInstallations: 0,
+      active: true,
     });
     setIsDialogOpen(true);
   };
@@ -261,127 +257,79 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
   return (
     <Card className="w-full shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl">إدارة الشارات والمستويات</CardTitle>
+        <CardTitle className="text-xl">إدارة الشارات</CardTitle>
         <CardDescription>
-          قم بإدارة الشارات والمستويات التي يمكن للمستخدمين الحصول عليها عند تحقيق أهداف معينة
+          قم بإدارة الشارات التي يمكن للمستخدمين الحصول عليها عند تحقيق أهداف معينة
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as "badges" | "levels")}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="badges">الشارات</TabsTrigger>
-            <TabsTrigger value="levels">المستويات</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="badges">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">قائمة الشارات</h3>
-              <Button onClick={handleAddBadge} variant="outline" className="flex items-center gap-1">
-                <Plus className="h-4 w-4" />
-                إضافة شارة
-              </Button>
-            </div>
-            
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>الاسم</TableHead>
-                    <TableHead>الوصف</TableHead>
-                    <TableHead>متطلبات الحصول</TableHead>
-                    <TableHead className="text-right w-24">إجراءات</TableHead>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">قائمة الشارات</h3>
+          <Button onClick={handleAddBadge} variant="outline" className="flex items-center gap-1">
+            <Plus className="h-4 w-4" />
+            إضافة شارة
+          </Button>
+        </div>
+        
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>الاسم</TableHead>
+                <TableHead>الوصف</TableHead>
+                <TableHead>متطلبات الحصول</TableHead>
+                <TableHead className="text-right w-24">إجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {badges.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                    لا توجد شارات بعد. قم بإضافة شارات جديدة.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                badges.map((badge) => (
+                  <TableRow key={badge.id}>
+                    <TableCell>
+                      <span className="material-icons text-xl">{badge.icon}</span>
+                    </TableCell>
+                    <TableCell className="font-medium">{badge.name}</TableCell>
+                    <TableCell>{badge.description}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col text-xs text-muted-foreground">
+                        {badge.requiredPoints ? <span>النقاط: {badge.requiredPoints}</span> : null}
+                        {badge.minInstallations ? <span>التركيبات: {badge.minInstallations}</span> : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditBadge(badge)}
+                          title="تعديل"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteBadge(badge.id)}
+                          title="حذف"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {badges.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                        لا توجد شارات بعد. قم بإضافة شارات جديدة.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    badges.map((badge) => (
-                      <TableRow key={badge.id}>
-                        <TableCell>
-                          <span className="material-icons text-xl">{badge.icon}</span>
-                        </TableCell>
-                        <TableCell className="font-medium">{badge.name}</TableCell>
-                        <TableCell>{badge.description}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col text-xs text-muted-foreground">
-                            {badge.requiredPoints ? <span>النقاط: {badge.requiredPoints}</span> : null}
-                            {badge.minLevel ? <span>المستوى: {badge.minLevel}</span> : null}
-                            {badge.minInstallations ? <span>التركيبات: {badge.minInstallations}</span> : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditBadge(badge)}
-                              title="تعديل"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteBadge(badge.id)}
-                              title="حذف"
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="levels">
-            <div className="space-y-4">
-              <div className="text-center p-8 border rounded-lg bg-muted/20">
-                <h3 className="text-lg font-medium mb-2">نظام المستويات</h3>
-                <p className="text-muted-foreground mb-4">
-                  يعتمد نظام المستويات على عدد النقاط التي يحصل عليها المستخدم. كلما زادت النقاط، ارتفع المستوى.
-                </p>
-                
-                <div className="max-w-md mx-auto grid grid-cols-2 gap-4 text-right">
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 1</span>
-                    <p className="text-sm text-muted-foreground">0 نقطة</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 2</span>
-                    <p className="text-sm text-muted-foreground">100 نقطة</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 3</span>
-                    <p className="text-sm text-muted-foreground">300 نقطة</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 4</span>
-                    <p className="text-sm text-muted-foreground">600 نقطة</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 5</span>
-                    <p className="text-sm text-muted-foreground">1000 نقطة</p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <span className="text-lg font-bold">المستوى 6</span>
-                    <p className="text-sm text-muted-foreground">1500 نقطة</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
 
       {/* Badge Edit/Create Dialog */}
@@ -447,12 +395,15 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
                         </div>
                       ))}
                     </div>
+                    <FormDescription>
+                      انقر على الأيقونة المطلوبة للاختيار
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="requiredPoints"
@@ -462,20 +413,9 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
                       <FormControl>
                         <Input type="number" min="0" {...field} />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="minLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>المستوى الأدنى</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" {...field} />
-                      </FormControl>
+                      <FormDescription>
+                        عدد النقاط المطلوبة للحصول على الشارة
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -486,10 +426,13 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
                   name="minInstallations"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>عدد التركيبات</FormLabel>
+                      <FormLabel>عدد التركيبات المطلوبة</FormLabel>
                       <FormControl>
                         <Input type="number" min="0" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        عدد التركيبات المطلوبة للحصول على الشارة
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -497,25 +440,21 @@ export default function BadgesManagement({ badges, onRefresh }: BadgesManagement
               </div>
               
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   onClick={() => setIsDialogOpen(false)}
                 >
                   إلغاء
                 </Button>
-                <Button
+                <Button 
                   type="submit"
                   disabled={createBadgeMutation.isPending || updateBadgeMutation.isPending}
                 >
-                  {createBadgeMutation.isPending || updateBadgeMutation.isPending ? (
-                    <>
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      جارٍ الحفظ...
-                    </>
-                  ) : (
-                    "حفظ"
+                  {(createBadgeMutation.isPending || updateBadgeMutation.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
+                  {editingBadge ? "تحديث الشارة" : "إضافة شارة"}
                 </Button>
               </DialogFooter>
             </form>

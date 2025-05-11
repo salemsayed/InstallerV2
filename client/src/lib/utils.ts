@@ -99,23 +99,16 @@ export function isEmailValid(email: string): boolean {
 export function checkBadgeQualification(
   userStats: { 
     points: number; 
-    level: number; 
     installationCount?: number; 
   },
   badge: {
     id: number;
     requiredPoints?: number | null;
-    minLevel?: number | null;
     minInstallations?: number | null;
   }
 ): boolean {
   // Check points requirement
   if (badge.requiredPoints && userStats.points < badge.requiredPoints) {
-    return false;
-  }
-  
-  // Check level requirement
-  if (badge.minLevel && userStats.level < badge.minLevel) {
     return false;
   }
   

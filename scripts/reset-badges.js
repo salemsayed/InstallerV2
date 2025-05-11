@@ -21,15 +21,18 @@ async function resetBadges() {
       // Create new badges with proper requirements
       console.log('Creating new badges...');
       await client.query(`
-        INSERT INTO badges (name, icon, description, required_points, min_level, min_installations, active, created_at)
+        INSERT INTO badges (name, icon, description, required_points, min_installations, active, created_at)
         VALUES 
-          ('المبتدئ', 'emoji_events', 'أول خطوة في رحلتك مع بريق', 0, 1, 0, 1, NOW()),
-          ('مركب نشط', 'handyman', 'أتممت 5 عمليات تركيب بنجاح', 0, 1, 5, 1, NOW()),
-          ('محترف التركيب', 'build', 'أتممت 20 عملية تركيب بنجاح', 0, 2, 20, 1, NOW()),
-          ('خبير التركيب', 'psychology', 'أتممت 50 عملية تركيب بنجاح', 0, 3, 50, 1, NOW()),
-          ('نجم بريق', 'stars', 'حصلت على 1000 نقطة', 1000, 3, 0, 1, NOW()),
-          ('فني ذهبي', 'workspace_premium', 'وصلت للمستوى الرابع', 0, 4, 0, 1, NOW()),
-          ('فني معتمد', 'verified', 'فني معتمد من بريق', 2000, 5, 50, 1, NOW())
+          ('المبتدئ', 'emoji_events', 'أول خطوة في رحلتك مع بريق', 0, 0, 1, NOW()),
+          ('مركب نشط', 'handyman', 'أتممت 5 عمليات تركيب بنجاح', 0, 5, 1, NOW()),
+          ('محترف التركيب', 'build', 'أتممت 20 عملية تركيب بنجاح', 100, 20, 1, NOW()),
+          ('خبير التركيب', 'psychology', 'أتممت 50 عملية تركيب بنجاح', 500, 50, 1, NOW()),
+          ('نجم بريق', 'stars', 'حصلت على 1000 نقطة', 1000, 0, 1, NOW()),
+          ('فني ذهبي', 'auto_awesome', 'أتممت 30 عملية تركيب وجمعت 750 نقطة', 750, 30, 1, NOW()),
+          ('فني معتمد', 'verified', 'فني معتمد من بريق', 2000, 50, 1, NOW()),
+          ('محترف الإضاءة', 'light', 'خبير في تركيب منتجات الإضاءة', 300, 15, 1, NOW()),
+          ('فني الطاقة', 'electric_bolt', 'متخصص في منتجات كفاءة الطاقة', 500, 25, 1, NOW()),
+          ('فني النخبة', 'workspace_premium', 'من أفضل فنيي بريق أداءً', 1500, 40, 1, NOW())
       `);
       
       // Commit the transaction
