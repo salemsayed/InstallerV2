@@ -57,7 +57,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
         <Link href="/installer/dashboard">
           <a className={cn(
-            "flex flex-col items-center w-1/4",
+            "flex flex-col items-center w-1/3",
             location === "/installer/dashboard" ? "text-primary" : "text-neutral-500"
           )}>
             <span className="material-icons">home</span>
@@ -67,7 +67,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
         
         <Link href="/installer/stats">
           <a className={cn(
-            "flex flex-col items-center w-1/4",
+            "flex flex-col items-center w-1/3",
             location === "/installer/stats" ? "text-primary" : "text-neutral-500"
           )}>
             <span className="material-icons">insights</span>
@@ -75,23 +75,13 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </a>
         </Link>
         
-        <Link href="/installer/rewards">
+        <Link href="/installer/profile">
           <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/installer/rewards" ? "text-primary" : "text-neutral-500"
+            "flex flex-col items-center w-1/3",
+            location === "/installer/profile" ? "text-primary" : "text-neutral-500"
           )}>
-            <span className="material-icons">redeem</span>
-            <span className="text-xs mt-1">المكافآت</span>
-          </a>
-        </Link>
-        
-        <Link href="/installer/notifications">
-          <a className={cn(
-            "flex flex-col items-center w-1/4",
-            location === "/installer/notifications" ? "text-primary" : "text-neutral-500"
-          )}>
-            <span className="material-icons">notifications</span>
-            <span className="text-xs mt-1">الإشعارات</span>
+            <span className="material-icons">person</span>
+            <span className="text-xs mt-1">الملف الشخصي</span>
           </a>
         </Link>
       </nav>

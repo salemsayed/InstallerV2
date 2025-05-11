@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import {
   UserRole, UserStatus, TransactionType,
   loginSchema, verifyTokenSchema, insertUserSchema,
-  pointsAllocationSchema, redeemRewardSchema
+  pointsAllocationSchema
 } from "@shared/schema";
 import { createTransport } from "nodemailer";
 
@@ -371,81 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/rewards", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
-    
-    try {
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
-      
-      // Get active rewards
-      const rewards = await storage.listRewards(true);
-      
-      return res.status(200).json({ rewards });
-      
-    } catch (error: any) {
-      return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المكافآت" });
-    }
-  });
-  
-  app.post("/api/rewards/redeem", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
-    
-    try {
-      // Validate request
-      const { rewardId } = redeemRewardSchema.parse({ ...req.body, userId });
-      
-      // Check if user exists
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
-      
-      // Check if reward exists
-      const reward = await storage.getReward(rewardId);
-      if (!reward) {
-        return res.status(404).json({ message: "المكافأة غير موجودة." });
-      }
-      
-      // Check if user has enough points
-      if (user.points < reward.points) {
-        return res.status(400).json({ message: "نقاط غير كافية للاستبدال." });
-      }
-      
-      // Create a transaction for redemption
-      const transaction = await storage.createTransaction({
-        userId,
-        type: TransactionType.REDEMPTION,
-        amount: reward.points,
-        description: `استبدال مكافأة: ${reward.name}`,
-        metadata: { rewardId }
-      });
-      
-      // Get updated user with new points
-      const updatedUser = await storage.getUser(userId);
-      
-      return res.status(200).json({
-        success: true,
-        message: "تم استبدال المكافأة بنجاح",
-        transaction,
-        userPoints: updatedUser?.points
-      });
-      
-    } catch (error: any) {
-      return res.status(400).json({ message: error.message || "حدث خطأ أثناء استبدال المكافأة" });
-    }
-  });
+
   
   app.get("/api/badges", async (req: Request, res: Response) => {
     const userId = parseInt(req.query.userId as string);
