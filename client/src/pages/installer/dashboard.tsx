@@ -25,9 +25,10 @@ export default function InstallerDashboard() {
     enabled: !!user?.id,
   });
 
-  // Fetch user's badges
+  // Fetch user's badges (preventing duplicates with a stable query key)
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
-    queryKey: [`/api/badges?userId=${user?.id}`],
+    queryKey: ['/api/badges', user?.id],
+    queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
   });
 
