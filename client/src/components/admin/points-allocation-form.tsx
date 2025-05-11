@@ -21,23 +21,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/auth-provider";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import { pointsAllocationSchema, ActivityType } from "@shared/schema";
 import { User } from "@shared/schema";
 
 interface PointsAllocationFormProps {
-  adminId: number;
   users: User[];
   onSuccess?: () => void;
 }
 
 export default function PointsAllocationForm({ 
-  adminId, 
   users,
   onSuccess 
 }: PointsAllocationFormProps) {
   const { toast } = useToast();
+  const { user: authUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<{
@@ -64,6 +64,13 @@ export default function PointsAllocationForm({
     setIsSubmitting(true);
     
     try {
+      // Get admin ID from auth context
+      const adminId = authUser?.id;
+      
+      if (!adminId) {
+        throw new Error("لم يتم العثور على بيانات المدير");
+      }
+      
       const res = await apiRequest("POST", `/api/admin/points?userId=${adminId}`, {
         userId: parseInt(values.userId),
         activityType: values.activityType,

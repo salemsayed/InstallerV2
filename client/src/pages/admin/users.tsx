@@ -106,12 +106,7 @@ export default function AdminUsers() {
         </TabsContent>
         
         <TabsContent value="invite-user" className="pt-6">
-          {user && (
-            <InviteForm
-              adminId={user.id}
-              onSuccess={handleSuccess}
-            />
-          )}
+          <InviteForm onSuccess={handleSuccess} />
         </TabsContent>
         
         <TabsContent value="add-points" className="pt-6">
@@ -121,14 +116,11 @@ export default function AdminUsers() {
               <CardDescription>إضافة نقاط للمستخدمين بناءً على الأنشطة المكتملة</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {user && (
-                <PointsAllocationForm
-                  adminId={user.id}
-                  users={usersData && Array.isArray(usersData.users) ? 
-                    usersData.users.filter((u: User) => u.role === "installer") : []}
-                  onSuccess={handleSuccess}
-                />
-              )}
+              <PointsAllocationForm
+                users={usersData && Array.isArray(usersData.users) ? 
+                  usersData.users.filter((u: User) => u.role === "installer") : []}
+                onSuccess={handleSuccess}
+              />
             </CardContent>
           </Card>
         </TabsContent>

@@ -62,6 +62,13 @@ export default function InviteForm({ onSuccess }: InviteFormProps) {
     setIsSubmitting(true);
     
     try {
+      // Get admin ID from auth context
+      const adminId = authUser?.id;
+      
+      if (!adminId) {
+        throw new Error("لم يتم العثور على بيانات المدير");
+      }
+      
       const res = await apiRequest("POST", `/api/admin/users?userId=${adminId}`, values);
       const data = await res.json();
       

@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           )}
 
           {/* User Invite Form */}
-          <InviteForm adminId={user.id} onSuccess={() => {}} />
+          <InviteForm onSuccess={() => {}} />
 
           {/* Recent Users Table */}
           {usersLoading ? (
