@@ -36,9 +36,17 @@ export interface IStorage {
   getBadge(id: number): Promise<Badge | undefined>;
   listBadges(active?: boolean): Promise<Badge[]>;
   
+  // Local Products operations
+  createLocalProduct(product: InsertLocalProduct): Promise<LocalProduct>;
+  getLocalProduct(id: number): Promise<LocalProduct | undefined>;
+  getLocalProductByName(name: string): Promise<LocalProduct | undefined>;
+  updateLocalProduct(id: number, data: Partial<LocalProduct>): Promise<LocalProduct | undefined>;
+  deleteLocalProduct(id: number): Promise<boolean>;
+  listLocalProducts(active?: boolean): Promise<LocalProduct[]>;
+  
   // Scanned codes operations
   checkScannedCode(uuid: string): Promise<ScannedCode | undefined>;
-  createScannedCode(data: { uuid: string; scannedBy: number; productName?: string }): Promise<ScannedCode>;
+  createScannedCode(data: { uuid: string; scannedBy: number; productName?: string; productId?: number }): Promise<ScannedCode>;
 }
 
 import { db } from "./db";

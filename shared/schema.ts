@@ -105,6 +105,16 @@ export const badges = pgTable("badges", {
   active: integer("active").notNull().default(1),
 });
 
+// Local Products table for reward points
+export const localProducts = pgTable("local_products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  rewardPoints: integer("reward_points").notNull().default(0),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Scanned QR codes table
 export const scannedCodes = pgTable("scanned_codes", {
   id: serial("id").primaryKey(),
@@ -112,6 +122,7 @@ export const scannedCodes = pgTable("scanned_codes", {
   scannedAt: timestamp("scanned_at").defaultNow(),
   scannedBy: integer("scanned_by").references(() => users.id),
   productName: text("product_name"),
+  productId: integer("product_id").references(() => localProducts.id),
 });
 
 // Define relations
@@ -122,6 +133,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   invitees: many(users),
   transactions: many(transactions),
+  scans: many(scannedCodes, { relationName: "userScans" }),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -129,6 +141,22 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     fields: [transactions.userId],
     references: [users.id],
   }),
+}));
+
+export const scannedCodesRelations = relations(scannedCodes, ({ one }) => ({
+  user: one(users, {
+    fields: [scannedCodes.scannedBy],
+    references: [users.id],
+    relationName: "userScans",
+  }),
+  product: one(localProducts, {
+    fields: [scannedCodes.productId],
+    references: [localProducts.id],
+  }),
+}));
+
+export const localProductsRelations = relations(localProducts, ({ many }) => ({
+  scans: many(scannedCodes),
 }));
 
 // INSERT SCHEMAS
@@ -170,6 +198,13 @@ export const insertBadgeSchema = createInsertSchema(badges)
     name: z.string().min(3, { message: "يجب أن يكون الاسم 3 أحرف على الأقل" }),
   });
 
+export const insertLocalProductSchema = createInsertSchema(localProducts)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    name: z.string().min(3, { message: "يجب أن يكون اسم المنتج 3 أحرف على الأقل" }),
+    rewardPoints: z.number().min(1, { message: "يجب أن تكون النقاط أكبر من صفر" }),
+  });
+
 export const insertScannedCodeSchema = createInsertSchema(scannedCodes)
   .omit({ id: true, scannedAt: true })
   .extend({
@@ -182,6 +217,7 @@ export type InsertMagicLink = z.infer<typeof insertMagicLinkSchema>;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type InsertReward = z.infer<typeof insertRewardSchema>;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type InsertLocalProduct = z.infer<typeof insertLocalProductSchema>;
 export type InsertScannedCode = z.infer<typeof insertScannedCodeSchema>;
 
 export type User = typeof users.$inferSelect;
@@ -189,6 +225,7 @@ export type MagicLink = typeof magicLinks.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Reward = typeof rewards.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
+export type LocalProduct = typeof localProducts.$inferSelect;
 export type ScannedCode = typeof scannedCodes.$inferSelect;
 
 // AUTH SCHEMAS
