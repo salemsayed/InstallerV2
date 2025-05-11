@@ -51,6 +51,18 @@ export default function InstallerDashboard() {
   if (!user) {
     return null;
   }
+  
+  // Calculate actual points balance from transactions (same as on stats page)
+  // Filter transactions by type
+  const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
+  const redemptionTransactions = transactionsData?.transactions?.filter(t => t.type === 'redemption') || [];
+  
+  // Calculate total earnings and redemptions
+  const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
+  
+  // Calculate actual points balance (earnings minus redemptions)
+  const pointsBalance = totalEarnings - totalRedemptions;
 
   return (
     <InstallerLayout>
@@ -65,7 +77,7 @@ export default function InstallerDashboard() {
         {!user ? (
           <Skeleton className="h-36 w-full rounded-2xl" />
         ) : (
-          <PointsCard points={user.points} />
+          <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
         )}
       </section>
 
