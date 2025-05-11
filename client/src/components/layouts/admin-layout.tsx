@@ -82,13 +82,13 @@ export default function AdminLayout({
                 المستخدمين
               </TabsTrigger>
               <TabsTrigger 
-                value="rewards" 
+                value="products" 
                 className={cn(
                   "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "rewards" && "text-white/70"
+                  activeTab !== "products" && "text-white/70"
                 )}
               >
-                المكافآت
+                المنتجات
               </TabsTrigger>
               <TabsTrigger 
                 value="stats" 

@@ -6,6 +6,7 @@ import OverviewCards from "@/components/admin/overview-cards";
 import InviteForm from "@/components/admin/invite-form";
 import UsersTable from "@/components/admin/users-table";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
+import ProductsManagement from "@/components/admin/products-management";
 import { User, TransactionType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 

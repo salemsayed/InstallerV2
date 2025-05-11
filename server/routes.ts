@@ -551,39 +551,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
       
-      // Get product details
+      // Get product details from manufacturing database
       const productName = await getProductNameBySerialNumber(uuid);
+      console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
       
-      // Save the scanned code to database
+      // Find matching product in our local database to determine reward points
+      let pointsAwarded = 10; // Default points if no match found
+      let localProduct = null;
+      
+      if (productName) {
+        // Look up the product name in our local database
+        localProduct = await storage.getLocalProductByName(productName);
+        console.log(`[DEBUG] Local product match:`, localProduct);
+        
+        if (localProduct && localProduct.isActive === 1) {
+          // Use the reward points defined in our local database
+          pointsAwarded = localProduct.rewardPoints;
+          console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
+        } else {
+          console.log(`[DEBUG] No active local product match found for: "${productName}". Using default points.`);
+        }
+      }
+      
+      // Save the scanned code to database with product reference if available
       const scannedCode = await storage.createScannedCode({
         uuid,
         scannedBy: parseInt(userId.toString()),
-        productName: productName || undefined
+        productName: productName || undefined,
+        productId: localProduct ? localProduct.id : undefined
       });
       
       // Add points to the user for scanning
       const user = await storage.getUser(parseInt(userId.toString()));
       if (user) {
         const updatedUser = await storage.updateUser(user.id, {
-          points: user.points + 10 // Award 10 points for scanning a valid product
+          points: user.points + pointsAwarded
         });
         
-        // Create a transaction record
+        // Create a transaction record with product metadata
         await storage.createTransaction({
           userId: user.id,
           type: TransactionType.EARNING,
-          amount: 10,
+          amount: pointsAwarded,
           description: productName 
             ? `تم تركيب منتج ${productName}`
-            : "تم تركيب منتج جديد"
+            : "تم تركيب منتج جديد",
+          metadata: localProduct ? { productId: localProduct.id } : undefined
         });
         
         return res.status(200).json({
           success: true,
           message: "تم التحقق من المنتج بنجاح وتمت إضافة النقاط",
           productName,
-          pointsAwarded: 10,
-          newPoints: updatedUser?.points || user.points + 10
+          pointsAwarded,
+          productDetails: localProduct,
+          newPoints: updatedUser?.points || user.points + pointsAwarded
         });
       } else {
         return res.status(404).json({
