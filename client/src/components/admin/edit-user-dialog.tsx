@@ -82,14 +82,16 @@ export default function EditUserDialog({
     }
   }, [user, form]);
 
+  // Get the auth user outside the function
+  const { user: authUser } = useAuth();
+  
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
     
     setIsSubmitting(true);
     
     try {
-      // Get the admin ID from the auth hook
-      const { user: authUser } = useAuth();
+      // Check if we have admin ID
       const adminId = authUser?.id;
       
       if (!adminId) {

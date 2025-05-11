@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/auth-provider";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import { insertUserSchema, UserRole, UserStatus } from "@shared/schema";
@@ -37,12 +38,12 @@ const formSchema = insertUserSchema.extend({
 });
 
 interface InviteFormProps {
-  adminId: number;
   onSuccess?: () => void;
 }
 
-export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
+export default function InviteForm({ onSuccess }: InviteFormProps) {
   const { toast } = useToast();
+  const { user: authUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -51,8 +52,8 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
       name: "",
       phone: "",
       region: "",
-      role: UserRole.INSTALLER,
-      status: UserStatus.ACTIVE,
+      role: "installer", // String value of UserRole.INSTALLER
+      status: "active", // String value of UserStatus.ACTIVE
       points: 0,
     },
   });
@@ -75,8 +76,8 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
           name: "",
           phone: "",
           region: "",
-          role: UserRole.INSTALLER,
-          status: UserStatus.ACTIVE,
+          role: "installer",
+          status: "active",
           points: 0,
         });
         
@@ -197,8 +198,8 @@ export default function InviteForm({ adminId, onSuccess }: InviteFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={UserRole.INSTALLER}>فني (مستخدم عادي)</SelectItem>
-                        <SelectItem value={UserRole.ADMIN}>مدير النظام</SelectItem>
+                        <SelectItem value={"installer"}>فني (مستخدم عادي)</SelectItem>
+                        <SelectItem value={"admin"}>مدير النظام</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

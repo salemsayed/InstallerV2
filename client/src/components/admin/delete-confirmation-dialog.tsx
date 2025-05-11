@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/auth-provider";
 import { Loader } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
@@ -30,6 +31,7 @@ export default function DeleteConfirmationDialog({
 }: DeleteConfirmationDialogProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { user: authUser } = useAuth();
 
   const handleDelete = async () => {
     if (!userId) return;
@@ -37,9 +39,8 @@ export default function DeleteConfirmationDialog({
     setIsDeleting(true);
 
     try {
-      // Get the admin ID from localStorage
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const adminId = currentUser?.id;
+      // Get the admin ID from auth context
+      const adminId = authUser?.id;
       
       if (!adminId) {
         throw new Error("لم يتم العثور على بيانات المدير");
