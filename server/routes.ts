@@ -492,6 +492,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Admin Badge Management Routes
+  app.post("/api/admin/badges", async (req: Request, res: Response) => {
+    try {
+      const adminId = parseInt(req.query.userId as string);
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
+      
+      const { name, description, icon, requiredPoints, minLevel, minInstallations } = req.body;
+      
+      const newBadge = await storage.createBadge({
+        name,
+        description,
+        icon,
+        active: true,
+        createdAt: new Date(),
+        requiredPoints,
+        minLevel,
+        minInstallations
+      });
+      
+      return res.status(201).json({ 
+        success: true, 
+        message: "تمت إضافة الشارة بنجاح",
+        badge: newBadge 
+      });
+      
+    } catch (error: any) {
+      return res.status(400).json({ 
+        success: false,
+        message: error.message || "حدث خطأ أثناء إنشاء الشارة" 
+      });
+    }
+  });
+  
+  app.patch("/api/admin/badges/:id", async (req: Request, res: Response) => {
+    try {
+      const badgeId = parseInt(req.params.id);
+      const adminId = parseInt(req.query.userId as string);
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
+      
+      const badge = await storage.getBadge(badgeId);
+      
+      if (!badge) {
+        return res.status(404).json({ 
+          success: false,
+          message: "الشارة غير موجودة" 
+        });
+      }
+      
+      const { name, description, icon, requiredPoints, minLevel, minInstallations, active } = req.body;
+      
+      const updatedBadge = await storage.updateBadge(badgeId, {
+        name,
+        description,
+        icon,
+        requiredPoints,
+        minLevel,
+        minInstallations,
+        active
+      });
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "تم تحديث الشارة بنجاح",
+        badge: updatedBadge 
+      });
+      
+    } catch (error: any) {
+      return res.status(400).json({ 
+        success: false,
+        message: error.message || "حدث خطأ أثناء تحديث الشارة" 
+      });
+    }
+  });
+  
+  app.delete("/api/admin/badges/:id", async (req: Request, res: Response) => {
+    try {
+      const badgeId = parseInt(req.params.id);
+      const adminId = parseInt(req.query.userId as string);
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
+      
+      const badge = await storage.getBadge(badgeId);
+      
+      if (!badge) {
+        return res.status(404).json({ 
+          success: false,
+          message: "الشارة غير موجودة" 
+        });
+      }
+      
+      // First, remove this badge from all users who have it
+      const users = await storage.listUsers();
+      for (const user of users) {
+        if (user.badgeIds && Array.isArray(user.badgeIds) && user.badgeIds.includes(badgeId)) {
+          const updatedBadgeIds = user.badgeIds.filter(id => id !== badgeId);
+          await storage.updateUser(user.id, { badgeIds: updatedBadgeIds });
+        }
+      }
+      
+      // Then delete the badge
+      const success = await storage.deleteBadge(badgeId);
+      
+      if (!success) {
+        return res.status(500).json({ 
+          success: false,
+          message: "فشل في حذف الشارة" 
+        });
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "تم حذف الشارة بنجاح" 
+      });
+      
+    } catch (error: any) {
+      return res.status(400).json({ 
+        success: false,
+        message: error.message || "حدث خطأ أثناء حذف الشارة" 
+      });
+    }
+  });
+  
   // QR code scanning endpoint
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);

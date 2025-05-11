@@ -101,8 +101,11 @@ export const badges = pgTable("badges", {
   name: text("name").notNull(),
   icon: text("icon").notNull(),
   description: text("description"),
-  requirements: jsonb("requirements"),
+  requiredPoints: integer("required_points"),
+  minLevel: integer("min_level"),
+  minInstallations: integer("min_installations"),
   active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Local Products table for reward points

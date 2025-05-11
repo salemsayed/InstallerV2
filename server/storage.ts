@@ -203,6 +203,30 @@ export class DatabaseStorage implements IStorage {
     return badgesList;
   }
   
+  async updateBadge(id: number, data: Partial<Badge>): Promise<Badge | undefined> {
+    try {
+      const [badge] = await db
+        .update(badges)
+        .set(data)
+        .where(eq(badges.id, id))
+        .returning();
+      return badge;
+    } catch (error) {
+      console.error('Error updating badge:', error);
+      return undefined;
+    }
+  }
+  
+  async deleteBadge(id: number): Promise<boolean> {
+    try {
+      await db.delete(badges).where(eq(badges.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting badge:', error);
+      return false;
+    }
+  }
+  
   // Local Products operations
   async createLocalProduct(product: InsertLocalProduct): Promise<LocalProduct> {
     const [localProduct] = await db
