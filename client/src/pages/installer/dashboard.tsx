@@ -8,6 +8,7 @@ import TransactionsList from "@/components/installer/transactions-list";
 import QrScanner from "@/components/installer/qr-scanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { Transaction } from "@shared/schema";
 
 export default function InstallerDashboard() {
   const { user } = useAuth();

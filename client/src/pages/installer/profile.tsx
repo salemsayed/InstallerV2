@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Transaction, Badge as BadgeType } from "@shared/schema";
 
 export default function InstallerProfile() {
   const { user, logout } = useAuth();
@@ -19,6 +20,24 @@ export default function InstallerProfile() {
     queryFn: () => user?.id ? apiRequest('GET', `/api/badges?userId=${user.id}`).then(res => res.json()) : null,
     enabled: !!user?.id,
   });
+  
+  // Fetch user's transactions to calculate accurate points balance
+  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+    queryKey: [`/api/transactions?userId=${user?.id}`],
+    enabled: !!user?.id,
+  });
+  
+  // Calculate actual points balance from transactions (same as on stats page and dashboard)
+  // Filter transactions by type
+  const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
+  const redemptionTransactions = transactionsData?.transactions?.filter(t => t.type === 'redemption') || [];
+  
+  // Calculate total earnings and redemptions
+  const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
+  
+  // Calculate actual points balance (earnings minus redemptions)
+  const pointsBalance = totalEarnings - totalRedemptions;
   
   // Get user badges
   const userBadges = user?.badgeIds 
@@ -48,8 +67,14 @@ export default function InstallerProfile() {
           </CardHeader>
           <CardContent>
             <div className="text-center">
-              <span className="text-2xl font-bold">{user?.points}</span>
-              <span className="text-neutral-500 mr-2">نقطة مكافأة</span>
+              {transactionsLoading ? (
+                <p className="text-center py-1">جاري التحميل...</p>
+              ) : (
+                <>
+                  <span className="text-2xl font-bold">{pointsBalance}</span>
+                  <span className="text-neutral-500 mr-2">نقطة مكافأة</span>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
