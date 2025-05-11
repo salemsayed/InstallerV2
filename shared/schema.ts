@@ -136,7 +136,9 @@ export const insertUserSchema = createInsertSchema(users)
 export const insertMagicLinkSchema = createInsertSchema(magicLinks)
   .omit({ id: true })
   .extend({
-    phone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح" }),
+    phone: z.string().regex(/^(\+20|0)1[0-2,5]{1}[0-9]{8}$/, { 
+      message: "يرجى إدخال رقم هاتف مصري صالح (يبدأ بـ 01 أو +201)" 
+    }),
   });
 
 export const insertTransactionSchema = createInsertSchema(transactions)

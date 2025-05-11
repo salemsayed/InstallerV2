@@ -27,14 +27,26 @@ export class MockSmsService {
   
   // Store OTP with 5-minute expiration
   storeOtp(phoneNumber: string, otp: string): void {
+    // Format phone to international format if needed
+    let formattedPhone = phoneNumber;
+    if (phoneNumber.startsWith('0')) {
+      formattedPhone = '+2' + phoneNumber;
+    }
+    
     // 5 minutes expiration
     const expires = Date.now() + 5 * 60 * 1000;
-    this.otpStore.set(phoneNumber, { otp, expires });
+    this.otpStore.set(formattedPhone, { otp, expires });
   }
   
   // Verify OTP for phone number
   verifyOtp(phoneNumber: string, otp: string): boolean {
-    const record = this.otpStore.get(phoneNumber);
+    // Format phone to international format if needed
+    let formattedPhone = phoneNumber;
+    if (phoneNumber.startsWith('0')) {
+      formattedPhone = '+2' + phoneNumber;
+    }
+    
+    const record = this.otpStore.get(formattedPhone);
     
     if (!record) {
       return false;
@@ -77,8 +89,14 @@ export class MockSmsService {
   // Send OTP via SMS
   async sendOtp(phoneNumber: string): Promise<{ success: boolean; otp?: string }> {
     try {
+      // Format phone to international format if needed
+      let formattedPhone = phoneNumber;
+      if (phoneNumber.startsWith('0')) {
+        formattedPhone = '+2' + phoneNumber;
+      }
+      
       const otp = this.generateOtp();
-      this.storeOtp(phoneNumber, otp);
+      this.storeOtp(formattedPhone, otp);
       
       const message = `رمز التحقق الخاص بك لبرنامج مكافآت بريق هو: ${otp}`;
       const sent = await this.sendSms(phoneNumber, message);
