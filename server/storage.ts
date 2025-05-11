@@ -177,9 +177,26 @@ export class DatabaseStorage implements IStorage {
 
   // Badge operations
   async createBadge(insertBadge: InsertBadge): Promise<Badge> {
+    // Clean and validate numeric values
+    const cleanData = { ...insertBadge };
+    
+    if (cleanData.requiredPoints !== undefined) {
+      cleanData.requiredPoints = typeof cleanData.requiredPoints === 'number' && !isNaN(cleanData.requiredPoints) 
+        ? cleanData.requiredPoints : 0;
+    }
+    
+    if (cleanData.minInstallations !== undefined) {
+      cleanData.minInstallations = typeof cleanData.minInstallations === 'number' && !isNaN(cleanData.minInstallations) 
+        ? cleanData.minInstallations : 0;
+    }
+    
+    if (cleanData.active !== undefined) {
+      cleanData.active = cleanData.active === true || cleanData.active === 1 ? 1 : 0;
+    }
+    
     const [badge] = await db
       .insert(badges)
-      .values(insertBadge)
+      .values(cleanData)
       .returning();
     return badge;
   }
@@ -205,9 +222,26 @@ export class DatabaseStorage implements IStorage {
   
   async updateBadge(id: number, data: Partial<Badge>): Promise<Badge | undefined> {
     try {
+      // Convert potential NaN values to 0
+      const cleanData = { ...data };
+      
+      if (cleanData.requiredPoints !== undefined) {
+        cleanData.requiredPoints = typeof cleanData.requiredPoints === 'number' && !isNaN(cleanData.requiredPoints) 
+          ? cleanData.requiredPoints : 0;
+      }
+      
+      if (cleanData.minInstallations !== undefined) {
+        cleanData.minInstallations = typeof cleanData.minInstallations === 'number' && !isNaN(cleanData.minInstallations) 
+          ? cleanData.minInstallations : 0;
+      }
+      
+      if (cleanData.active !== undefined) {
+        cleanData.active = cleanData.active === true || cleanData.active === 1 ? 1 : 0;
+      }
+      
       const [badge] = await db
         .update(badges)
-        .set(data)
+        .set(cleanData)
         .where(eq(badges.id, id))
         .returning();
       return badge;
