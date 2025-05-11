@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { calculateLevelProgress, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import TransactionsList from "@/components/installer/transactions-list";
 
 export default function InstallerStats() {
@@ -13,9 +13,6 @@ export default function InstallerStats() {
     queryKey: ['/api/transactions'],
     enabled: !!user,
   });
-  
-  // Get level progress
-  const levelProgress = user ? calculateLevelProgress(user.points) : { level: 1, progress: 0, nextLevelPoints: 100 };
   
   // Filter transactions by type
   const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
@@ -52,20 +49,11 @@ export default function InstallerStats() {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">المستوى الحالي</CardTitle>
-            <CardDescription>المستوى {levelProgress.level}</CardDescription>
+            <CardTitle className="text-lg">رصيد النقاط</CardTitle>
+            <CardDescription>إجمالي النقاط المكتسبة</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="w-full bg-neutral-200 rounded-full h-2.5">
-              <div 
-                className="bg-primary h-2.5 rounded-full" 
-                style={{ width: `${levelProgress.progress}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between mt-1 text-xs text-neutral-500">
-              <span>{user?.points} نقطة</span>
-              <span>{levelProgress.nextLevelPoints} نقطة للمستوى التالي</span>
-            </div>
+            <p className="text-3xl font-bold text-center">{user?.points}</p>
           </CardContent>
         </Card>
         

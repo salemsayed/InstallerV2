@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { calculateLevelProgress } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -20,9 +19,6 @@ export default function InstallerProfile() {
     queryFn: () => user?.id ? apiRequest('GET', `/api/badges?userId=${user.id}`).then(res => res.json()) : null,
     enabled: !!user?.id,
   });
-  
-  // Get level progress
-  const levelProgress = user ? calculateLevelProgress(user.points) : { level: 1, progress: 0, nextLevelPoints: 100 };
   
   // Get user badges
   const userBadges = user?.badgeIds 
@@ -49,20 +45,11 @@ export default function InstallerProfile() {
             </Avatar>
             <CardTitle className="mt-2 text-xl">{user?.name}</CardTitle>
             <p className="text-neutral-500">{user?.email}</p>
-            <Badge variant="outline" className="mt-1">
-              المستوى {levelProgress.level}
-            </Badge>
           </CardHeader>
           <CardContent>
-            <div className="w-full bg-neutral-200 rounded-full h-2.5 mb-4">
-              <div 
-                className="bg-primary h-2.5 rounded-full" 
-                style={{ width: `${levelProgress.progress}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-neutral-500">{user?.points} نقطة</span>
-              <span className="text-neutral-500">{levelProgress.nextLevelPoints} نقطة للمستوى التالي</span>
+            <div className="text-center">
+              <span className="text-2xl font-bold">{user?.points}</span>
+              <span className="text-neutral-500 mr-2">نقطة مكافأة</span>
             </div>
           </CardContent>
         </Card>
