@@ -21,6 +21,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { generateInsight, generateAnalyticsSummary } = await import('./openai');
 
   // AUTH ROUTES
+  // Logout endpoint
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    // Clear any session data
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Error destroying session:", err);
+          return res.status(500).json({ success: false, message: "خطأ في تسجيل الخروج" });
+        }
+        res.status(200).json({ success: true, message: "تم تسجيل الخروج بنجاح" });
+      });
+    } else {
+      res.status(200).json({ success: true, message: "تم تسجيل الخروج بنجاح" });
+    }
+  });
+
   // Request OTP for login/registration
   app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
     try {
