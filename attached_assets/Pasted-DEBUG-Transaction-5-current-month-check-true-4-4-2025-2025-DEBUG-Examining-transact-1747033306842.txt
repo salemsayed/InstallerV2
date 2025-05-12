@@ -1,0 +1,21 @@
+DEBUG: Transaction 5 current month check: true (4 === 4 && 2025 === 2025)
+DEBUG: Examining transaction: id=4, type=earning, date=2025-05-11T15:57:21.985Z
+DEBUG: Transaction 4 date parsed as: 2025-05-11T15:57:21.985Z Month: 4, Year: 2025
+DEBUG: Transaction 4 current month check: true (4 === 4 && 2025 === 2025)
+DEBUG: Examining transaction: id=3, type=earning, date=2025-05-11T15:53:06.642Z
+DEBUG: Transaction 3 date parsed as: 2025-05-11T15:53:06.642Z Month: 4, Year: 2025
+DEBUG: Transaction 3 current month check: true (4 === 4 && 2025 === 2025)
+DEBUG: Current month/year: 4 2025
+DEBUG: Filtered installation transactions: 6
+DEBUG: Installation transactions: [{"id":11,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T20:36:07.407Z"},{"id":10,"userId":14,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T18:15:53.165Z"},{"id":6,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T16:09:51.429Z"},{"id":5,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T16:07:06.763Z"},{"id":4,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T15:57:21.985Z"},{"id":3,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-11T15:53:06.642Z"}]
+regionDistribution is not defined
+at AnalyticsDashboard (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/src/components/admin/analytics-dashboard.tsx?t=1747033232784:204:36)
+at renderWithHooks (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:11548:26)
+at mountIndeterminateComponent (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:14926:21)
+at beginWork (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:15914:22)
+at HTMLUnknownElement.callCallback2 (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:3674:22)
+at Object.invokeGuardedCallbackDev (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:3699:24)
+at invokeGuardedCallback (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:3733:39)
+at beginWork$1 (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:19765:15)
+at performUnitOfWork (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=22c66b40:19198:20)
+at workLoopSync (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYK

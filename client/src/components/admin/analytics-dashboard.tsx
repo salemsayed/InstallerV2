@@ -152,7 +152,7 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
   }, [dateRange, filteredTransactions]);
   
   // Generate region data
-  const regionData = usersData?.users
+  const regionDistribution = usersData?.users
     ?.filter((u: any) => u.role === UserRole.INSTALLER && u.region)
     .reduce((acc: any, user: any) => {
       const region = user.region;
@@ -161,9 +161,9 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
       }
       acc[region].count += 1;
       return acc;
-    }, {});
+    }, {}) || {};
   
-  const regionChartData = regionData ? Object.values(regionData) : [];
+  const regionChartData = Object.values(regionDistribution);
   
   // Generate product breakdown data
   const productData = installationTransactions.reduce((acc: any, t: any) => {
