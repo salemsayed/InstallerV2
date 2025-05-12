@@ -25,45 +25,91 @@ interface ScanHistoryItem {
   message?: string;
 }
 
-// QR code cooldown tracker to prevent scanning the same code repeatedly
+// Advanced QR code tracker with both temporary cooldown and permanent tracking
 class QrCodeTracker {
-  private qrCodes: Map<string, number> = new Map();
+  // Temporary cooldown for UI feedback
+  private cooldownCodes: Map<string, number> = new Map();
+  // Permanent tracking of processed codes
+  private processedCodes: Set<string> = new Set();
   private readonly cooldownPeriod: number; // milliseconds
   
   constructor(cooldownPeriod: number = 5000) { // 5 seconds default cooldown
     this.cooldownPeriod = cooldownPeriod;
+    
+    // Try to restore processed codes from sessionStorage
+    try {
+      const saved = sessionStorage.getItem('processedQrCodes');
+      if (saved) {
+        this.processedCodes = new Set(JSON.parse(saved));
+        console.log(`Restored ${this.processedCodes.size} previously processed QR codes`);
+      }
+    } catch (e) {
+      console.error("Failed to restore processed QR codes:", e);
+    }
   }
   
+  // Check if code can be processed (not in cooldown and not processed before)
   canProcessCode(qrCode: string): boolean {
     const now = Date.now();
-    const lastScanTime = this.qrCodes.get(qrCode);
+    const lastScanTime = this.cooldownCodes.get(qrCode);
     
+    // Check cooldown first
     if (lastScanTime && (now - lastScanTime) < this.cooldownPeriod) {
       // Code is still in cooldown period
       return false;
     }
     
-    // Record this scan
-    this.qrCodes.set(qrCode, now);
+    // Record this scan timing for cooldown
+    this.cooldownCodes.set(qrCode, now);
     
-    // Cleanup old codes (optional)
+    // Cleanup expired cooldown entries
     this.cleanup(now);
     
-    return true;
+    // Check if code has been processed before
+    return !this.processedCodes.has(qrCode);
+  }
+  
+  // Mark a code as fully processed
+  markProcessed(qrCode: string): void {
+    // Add to permanent processed set
+    this.processedCodes.add(qrCode);
+    
+    // Save to sessionStorage for persistence
+    try {
+      sessionStorage.setItem('processedQrCodes', JSON.stringify([...this.processedCodes]));
+    } catch (e) {
+      console.error("Failed to save processed QR codes:", e);
+    }
+  }
+  
+  // Check if a code is already processed (without affecting cooldown)
+  isProcessed(qrCode: string): boolean {
+    return this.processedCodes.has(qrCode);
   }
   
   private cleanup(now: number) {
     // Remove codes that have expired their cooldown period
-    // Convert to array first to avoid TypeScript downlevelIteration issues
-    Array.from(this.qrCodes.entries()).forEach(([code, time]) => {
+    Array.from(this.cooldownCodes.entries()).forEach(([code, time]) => {
       if ((now - time) > this.cooldownPeriod) {
-        this.qrCodes.delete(code);
+        this.cooldownCodes.delete(code);
       }
     });
   }
   
-  reset() {
-    this.qrCodes.clear();
+  // Reset temporary cooldown tracking but keep processed codes
+  resetCooldown() {
+    this.cooldownCodes.clear();
+  }
+  
+  // Full reset (for testing)
+  fullReset() {
+    this.cooldownCodes.clear();
+    this.processedCodes.clear();
+    try {
+      sessionStorage.removeItem('processedQrCodes');
+    } catch (e) {
+      console.error("Failed to clear processed QR codes:", e);
+    }
   }
 }
 
@@ -198,7 +244,30 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     // Always set the last scanned code
     setLastScannedCode(decodedText);
     
-    // Check if this QR code can be processed (not in cooldown)
+    // First check if it's already been fully processed (validated and saved)
+    if (qrTrackerRef.current.isProcessed(decodedText)) {
+      console.log("QR code already processed:", decodedText);
+      // Show visual feedback for already processed code
+      setCooldownActive(true);
+      
+      // Add to scan history for already processed codes
+      addToScanHistory({
+        productName: "Already Processed",
+        timestamp: new Date(),
+        points: 0,
+        status: 'error',
+        message: "تم مسح هذا الكود مسبقاً"
+      });
+      
+      // Reset cooldown indicator after a short time
+      setTimeout(() => {
+        setCooldownActive(false);
+      }, 1000);
+      
+      return;
+    }
+    
+    // Then check if it's in cooldown period
     if (!qrTrackerRef.current.canProcessCode(decodedText)) {
       console.log("QR code in cooldown period, ignoring:", decodedText);
       // Show visual feedback that code is in cooldown
@@ -207,7 +276,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Reset cooldown indicator after a short time
       setTimeout(() => {
         setCooldownActive(false);
-      }, 1000); // Show cooldown indicator for 1 second
+      }, 1000);
       
       return;
     }
@@ -339,6 +408,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Update points total for this session
       const pointsAwarded = result.pointsAwarded || 0;
       setTotalPointsInSession(prev => prev + pointsAwarded);
+      
+      // Mark this QR code as permanently processed
+      // This will prevent it from being scanned again in this session
+      qrTrackerRef.current.markProcessed(url);
+      console.log(`Marked QR code as processed: ${url}`);
       
       // If not in batch mode, close the dialog
       if (!batchMode) {
