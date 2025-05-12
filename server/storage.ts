@@ -139,13 +139,19 @@ export class DatabaseStorage implements IStorage {
     return transaction;
   }
 
-  async getTransactionsByUserId(userId: number, limit = 10): Promise<Transaction[]> {
-    const result = await db
+  async getTransactionsByUserId(userId: number, limit = 1000): Promise<Transaction[]> {
+    const query = db
       .select()
       .from(transactions)
       .where(eq(transactions.userId, userId))
-      .orderBy(desc(transactions.createdAt))
-      .limit(limit);
+      .orderBy(desc(transactions.createdAt));
+      
+    // Only apply limit if it's a positive number
+    if (limit > 0) {
+      query.limit(limit);
+    }
+    
+    const result = await query;
     return result;
   }
   

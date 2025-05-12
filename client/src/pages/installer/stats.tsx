@@ -8,9 +8,9 @@ import TransactionsList from "@/components/installer/transactions-list";
 export default function InstallerStats() {
   const { user } = useAuth();
   
-  // Fetch transactions
+  // Fetch transactions with a higher limit
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+    queryKey: [`/api/transactions?userId=${user?.id}&limit=1000`],
     enabled: !!user?.id,
   });
   

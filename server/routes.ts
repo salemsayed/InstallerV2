@@ -476,6 +476,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // INSTALLER ROUTES
   app.get("/api/transactions", async (req: Request, res: Response) => {
     const userId = parseInt(req.query.userId as string);
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 0; // 0 means no limit
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
     
     if (!userId) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
@@ -488,10 +490,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
-      // Get user transactions
-      const transactions = await storage.getTransactionsByUserId(userId);
+      // Get user transactions with the requested limit (1000 as a high default)
+      const transactions = await storage.getTransactionsByUserId(userId, limit || 1000);
       
-      return res.status(200).json({ transactions });
+      // Count all transactions for this user for calculating total pages
+      const totalTransactions = transactions.length;
+      const totalPages = limit > 0 ? Math.ceil(totalTransactions / limit) : 1;
+      
+      // Return pagination metadata along with transactions
+      return res.status(200).json({
+        transactions,
+        pagination: {
+          total: totalTransactions,
+          page: page,
+          totalPages: totalPages,
+          limit: limit
+        }
+      });
       
     } catch (error: any) {
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المعاملات" });

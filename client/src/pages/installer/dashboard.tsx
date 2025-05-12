@@ -15,9 +15,9 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions with frequent refresh 
+  // Fetch user's transactions with frequent refresh - using a higher limit to get full history
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+    queryKey: [`/api/transactions?userId=${user?.id}&limit=1000`],
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
