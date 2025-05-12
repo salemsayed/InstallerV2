@@ -25,6 +25,48 @@ interface ScanHistoryItem {
   message?: string;
 }
 
+// QR code cooldown tracker to prevent scanning the same code repeatedly
+class QrCodeTracker {
+  private qrCodes: Map<string, number> = new Map();
+  private readonly cooldownPeriod: number; // milliseconds
+  
+  constructor(cooldownPeriod: number = 5000) { // 5 seconds default cooldown
+    this.cooldownPeriod = cooldownPeriod;
+  }
+  
+  canProcessCode(qrCode: string): boolean {
+    const now = Date.now();
+    const lastScanTime = this.qrCodes.get(qrCode);
+    
+    if (lastScanTime && (now - lastScanTime) < this.cooldownPeriod) {
+      // Code is still in cooldown period
+      return false;
+    }
+    
+    // Record this scan
+    this.qrCodes.set(qrCode, now);
+    
+    // Cleanup old codes (optional)
+    this.cleanup(now);
+    
+    return true;
+  }
+  
+  private cleanup(now: number) {
+    // Remove codes that have expired their cooldown period
+    // Convert to array first to avoid TypeScript downlevelIteration issues
+    Array.from(this.qrCodes.entries()).forEach(([code, time]) => {
+      if ((now - time) > this.cooldownPeriod) {
+        this.qrCodes.delete(code);
+      }
+    });
+  }
+  
+  reset() {
+    this.qrCodes.clear();
+  }
+}
+
 interface QrScannerProps {
   onScanSuccess?: (productName: string) => void;
 }
@@ -40,10 +82,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [totalScansInSession, setTotalScansInSession] = useState(0);
   const [successfulScansInSession, setSuccessfulScansInSession] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(3000); // 3 seconds cooldown
   
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const audioSuccessRef = useRef<HTMLAudioElement | null>(null);
   const audioErrorRef = useRef<HTMLAudioElement | null>(null);
+  const qrTrackerRef = useRef<QrCodeTracker>(new QrCodeTracker(3000)); // 3 seconds cooldown
   
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
@@ -148,6 +192,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
   const handleScanSuccess = async (decodedText: string) => {
     console.log("QR code detected:", decodedText);
+    
+    // Check if this QR code can be processed (not in cooldown)
+    if (!qrTrackerRef.current.canProcessCode(decodedText)) {
+      console.log("QR code in cooldown period, ignoring:", decodedText);
+      return;
+    }
     
     // In batch mode, we don't stop the scanner between scans
     if (!batchMode) {
@@ -367,6 +417,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsScanning(false);
       setIsValidating(false);
       setShowHistory(false);
+      
+      // Reset the QR tracker when closing the scanner
+      qrTrackerRef.current.reset();
     }
   };
 
