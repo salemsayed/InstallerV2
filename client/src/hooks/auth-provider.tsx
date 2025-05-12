@@ -33,13 +33,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if user is logged in on initial load
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
+    
+    // First check if this is right after a logout
+    const isJustLoggedOut = sessionStorage.getItem("just_logged_out");
+    if (isJustLoggedOut) {
+      // Clear the flag and ensure user is logged out
+      sessionStorage.removeItem("just_logged_out");
+      localStorage.removeItem("user");
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+    
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
         // Verify the user is still valid from the server
-        // This would check a session or token in a real app
         apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
           .then(res => res.json())
           .then(data => {
@@ -108,6 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Set logout flag to prevent auto re-login
+      sessionStorage.setItem("just_logged_out", "true");
+      
       // First clear the local data
       setUser(null);
       localStorage.removeItem("user");
@@ -120,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error during logout:", error);
       // Even if the server request fails, ensure the user is logged out on the frontend
+      sessionStorage.setItem("just_logged_out", "true");
       setUser(null);
       localStorage.removeItem("user");
       setLocation("/");
