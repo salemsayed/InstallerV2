@@ -130,8 +130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create a JWT or session token here if needed
-      // For simplicity, we'll just return the user object
+      // Store user in session
+      if (req.session) {
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+      }
       
       return res.json({
         success: true,
@@ -162,11 +165,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Legacy endpoint for the old auth system
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // This would typically check session/token
-    // For demo, we'll use a query param
-    const userId = parseInt(req.query.userId as string);
+    // Get user from session
+    const userId = req.session?.userId;
     
-    if (!userId) {
+    // Support legacy query parameter if session isn't set
+    const queryUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    
+    // Use session ID first, fall back to query parameter
+    const userIdToUse = userId || queryUserId;
+    
+    if (!userIdToUse) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
