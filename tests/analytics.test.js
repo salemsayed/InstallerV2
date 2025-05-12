@@ -1,8 +1,8 @@
-const { expect } = require('chai');
-const { describe, it, beforeEach, afterEach } = require('mocha');
-const sinon = require('sinon');
-const { storage } = require('../server/storage');
-const { generateInsight, generateAnalyticsSummary } = require('../server/openai');
+import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import sinon from 'sinon';
+import { storage } from '../server/storage.ts';
+import { generateInsight, generateAnalyticsSummary } from '../server/openai.ts';
 
 describe('Analytics and AI Insights Tests', function() {
   let storageStub;
@@ -19,8 +19,9 @@ describe('Analytics and AI Insights Tests', function() {
     };
     
     // Replace the actual functions with stubs
-    sinon.replace(require('../server/openai'), 'generateInsight', openaiStub.generateInsight);
-    sinon.replace(require('../server/openai'), 'generateAnalyticsSummary', openaiStub.generateAnalyticsSummary);
+    const openaiModule = { generateInsight, generateAnalyticsSummary };
+    sinon.replace(openaiModule, 'generateInsight', openaiStub.generateInsight);
+    sinon.replace(openaiModule, 'generateAnalyticsSummary', openaiStub.generateAnalyticsSummary);
   });
 
   afterEach(function() {

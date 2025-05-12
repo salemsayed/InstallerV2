@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import sinon from 'sinon';
-import { storage } from '../server/storage.js';
-import { checkBadgeQualification } from '../server/utils.js';
+import { storage } from '../server/storage.ts';
+import { checkBadgeQualification } from '../server/utils.ts';
 
 describe('Badge System Tests', function() {
   let storageStub;

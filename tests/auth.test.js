@@ -3,8 +3,8 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import sinon from 'sinon';
 import request from 'supertest';
 import express from 'express';
-import { smsService } from '../server/sms.js';
-import { storage } from '../server/storage.js';
+import { smsService } from '../server/sms.ts';
+import { storage } from '../server/storage.ts';
 
 // Create a test app
 const app = express();

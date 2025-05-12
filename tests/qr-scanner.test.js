@@ -3,8 +3,8 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import sinon from 'sinon';
 import request from 'supertest';
 import express from 'express';
-import { storage } from '../server/storage.js';
-import { checkSerialNumber, getProductNameBySerialNumber } from '../server/manufacturing.js';
+import { storage } from '../server/storage.ts';
+import { checkSerialNumber, getProductNameBySerialNumber } from '../server/manufacturing.ts';
 
 // Create a test app
 const app = express();
@@ -23,8 +23,9 @@ describe('QR Code Scanning System Tests', function() {
     };
     
     // Replace the actual functions with stubs
-    sinon.replace(require('../server/manufacturing'), 'checkSerialNumber', manufacturingStub.checkSerialNumber);
-    sinon.replace(require('../server/manufacturing'), 'getProductNameBySerialNumber', manufacturingStub.getProductNameBySerialNumber);
+    const manufacturingModule = { checkSerialNumber, getProductNameBySerialNumber };
+    sinon.replace(manufacturingModule, 'checkSerialNumber', manufacturingStub.checkSerialNumber);
+    sinon.replace(manufacturingModule, 'getProductNameBySerialNumber', manufacturingStub.getProductNameBySerialNumber);
   });
 
   afterEach(function() {
