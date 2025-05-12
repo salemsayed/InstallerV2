@@ -505,8 +505,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsValidating(false);
       setShowHistory(false);
       
-      // Reset the QR tracker when closing the scanner
-      qrTrackerRef.current.reset();
+      // Only reset the cooldown, not the processed codes memory
+      qrTrackerRef.current.resetCooldown();
     }
   };
 
@@ -646,10 +646,27 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   ></div>
                   
                   {/* Cooldown indicator (separate from scanner) */}
-                  {cooldownActive && isScanning && (
-                    <div className="mt-2 p-3 bg-orange-50 border border-orange-300 rounded-lg text-center">
-                      <p className="text-orange-600 font-bold">انتظر قليلاً</p>
-                      <p className="text-orange-600 text-xs">تم مسح هذا الكود بالفعل</p>
+                  {cooldownActive && isScanning && lastScannedCode && (
+                    <div className={`mt-2 p-3 rounded-lg text-center ${
+                      qrTrackerRef.current.isProcessed(lastScannedCode) 
+                        ? 'bg-red-50 border border-red-300' 
+                        : 'bg-orange-50 border border-orange-300'
+                    }`}>
+                      {qrTrackerRef.current.isProcessed(lastScannedCode) ? (
+                        <>
+                          <p className="text-red-600 font-bold flex items-center justify-center gap-1">
+                            <XCircle className="h-4 w-4" /> تم معالجة هذا الكود مسبقاً
+                          </p>
+                          <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-orange-600 font-bold flex items-center justify-center gap-1">
+                            <Loader2 className="h-4 w-4 animate-spin" /> انتظر قليلاً
+                          </p>
+                          <p className="text-orange-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
+                        </>
+                      )}
                     </div>
                   )}
 
