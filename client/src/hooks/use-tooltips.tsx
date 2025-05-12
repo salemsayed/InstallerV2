@@ -191,7 +191,8 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
     
     // If this is not part of a tour step (manual closing), clean up the tour state
     if (currentActive && !currentTour.isActive) {
-      localStorage.removeItem('tooltip_tour_active');
+      // Resume data refreshing if we're not in a tour
+      pauseAutoRefresh(false);
     }
   };
 
@@ -203,8 +204,20 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   // Mark a tooltip as seen
   const markTooltipAsSeen = (id: string) => {
     if (!hasSeenTooltip(id)) {
-      setSeenTooltips([...seenTooltips, id]);
+      const newSeenTooltips = [...seenTooltips, id];
+      setSeenTooltips(newSeenTooltips);
+      
+      // Save to localStorage for persistence
+      if (user?.id) {
+        localStorage.setItem(`seen-tooltips-${user.id}`, JSON.stringify(newSeenTooltips));
+      }
     }
+    
+    // Resume data refreshing if needed
+    if (!currentTour.isActive) {
+      pauseAutoRefresh(false);
+    }
+    
     hideTooltip();
   };
 
@@ -259,7 +272,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         // If we have more steps in the tour
         if (nextIndex < currentTour.tourIds.length) {
           // Make sure auto-refresh is paused while tour is active
-          setTooltipTourActive(true);
+          pauseAutoRefresh(true);
           
           // Update tour state
           setCurrentTour({
@@ -280,12 +293,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           });
           
           // Tour is over, resume data refreshing
-          setTooltipTourActive(false);
+          pauseAutoRefresh(false);
         }
       } catch (error) {
         console.error("Error in nextTourStep:", error);
         // If anything goes wrong, make sure to resume refreshing
-        setTooltipTourActive(false);
+        pauseAutoRefresh(false);
       }
     }
   };
