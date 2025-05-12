@@ -16,6 +16,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Import manufacturing database functions
   const { checkSerialNumber, getProductNameBySerialNumber } = await import('./manufacturing');
+  
+  // Import OpenAI functions
+  const { generateInsight, generateAnalyticsSummary } = await import('./openai');
 
   // AUTH ROUTES
   // Request OTP for login/registration
@@ -1373,6 +1376,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Failed to delete product",
         error_code: "DELETE_ERROR"
+      });
+    }
+  });
+  
+  // AI Insights API
+  app.post("/api/analytics/insight", async (req: Request, res: Response) => {
+    try {
+      const { chartType, dataPoints, dateRange, metric } = req.body;
+      
+      // Admin check
+      const userId = parseInt(req.query.userId as string || '0');
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Unauthorized access",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      // Validate required fields
+      if (!chartType || !dataPoints || !metric) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+          error_code: "MISSING_FIELDS"
+        });
+      }
+      
+      const insight = await generateInsight({
+        chartType,
+        dataPoints,
+        dateRange,
+        metric
+      });
+      
+      return res.status(200).json({
+        success: true,
+        insight
+      });
+    } catch (error: any) {
+      console.error("Error generating insight:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate insight",
+        error_code: "INSIGHT_ERROR",
+        details: { error: error.message || "Unknown error" }
+      });
+    }
+  });
+  
+  app.post("/api/analytics/summary", async (req: Request, res: Response) => {
+    try {
+      const { totalInstallers, totalInstallations, pointsAwarded, pointsRedeemed, regionData, productData, dateRange } = req.body;
+      
+      // Admin check
+      const userId = parseInt(req.query.userId as string || '0');
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Unauthorized access",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      const summary = await generateAnalyticsSummary({
+        totalInstallers,
+        totalInstallations,
+        pointsAwarded,
+        pointsRedeemed,
+        regionData,
+        productData,
+        dateRange
+      });
+      
+      return res.status(200).json({
+        success: true,
+        summary
+      });
+    } catch (error: any) {
+      console.error("Error generating summary:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate summary",
+        error_code: "SUMMARY_ERROR",
+        details: { error: error.message || "Unknown error" }
       });
     }
   });
