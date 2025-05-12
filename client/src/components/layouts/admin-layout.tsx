@@ -61,55 +61,65 @@ export default function AdminLayout({
         
         {/* Admin Tab Navigation */}
         <div className="px-4 pb-2">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" dir="rtl">
-            <TabsList className="bg-transparent hide-scrollbar overflow-x-auto w-full flex-row-reverse">
-              <TabsTrigger 
-                value="overview" 
+          <div className="w-full" dir="rtl">
+            <div className="flex bg-transparent overflow-x-auto w-full">
+              <button 
+                onClick={() => handleTabChange("overview")}
                 className={cn(
-                  "mr-auto text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "overview" && "text-white/70"
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "overview" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
                 )}
               >
                 نظرة عامة
-              </TabsTrigger>
-              <TabsTrigger 
-                value="users" 
+              </button>
+              <button 
+                onClick={() => handleTabChange("users")}
                 className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "users" && "text-white/70"
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "users" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
                 )}
               >
                 المستخدمين
-              </TabsTrigger>
-              <TabsTrigger 
-                value="products" 
+              </button>
+              <button 
+                onClick={() => handleTabChange("products")}
                 className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "products" && "text-white/70"
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "products" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
                 )}
               >
                 المنتجات
-              </TabsTrigger>
-              <TabsTrigger 
-                value="badges" 
+              </button>
+              <button 
+                onClick={() => handleTabChange("badges")}
                 className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "badges" && "text-white/70"
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "badges" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
                 )}
               >
                 الشارات
-              </TabsTrigger>
-              <TabsTrigger 
-                value="stats" 
+              </button>
+              <button 
+                onClick={() => handleTabChange("stats")}
                 className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "stats" && "text-white/70"
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "stats" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
                 )}
               >
                 الإحصائيات
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
       
