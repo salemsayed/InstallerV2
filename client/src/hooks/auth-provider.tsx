@@ -20,6 +20,7 @@ interface AuthContextType {
   login: (userId: string, userRole: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  setTooltipTourActive: (active: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -112,28 +113,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
-  // Check if a tooltip tour is active
-  const isTourActive = () => {
-    // Access localStorage directly to check if a tour is active
-    const tourActiveStr = localStorage.getItem('tooltip_tour_active');
-    return tourActiveStr === 'true';
+  // Create global state to track tooltip tours
+  const [isTooltipTourActive, setIsTooltipTourActive] = useState(false);
+  
+  // Expose method to disable auto-refresh during tooltip tours
+  const setTooltipTourActive = (active: boolean) => {
+    setIsTooltipTourActive(active);
   };
 
-  // Set up auto-refresh for user data
+  // Set up auto-refresh for user data with a pause option
   useEffect(() => {
     if (!user) return;
     
-    // Refresh user data every 2 seconds ONLY if no tooltip tour is active
+    // If tooltip tour is active, don't set up auto-refresh at all
+    if (isTooltipTourActive) {
+      return;
+    }
+    
+    // Refresh user data every 2 seconds
     const intervalId = setInterval(() => {
-      // Skip refresh if tooltip tour is active
-      if (!isTourActive()) {
-        refreshUser();
-      }
+      refreshUser();
     }, 2000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, [user?.id]);
+  }, [user?.id, isTooltipTourActive]);
 
   return (
     <AuthContext.Provider
@@ -143,7 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         login,
         logout,
-        refreshUser
+        refreshUser,
+        setTooltipTourActive
       }}
     >
       {children}

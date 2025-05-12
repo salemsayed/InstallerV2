@@ -103,7 +103,12 @@ const TooltipContext = createContext<TooltipContextType | null>(null);
 
 // Provider component
 export function TooltipProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, setTooltipTourActive } = useAuth();
+  
+  // Helper function to pause auto-refresh during tooltips
+  const pauseAutoRefresh = (pause: boolean) => {
+    setTooltipTourActive(pause);
+  };
   
   // Use refs to preserve tooltip state during rerenders caused by user data refreshes
   const activeTooltipRef = useRef<{ id: string; data: TooltipData } | null>(null);
@@ -210,8 +215,8 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         // Clear any existing tooltips first
         hideTooltip();
         
-        // Set the localStorage flag to indicate tour is active and pause data refresh
-        localStorage.setItem('tooltip_tour_active', 'true');
+        // Pause auto-refresh during tooltip tour
+        pauseAutoRefresh(true);
         
         // Update tour state
         setCurrentTour({
@@ -222,13 +227,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         
         // Add a small delay before showing the first tooltip
         setTimeout(() => {
-          if (localStorage.getItem('tooltip_tour_active') === 'true') {
-            showTooltip(tourIds[0]);
-          }
+          showTooltip(tourIds[0]);
         }, 100);
       } catch (error) {
         console.error("Error in startTour:", error);
-        localStorage.removeItem('tooltip_tour_active');
+        // If anything goes wrong, resume data refreshing
+        pauseAutoRefresh(false);
       }
     }
   };
@@ -254,8 +258,8 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         
         // If we have more steps in the tour
         if (nextIndex < currentTour.tourIds.length) {
-          // Make sure refresh is paused while tour is active
-          localStorage.setItem('tooltip_tour_active', 'true');
+          // Make sure auto-refresh is paused while tour is active
+          setTooltipTourActive(true);
           
           // Update tour state
           setCurrentTour({
@@ -265,11 +269,8 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           
           // Add a longer delay to ensure proper transition
           setTimeout(() => {
-            // Double-check the tour is still active before showing next tooltip
-            if (localStorage.getItem('tooltip_tour_active') === 'true') {
-              showTooltip(currentTour.tourIds[nextIndex]);
-            }
-          }, 100);
+            showTooltip(currentTour.tourIds[nextIndex]);
+          }, 200);
         } else {
           // End of tour
           setCurrentTour({
@@ -279,12 +280,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           });
           
           // Tour is over, resume data refreshing
-          localStorage.removeItem('tooltip_tour_active');
+          setTooltipTourActive(false);
         }
       } catch (error) {
         console.error("Error in nextTourStep:", error);
-        // If anything goes wrong, make sure to clean up
-        localStorage.removeItem('tooltip_tour_active');
+        // If anything goes wrong, make sure to resume refreshing
+        setTooltipTourActive(false);
       }
     }
   };
