@@ -1,5 +1,4 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import breegLogo from "@/assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
@@ -26,7 +25,6 @@ export default function AdminLayout({
   onTabChange
 }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  const [location] = useLocation();
 
   const handleTabChange = (value: string) => {
     if (onTabChange) {
@@ -124,48 +122,9 @@ export default function AdminLayout({
       </header>
       
       {/* Admin Content */}
-      <main className="p-4 pb-20">
+      <main className="p-4">
         {children}
       </main>
-      
-      {/* Admin Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6" dir="rtl">
-        <div className="w-1/3">
-          <Link href="/admin/dashboard">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/admin/dashboard" ? "text-primary" : "text-neutral-500"
-            )}>
-              <span className="material-icons">dashboard</span>
-              <span className="text-xs mt-1">اللوحة</span>
-            </div>
-          </Link>
-        </div>
-        
-        <div className="w-1/3">
-          <Link href="/admin/users">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/admin/users" ? "text-primary" : "text-neutral-500"
-            )}>
-              <span className="material-icons">people</span>
-              <span className="text-xs mt-1">الفنيين</span>
-            </div>
-          </Link>
-        </div>
-        
-        <div className="w-1/3">
-          <Link href="/admin/settings">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/admin/settings" ? "text-primary" : "text-neutral-500"
-            )}>
-              <span className="material-icons">settings</span>
-              <span className="text-xs mt-1">الإعدادات</span>
-            </div>
-          </Link>
-        </div>
-      </nav>
     </div>
   );
 }
