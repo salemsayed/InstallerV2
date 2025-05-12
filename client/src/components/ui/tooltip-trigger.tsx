@@ -68,7 +68,7 @@ export default function TooltipTrigger({
           title={activeTooltip.data.title}
           content={activeTooltip.data.content}
           placement={activeTooltip.data.placement}
-          onClose={() => markTooltipAsSeen(id)}
+          onClose={() => currentTour.isActive ? nextTourStep() : markTooltipAsSeen(id)}
           onNextStep={nextTourStep}
           showNextButton={currentTour.isActive}
           targetRef={targetRef}

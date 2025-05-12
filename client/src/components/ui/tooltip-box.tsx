@@ -99,7 +99,10 @@ export default function TooltipBox({
       <div className="flex justify-between items-center">
         {showNextButton && onNextStep ? (
           <button
-            onClick={onNextStep}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent event bubbling
+              if (onNextStep) onNextStep();
+            }}
             className="bg-primary text-white px-4 py-2 rounded-md text-sm flex items-center justify-center gap-1 hover:bg-primary/90 transition-colors"
           >
             <span>التالي</span>

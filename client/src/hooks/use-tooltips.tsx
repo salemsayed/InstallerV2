@@ -179,7 +179,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
 
   // Go to next tooltip in tour
   const nextTourStep = () => {
-    if (currentTour.isActive) {
+    if (currentTour.isActive && activeTooltip) {
+      // Mark the current tooltip as seen
+      if (!hasSeenTooltip(activeTooltip.id)) {
+        setSeenTooltips([...seenTooltips, activeTooltip.id]);
+      }
+      
       const nextIndex = currentTour.currentIndex + 1;
       
       // If we have more steps in the tour
@@ -188,6 +193,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           ...currentTour,
           currentIndex: nextIndex
         });
+        // Show the next tooltip
         showTooltip(currentTour.tourIds[nextIndex]);
       } else {
         // End of tour
