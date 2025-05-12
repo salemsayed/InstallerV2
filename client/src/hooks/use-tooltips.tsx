@@ -180,6 +180,9 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   // Go to next tooltip in tour
   const nextTourStep = () => {
     if (currentTour.isActive && activeTooltip) {
+      // First hide the current tooltip to avoid overlapping tooltips during transition
+      hideTooltip();
+
       // Mark the current tooltip as seen
       if (!hasSeenTooltip(activeTooltip.id)) {
         setSeenTooltips([...seenTooltips, activeTooltip.id]);
@@ -193,8 +196,11 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           ...currentTour,
           currentIndex: nextIndex
         });
-        // Show the next tooltip
-        showTooltip(currentTour.tourIds[nextIndex]);
+        
+        // Add a small delay before showing the next tooltip to allow for proper transition
+        setTimeout(() => {
+          showTooltip(currentTour.tourIds[nextIndex]);
+        }, 50);
       } else {
         // End of tour
         setCurrentTour({
@@ -202,7 +208,6 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           currentIndex: 0,
           isActive: false
         });
-        hideTooltip();
       }
     }
   };

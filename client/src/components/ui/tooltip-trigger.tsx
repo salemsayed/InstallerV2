@@ -29,15 +29,16 @@ export default function TooltipTrigger({
   // When the component mounts, check if it should show the tooltip
   React.useEffect(() => {
     // Skip if this tooltip has been seen already or if it should be shown manually
-    if (hasSeenTooltip(id) || showManually) return;
+    // Or if we're in the middle of a tour
+    if (hasSeenTooltip(id) || showManually || currentTour.isActive) return;
 
-    // Show the tooltip for this element
+    // Show the tooltip for this element (only if not in tour mode)
     const timer = setTimeout(() => {
       showTooltip(id);
     }, 500); // Small delay to ensure the component has rendered
     
     return () => clearTimeout(timer);
-  }, [id, hasSeenTooltip, showTooltip, showManually]);
+  }, [id, hasSeenTooltip, showTooltip, showManually, currentTour.isActive]);
 
   // Handle clicking on the element
   const handleClick = () => {
