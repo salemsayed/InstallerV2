@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get all test files
-const testDir = path.join(__dirname);
+const testDir = __dirname;
 const testFiles = fs.readdirSync(testDir)
   .filter(file => file.endsWith('.test.js'))
   .map(file => path.join(testDir, file));

@@ -1,8 +1,8 @@
-const { expect } = require('chai');
-const { describe, it, beforeEach, afterEach } = require('mocha');
-const sinon = require('sinon');
-const { storage } = require('../server/storage');
-const { checkBadgeQualification } = require('../server/utils');
+import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import sinon from 'sinon';
+import { storage } from '../server/storage.js';
+import { checkBadgeQualification } from '../server/utils.js';
 
 describe('Badge System Tests', function() {
   let storageStub;
@@ -18,9 +18,7 @@ describe('Badge System Tests', function() {
     };
     
     // Replace the actual function with stub
-    if (require('../server/utils')) {
-      sinon.replace(require('../server/utils'), 'checkBadgeQualification', utilsStub.checkBadgeQualification);
-    }
+    sinon.replace({ checkBadgeQualification }, 'checkBadgeQualification', utilsStub.checkBadgeQualification);
   });
 
   afterEach(function() {

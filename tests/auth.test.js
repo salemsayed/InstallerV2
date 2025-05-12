@@ -1,10 +1,10 @@
-const { expect } = require('chai');
-const { describe, it, beforeEach, afterEach } = require('mocha');
-const sinon = require('sinon');
-const request = require('supertest');
-const express = require('express');
-const { smsService } = require('../server/sms');
-const { storage } = require('../server/storage');
+import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import sinon from 'sinon';
+import request from 'supertest';
+import express from 'express';
+import { smsService } from '../server/sms.js';
+import { storage } from '../server/storage.js';
 
 // Create a test app
 const app = express();

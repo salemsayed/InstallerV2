@@ -1,10 +1,10 @@
-const { expect } = require('chai');
-const { describe, it, beforeEach, afterEach } = require('mocha');
-const sinon = require('sinon');
-const request = require('supertest');
-const express = require('express');
-const { storage } = require('../server/storage');
-const { checkSerialNumber, getProductNameBySerialNumber } = require('../server/manufacturing');
+import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach } from 'mocha';
+import sinon from 'sinon';
+import request from 'supertest';
+import express from 'express';
+import { storage } from '../server/storage.js';
+import { checkSerialNumber, getProductNameBySerialNumber } from '../server/manufacturing.js';
 
 // Create a test app
 const app = express();
