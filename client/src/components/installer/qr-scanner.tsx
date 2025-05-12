@@ -247,10 +247,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         message: "تم مسح هذا الكود مسبقاً"
       });
       
-      // Reset cooldown indicator after a short time
+      // Keep the cooldown indicator visible longer for better UX
+      // This won't cause jittering since we moved it to a fixed-height container
       setTimeout(() => {
         setCooldownActive(false);
-      }, 1000);
+      }, 2000);
+      
+      // Play error sound for feedback
+      playErrorSound();
       
       return;
     }
@@ -261,10 +265,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Show visual feedback that code is in cooldown
       setCooldownActive(true);
       
-      // Reset cooldown indicator after a short time
+      // Keep cooldown indicator visible longer for better UX
+      // This won't cause jittering since we moved it to a fixed-height container
       setTimeout(() => {
         setCooldownActive(false);
-      }, 1000);
+      }, 2000);
       
       return;
     }
@@ -639,7 +644,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             </div>
 
             {/* Fixed-height status message container to prevent layout jitter */}
-            <div className="min-h-[80px] mb-4">
+            <div className="min-h-[120px] mb-4 relative">
               {/* Batch Mode Active Notification */}
               <div className={`p-2 bg-green-100 text-green-800 rounded-lg border border-green-300 text-sm text-center transition-opacity duration-150 ${batchMode && isScanning && !isValidating && !error ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
                 <div className="font-medium">وضع المسح المتتابع نشط</div>
@@ -647,8 +652,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               </div>
               
               {/* Error Display */}
-              <div className={`p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm transition-opacity duration-150 ${error ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
-                <div className="whitespace-pre-wrap font-mono text-xs">{error}</div>
+              <div className={`absolute top-0 left-0 right-0 p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm transition-opacity duration-150 ${error ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"}`}>
+                <div className="whitespace-pre-wrap font-mono text-xs max-h-[60px] overflow-y-auto">{error}</div>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -660,8 +665,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               </div>
               
               {/* Cooldown indicator - moved inside fixed container */}
-              <div className={`p-3 rounded-lg text-center transition-opacity duration-150 ${
-                cooldownActive && isScanning && lastScannedCode ? "opacity-100" : "opacity-0 h-0 overflow-hidden"
+              <div className={`absolute top-0 left-0 right-0 p-3 rounded-lg text-center transition-opacity duration-150 ${
+                cooldownActive && isScanning && lastScannedCode ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
               } ${
                 qrTrackerRef.current.isProcessed(lastScannedCode || '') 
                   ? 'bg-red-50 border border-red-300' 
