@@ -12,6 +12,14 @@ interface DataAnalysisRequest {
 
 export async function generateInsight(data: DataAnalysisRequest): Promise<string> {
   try {
+    console.log("[OPENAI] Starting insight generation with data:", JSON.stringify(data, null, 2));
+    
+    // Check if API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[OPENAI] API key is not set in environment variables");
+      return "عذراً، لم نتمكن من توليد تحليل للبيانات. مفتاح API غير متوفر.";
+    }
+    
     const prompt = `
 You are an expert data analyst for an installer rewards program designed for Arabic-speaking technicians.
 Analyze the following data and provide a concise, meaningful insight in Arabic (use Arabic script).
@@ -30,7 +38,7 @@ Generate a data-driven insight that:
 Your response should be direct, insightful, and in Arabic language. Don't include phrases like "Based on the data" or "The analysis shows" - just provide the insight directly.
 `;
 
-    console.log("[OPENAI] Sending request for chart insight");
+    console.log("[OPENAI] Sending request for chart insight with prompt:", prompt);
     
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -43,14 +51,29 @@ Your response should be direct, insightful, and in Arabic language. Don't includ
     console.log("[OPENAI] Generated insight:", insight);
     
     return insight;
-  } catch (error) {
+  } catch (error: any) {
     console.error("[OPENAI] Error generating insight:", error);
+    
+    // Log more details about the error
+    if (error.response) {
+      console.error("[OPENAI] Error response status:", error.response.status);
+      console.error("[OPENAI] Error response data:", error.response.data);
+    }
+    
     return "عذراً، لم نتمكن من توليد تحليل للبيانات في هذا الوقت.";
   }
 }
 
 export async function generateAnalyticsSummary(data: any): Promise<string> {
   try {
+    console.log("[OPENAI] Starting summary generation with data:", JSON.stringify(data, null, 2));
+    
+    // Check if API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[OPENAI] API key is not set in environment variables");
+      return "عذراً، لم نتمكن من توليد ملخص للبيانات. مفتاح API غير متوفر.";
+    }
+    
     const prompt = `
 You are an expert data analyst for an installer rewards program designed for Arabic-speaking technicians.
 Generate a comprehensive summary in Arabic of the current state of the program based on the following dashboard metrics:
@@ -71,7 +94,7 @@ Your response should be in Arabic and include:
 Keep your response to about 4 sentences, use Arabic script.
 `;
 
-    console.log("[OPENAI] Sending request for dashboard summary");
+    console.log("[OPENAI] Sending request for dashboard summary with prompt:", prompt);
     
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -84,8 +107,15 @@ Keep your response to about 4 sentences, use Arabic script.
     console.log("[OPENAI] Generated summary:", summary);
     
     return summary;
-  } catch (error) {
+  } catch (error: any) {
     console.error("[OPENAI] Error generating summary:", error);
+    
+    // Log more details about the error
+    if (error.response) {
+      console.error("[OPENAI] Error response status:", error.response.status);
+      console.error("[OPENAI] Error response data:", error.response.data);
+    }
+    
     return "عذراً، لم نتمكن من توليد ملخص للبيانات في هذا الوقت.";
   }
 }
