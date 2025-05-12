@@ -83,6 +83,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [successfulScansInSession, setSuccessfulScansInSession] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(3000); // 3 seconds cooldown
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
+  const [cooldownActive, setCooldownActive] = useState(false);
   
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const audioSuccessRef = useRef<HTMLAudioElement | null>(null);
@@ -193,9 +195,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const handleScanSuccess = async (decodedText: string) => {
     console.log("QR code detected:", decodedText);
     
+    // Always set the last scanned code
+    setLastScannedCode(decodedText);
+    
     // Check if this QR code can be processed (not in cooldown)
     if (!qrTrackerRef.current.canProcessCode(decodedText)) {
       console.log("QR code in cooldown period, ignoring:", decodedText);
+      // Show visual feedback that code is in cooldown
+      setCooldownActive(true);
+      
+      // Reset cooldown indicator after a short time
+      setTimeout(() => {
+        setCooldownActive(false);
+      }, 1000); // Show cooldown indicator for 1 second
+      
       return;
     }
     
@@ -551,12 +564,24 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                 </div>
               ) : (
                 <>
-                  <div
-                    id="qr-reader"
-                    className={`w-full overflow-hidden rounded-lg border ${
-                      isScanning ? "h-64" : "h-0"
-                    }`}
-                  ></div>
+                  <div className="relative">
+                    <div
+                      id="qr-reader"
+                      className={`w-full overflow-hidden rounded-lg border ${
+                        isScanning ? "h-64" : "h-0"
+                      }`}
+                    ></div>
+                    
+                    {/* Cooldown indicator */}
+                    {cooldownActive && (
+                      <div className="absolute inset-0 bg-orange-500/30 flex flex-col items-center justify-center z-10 pointer-events-none">
+                        <div className="bg-black/70 rounded-lg p-3 text-center">
+                          <p className="text-orange-300 font-bold">انتظر قليلاً</p>
+                          <p className="text-white text-xs">تم مسح هذا الكود بالفعل</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {!isScanning ? (
                     <Button 
