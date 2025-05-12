@@ -59,7 +59,7 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
     data: transactionsData, 
     isLoading: transactionsLoading 
   } = useQuery({
-    queryKey: [`/api/admin/transactions?userId=${userId}`],
+    queryKey: [`/api/admin/transactions?userId=${userId || 0}`],
     enabled: !!userId,
     refetchInterval: 5000,
   });
@@ -69,7 +69,7 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
     data: usersData, 
     isLoading: usersLoading 
   } = useQuery({
-    queryKey: [`/api/admin/users?userId=${userId}`],
+    queryKey: [`/api/admin/users?userId=${userId || 0}`],
     enabled: !!userId,
     refetchInterval: 5000,
   });
