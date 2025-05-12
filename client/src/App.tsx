@@ -8,6 +8,7 @@ import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
+import { TooltipProvider } from "@/hooks/use-tooltips";
 
 function Router() {
   return (
@@ -34,7 +35,9 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      <Router />
+      <TooltipProvider>
+        <Router />
+      </TooltipProvider>
     </AuthProvider>
   );
 }
