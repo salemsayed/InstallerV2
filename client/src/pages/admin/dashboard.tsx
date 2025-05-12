@@ -8,6 +8,7 @@ import UsersTable from "@/components/admin/users-table";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
 import ProductsManagement from "@/components/admin/products-management";
 import BadgesManagement from "@/components/admin/badges-management";
+import AnalyticsDashboard from "@/components/admin/analytics-dashboard";
 import EditUserDialog from "@/components/admin/edit-user-dialog";
 import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { User, TransactionType } from "@shared/schema";
@@ -252,11 +253,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === "stats" && (
-        <div className="text-center p-8 text-neutral-500">
-          <span className="material-icons text-6xl mb-4">insights</span>
-          <h2 className="text-xl font-bold mb-2">قريباً</h2>
-          <p>ستتمكن من عرض إحصائيات مفصلة قريباً</p>
-        </div>
+        <AnalyticsDashboard userId={user?.id} />
       )}
       
       {activeTab === "products" && (
