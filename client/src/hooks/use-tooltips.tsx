@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { useAuth } from "@/hooks/auth-provider";
 
 // Define the tooltips data type
@@ -104,8 +104,34 @@ const TooltipContext = createContext<TooltipContextType | null>(null);
 // Provider component
 export function TooltipProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  
+  // Use refs to preserve tooltip state during rerenders caused by user data refreshes
+  const activeTooltipRef = useRef<{ id: string; data: TooltipData } | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<{ id: string; data: TooltipData } | null>(null);
-  const [seenTooltips, setSeenTooltips] = useState<string[]>([]);
+  
+  // When setting active tooltip, also update the ref
+  const updateActiveTooltip = (tooltip: { id: string; data: TooltipData } | null) => {
+    activeTooltipRef.current = tooltip;
+    setActiveTooltip(tooltip);
+  };
+  
+  // Store seen tooltips in localStorage to persist across refreshes
+  const [seenTooltips, setSeenTooltips] = useState<string[]>(() => {
+    const saved = localStorage.getItem('seenTooltips');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  // Store tour state in ref to persist during refreshes
+  const tourStateRef = useRef<{
+    tourIds: string[];
+    currentIndex: number;
+    isActive: boolean;
+  }>({
+    tourIds: [],
+    currentIndex: 0,
+    isActive: false
+  });
+  
   const [currentTour, setCurrentTour] = useState<{
     tourIds: string[];
     currentIndex: number;
@@ -115,6 +141,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
     currentIndex: 0,
     isActive: false
   });
+  
+  // When setting tour state, also update the ref
+  const updateTourState = (tourState: typeof currentTour) => {
+    tourStateRef.current = tourState;
+    setCurrentTour(tourState);
+  };
 
   // Initialize seen tooltips from localStorage
   useEffect(() => {
@@ -143,13 +175,13 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   const showTooltip = (id: string) => {
     const tooltips = getAllTooltips();
     if (tooltips[id]) {
-      setActiveTooltip({ id, data: tooltips[id] });
+      updateActiveTooltip({ id, data: tooltips[id] });
     }
   };
 
   // Hide the currently shown tooltip
   const hideTooltip = () => {
-    setActiveTooltip(null);
+    updateActiveTooltip(null);
   };
 
   // Check if a tooltip has been seen
