@@ -62,33 +62,15 @@ export default function AdminLayout({
         {/* Admin Tab Navigation */}
         <div className="px-4 pb-2">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" dir="rtl">
-            <TabsList className="bg-transparent hide-scrollbar overflow-x-auto w-full justify-end">
+            <TabsList className="bg-transparent hide-scrollbar overflow-x-auto w-full flex-row-reverse">
               <TabsTrigger 
-                value="stats" 
+                value="overview" 
                 className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "stats" && "text-white/70"
+                  "mr-auto text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "overview" && "text-white/70"
                 )}
               >
-                الإحصائيات
-              </TabsTrigger>
-              <TabsTrigger 
-                value="badges" 
-                className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "badges" && "text-white/70"
-                )}
-              >
-                الشارات
-              </TabsTrigger>
-              <TabsTrigger 
-                value="products" 
-                className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "products" && "text-white/70"
-                )}
-              >
-                المنتجات
+                نظرة عامة
               </TabsTrigger>
               <TabsTrigger 
                 value="users" 
@@ -100,13 +82,31 @@ export default function AdminLayout({
                 المستخدمين
               </TabsTrigger>
               <TabsTrigger 
-                value="overview" 
+                value="products" 
                 className={cn(
                   "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "overview" && "text-white/70"
+                  activeTab !== "products" && "text-white/70"
                 )}
               >
-                نظرة عامة
+                المنتجات
+              </TabsTrigger>
+              <TabsTrigger 
+                value="badges" 
+                className={cn(
+                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "badges" && "text-white/70"
+                )}
+              >
+                الشارات
+              </TabsTrigger>
+              <TabsTrigger 
+                value="stats" 
+                className={cn(
+                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "stats" && "text-white/70"
+                )}
+              >
+                الإحصائيات
               </TabsTrigger>
             </TabsList>
           </Tabs>
