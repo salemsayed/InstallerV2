@@ -41,7 +41,7 @@ Your response should be direct, insightful, and in Arabic language. Don't includ
     console.log("[OPENAI] Sending request for chart insight with prompt:", prompt);
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 150,
       temperature: 0.7,
@@ -97,7 +97,7 @@ Keep your response to about 4 sentences, use Arabic script.
     console.log("[OPENAI] Sending request for dashboard summary with prompt:", prompt);
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 250,
       temperature: 0.7,

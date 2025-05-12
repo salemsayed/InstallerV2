@@ -163,42 +163,11 @@ export default function AdminDashboard() {
     <AdminLayout activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === "overview" && (
         <>
-          {/* Overview Cards */}
-          {usersLoading || transactionsLoading ? (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
-            </div>
-          ) : (
-            <OverviewCards
-              totalUsers={totalInstallers}
-              totalInstallations={totalInstallations}
-              pointsAwarded={pointsAwarded || 0}
-              pointsRedeemed={pointsRedeemed || 0}
-            />
-          )}
-
-          {/* Recent Users Table */}
-          {usersLoading ? (
-            <Skeleton className="h-96 rounded-xl mb-6" />
-          ) : (
-            <UsersTable
-              users={usersData?.users ? usersData.users.slice(0, 5) : []}
-              onViewAll={() => setActiveTab("users")}
-              onUserAction={handleUserAction}
-            />
-          )}
-
-          {/* Points Allocation Form */}
-          <PointsAllocationForm 
-            users={installers}
-            onSuccess={() => {
-              refetchUsers();
-              refetchTransactions();
-            }}
-          />
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-primary mb-1">لوحة الإحصائيات</h1>
+            <p className="text-gray-500">عرض تحليلي للبيانات وإحصائيات التركيب والنقاط</p>
+          </div>
+          <AnalyticsDashboard userId={user?.id} />
         </>
       )}
 
@@ -248,9 +217,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === "stats" && (
-        <AnalyticsDashboard userId={user?.id} />
-      )}
+
       
       {activeTab === "products" && (
         <>

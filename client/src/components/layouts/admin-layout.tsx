@@ -106,17 +106,7 @@ export default function AdminLayout({
               >
                 الشارات
               </Link>
-              <Link href="/admin/dashboard"
-                onClick={() => handleTabChange("stats")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "stats" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                الإحصائيات
-              </Link>
+
             </div>
           </div>
         </div>
