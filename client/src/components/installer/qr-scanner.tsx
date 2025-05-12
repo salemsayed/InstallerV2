@@ -578,19 +578,51 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             
             {/* Session Stats */}
             {(totalScansInSession > 0 || batchMode) && (
-              <div className="flex justify-between items-center mb-3 p-2 rounded-lg bg-muted/50">
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{successfulScansInSession}</div>
-                  <div>ناجح</div>
+              <div className="flex flex-col gap-2 mb-3">
+                <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
+                  <div className="text-xs text-center flex-1">
+                    <div className="font-bold">{successfulScansInSession}</div>
+                    <div>ناجح</div>
+                  </div>
+                  <div className="text-xs text-center flex-1">
+                    <div className="font-bold">{totalScansInSession}</div>
+                    <div>إجمالي</div>
+                  </div>
+                  <div className="text-xs text-center flex-1">
+                    <div className="font-bold">{totalPointsInSession}</div>
+                    <div>نقاط</div>
+                  </div>
                 </div>
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{totalScansInSession}</div>
-                  <div>إجمالي</div>
-                </div>
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{totalPointsInSession}</div>
-                  <div>نقاط</div>
-                </div>
+                
+                {/* Total processed codes (persistent across sessions) */}
+                {processedCodesCount > 0 && (
+                  <div className="flex items-center justify-between p-2 bg-slate-100 text-slate-800 rounded-lg border border-slate-200">
+                    <div className="flex items-center">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 ml-1" />
+                      <span className="text-xs">
+                        <span className="font-bold">{processedCodesCount}</span> كود تم معالجته
+                      </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-6 p-0 px-1"
+                      onClick={() => {
+                        if (confirm('هل أنت متأكد من حذف سجل الأكواد المعالجة؟')) {
+                          qrTrackerRef.current.fullReset();
+                          setProcessedCodesCount(0);
+                          toast({
+                            title: "تم المسح",
+                            description: "تم مسح سجل الأكواد المعالجة",
+                            variant: "default",
+                          });
+                        }
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
             
