@@ -112,13 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
+  // Check if a tooltip tour is active
+  const isTourActive = () => {
+    // Access localStorage directly to check if a tour is active
+    const tourActiveStr = localStorage.getItem('tooltip_tour_active');
+    return tourActiveStr === 'true';
+  };
+
   // Set up auto-refresh for user data
   useEffect(() => {
     if (!user) return;
     
-    // Refresh user data every 2 seconds
+    // Refresh user data every 2 seconds ONLY if no tooltip tour is active
     const intervalId = setInterval(() => {
-      refreshUser();
+      // Skip refresh if tooltip tour is active
+      if (!isTourActive()) {
+        refreshUser();
+      }
     }, 2000);
     
     // Clean up interval on unmount

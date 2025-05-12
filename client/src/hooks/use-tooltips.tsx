@@ -181,7 +181,13 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
 
   // Hide the currently shown tooltip
   const hideTooltip = () => {
+    const currentActive = activeTooltip;
     updateActiveTooltip(null);
+    
+    // If this is not part of a tour step (manual closing), clean up the tour state
+    if (currentActive && !currentTour.isActive) {
+      localStorage.removeItem('tooltip_tour_active');
+    }
   };
 
   // Check if a tooltip has been seen
@@ -200,6 +206,9 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   // Start a guided tour
   const startTour = (tourIds: string[]) => {
     if (tourIds.length > 0) {
+      // Set the localStorage flag to indicate tour is active
+      localStorage.setItem('tooltip_tour_active', 'true');
+      
       setCurrentTour({
         tourIds,
         currentIndex: 0,
@@ -240,6 +249,9 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
           currentIndex: 0,
           isActive: false
         });
+        
+        // Remove the localStorage flag since tour is over
+        localStorage.removeItem('tooltip_tour_active');
       }
     }
   };
