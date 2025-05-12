@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 import breegLogo from "@/assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
@@ -26,30 +26,11 @@ export default function AdminLayout({
   onTabChange
 }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location] = useLocation();
 
   const handleTabChange = (value: string) => {
     if (onTabChange) {
       onTabChange(value);
-    }
-    
-    // Also navigate to the appropriate page
-    switch(value) {
-      case "overview":
-        setLocation("/admin/dashboard");
-        break;
-      case "users":
-        setLocation("/admin/users");
-        break;
-      case "settings":
-        setLocation("/admin/settings");
-        break;
-      case "products":
-      case "badges":
-      case "stats":
-        // These tabs don't have separate pages, just stay on dashboard with different tab
-        setLocation("/admin/dashboard");
-        break;
     }
   };
 
@@ -82,61 +63,71 @@ export default function AdminLayout({
         <div className="px-4 pb-2">
           <div className="w-full" dir="rtl">
             <div className="flex bg-transparent overflow-x-auto w-full">
-              <button 
-                onClick={() => handleTabChange("overview")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "overview" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                نظرة عامة
-              </button>
-              <button 
-                onClick={() => handleTabChange("users")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "users" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                المستخدمين
-              </button>
-              <button 
-                onClick={() => handleTabChange("products")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "products" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                المنتجات
-              </button>
-              <button 
-                onClick={() => handleTabChange("badges")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "badges" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                الشارات
-              </button>
-              <button 
-                onClick={() => handleTabChange("stats")}
-                className={cn(
-                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                  activeTab === "stats" 
-                    ? "border-white" 
-                    : "border-transparent hover:text-white/80 text-white/70"
-                )}
-              >
-                الإحصائيات
-              </button>
+              <Link href="/admin/dashboard">
+                <a
+                  onClick={() => handleTabChange("overview")}
+                  className={cn(
+                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                    activeTab === "overview" 
+                      ? "border-white" 
+                      : "border-transparent hover:text-white/80 text-white/70"
+                  )}
+                >
+                  نظرة عامة
+                </a>
+              </Link>
+              <Link href="/admin/users">
+                <a
+                  onClick={() => handleTabChange("users")}
+                  className={cn(
+                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                    activeTab === "users" 
+                      ? "border-white" 
+                      : "border-transparent hover:text-white/80 text-white/70"
+                  )}
+                >
+                  المستخدمين
+                </a>
+              </Link>
+              <Link href="/admin/dashboard">
+                <a
+                  onClick={() => handleTabChange("products")}
+                  className={cn(
+                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                    activeTab === "products" 
+                      ? "border-white" 
+                      : "border-transparent hover:text-white/80 text-white/70"
+                  )}
+                >
+                  المنتجات
+                </a>
+              </Link>
+              <Link href="/admin/dashboard">
+                <a
+                  onClick={() => handleTabChange("badges")}
+                  className={cn(
+                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                    activeTab === "badges" 
+                      ? "border-white" 
+                      : "border-transparent hover:text-white/80 text-white/70"
+                  )}
+                >
+                  الشارات
+                </a>
+              </Link>
+              <Link href="/admin/dashboard">
+                <a
+                  onClick={() => handleTabChange("stats")}
+                  className={cn(
+                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                    activeTab === "stats" 
+                      ? "border-white" 
+                      : "border-transparent hover:text-white/80 text-white/70"
+                  )}
+                >
+                  الإحصائيات
+                </a>
+              </Link>
             </div>
           </div>
         </div>
