@@ -22,6 +22,11 @@ const ADMIN_TOOLTIPS: TooltipDictionary = {
     content: "إدارة الفنيين وحساباتهم ومراقبة نشاطهم",
     placement: "bottom"
   },
+  "users-table": {
+    title: "جدول المستخدمين",
+    content: "جدول عرض جميع الفنيين المسجلين في النظام، يمكنك تعديل بيانات أي فني من هنا",
+    placement: "bottom"
+  },
   "points-allocation": {
     title: "تخصيص النقاط",
     content: "يمكنك إضافة نقاط للفنيين من هنا عند إكمال المهام المختلفة",
@@ -30,6 +35,11 @@ const ADMIN_TOOLTIPS: TooltipDictionary = {
   "badges-management": {
     title: "إدارة الشارات",
     content: "إنشاء وتعديل الشارات التي يمكن للفنيين الحصول عليها",
+    placement: "bottom"
+  },
+  "products-management": {
+    title: "إدارة المنتجات",
+    content: "إدارة قائمة المنتجات ونقاط كل منتج، والتي يتم منحها للفنيين عند مسح الرمز الخاص بها",
     placement: "bottom"
   }
 };

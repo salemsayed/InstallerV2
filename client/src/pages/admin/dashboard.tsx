@@ -205,27 +205,39 @@ export default function AdminDashboard() {
           )}
 
           {/* User Invite Form */}
-          <InviteForm onSuccess={() => {}} />
+          <TooltipTrigger id="users-management">
+            <div className="w-full">
+              <InviteForm onSuccess={() => {}} />
+            </div>
+          </TooltipTrigger>
 
           {/* Recent Users Table */}
           {usersLoading ? (
             <Skeleton className="h-96 rounded-xl mb-6" />
           ) : (
-            <UsersTable
-              users={usersData?.users ? usersData.users.slice(0, 5) : []}
-              onViewAll={() => setActiveTab("users")}
-              onUserAction={handleUserAction}
-            />
+            <TooltipTrigger id="users-table">
+              <div className="w-full">
+                <UsersTable
+                  users={usersData?.users ? usersData.users.slice(0, 5) : []}
+                  onViewAll={() => setActiveTab("users")}
+                  onUserAction={handleUserAction}
+                />
+              </div>
+            </TooltipTrigger>
           )}
 
           {/* Points Allocation Form */}
-          <PointsAllocationForm 
-            users={installers}
-            onSuccess={() => {
-              refetchUsers();
-              refetchTransactions();
-            }}
-          />
+          <TooltipTrigger id="points-allocation">
+            <div className="w-full">
+              <PointsAllocationForm 
+                users={installers}
+                onSuccess={() => {
+                  refetchUsers();
+                  refetchTransactions();
+                }}
+              />
+            </div>
+          </TooltipTrigger>
         </>
       )}
 
@@ -258,11 +270,15 @@ export default function AdminDashboard() {
           {badgesLoading ? (
             <Skeleton className="h-96 rounded-xl" />
           ) : (
-            <BadgesManagement
-              badges={badgesData?.badges || []}
-              onRefresh={refetchBadges}
-              userId={user?.id}
-            />
+            <TooltipTrigger id="badges-management">
+              <div className="w-full">
+                <BadgesManagement
+                  badges={badgesData?.badges || []}
+                  onRefresh={refetchBadges}
+                  userId={user?.id}
+                />
+              </div>
+            </TooltipTrigger>
           )}
         </>
       )}
@@ -288,10 +304,14 @@ export default function AdminDashboard() {
           {productsLoading ? (
             <Skeleton className="h-96 rounded-xl" />
           ) : (
-            <ProductsManagement
-              products={productsData?.products || []}
-              onRefresh={refetchProducts}
-            />
+            <TooltipTrigger id="products-management">
+              <div className="w-full">
+                <ProductsManagement
+                  products={productsData?.products || []}
+                  onRefresh={refetchProducts}
+                />
+              </div>
+            </TooltipTrigger>
           )}
         </>
       )}
