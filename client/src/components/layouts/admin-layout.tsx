@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import breegLogo from "@/assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
@@ -25,10 +26,30 @@ export default function AdminLayout({
   onTabChange
 }: AdminLayoutProps) {
   const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   const handleTabChange = (value: string) => {
     if (onTabChange) {
       onTabChange(value);
+    }
+    
+    // Also navigate to the appropriate page
+    switch(value) {
+      case "overview":
+        setLocation("/admin/dashboard");
+        break;
+      case "users":
+        setLocation("/admin/users");
+        break;
+      case "settings":
+        setLocation("/admin/settings");
+        break;
+      case "products":
+      case "badges":
+      case "stats":
+        // These tabs don't have separate pages, just stay on dashboard with different tab
+        setLocation("/admin/dashboard");
+        break;
     }
   };
 
