@@ -28,6 +28,8 @@ import {
   Cell
 } from "recharts";
 import { DateRangePicker, DateRangePresets } from "./date-range-picker";
+import { InsightTooltip } from "./insight-tooltip";
+import { AnalyticsSummary } from "./analytics-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -200,6 +202,18 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
         </div>
       </div>
       
+      {/* AI-powered Analytics Summary */}
+      <AnalyticsSummary
+        totalInstallers={totalInstallers}
+        totalInstallations={totalInstallations}
+        pointsAwarded={pointsAwarded}
+        pointsRedeemed={pointsRedeemed}
+        regionData={Object.entries(regionDistribution).map(([name, count]) => ({ name, count }))}
+        productData={productChartData}
+        dateRange={dateRange}
+        className="mb-2"
+      />
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -274,8 +288,14 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
         
         <TabsContent value="installations" className="mt-0">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>عمليات التركيب عبر الزمن</CardTitle>
+              <InsightTooltip
+                chartType="installations_time_series"
+                dataPoints={timeSeriesData}
+                metric="installations"
+                dateRange={dateRange}
+              />
             </CardHeader>
             <CardContent>
               {transactionsLoading ? (
@@ -311,8 +331,14 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
         
         <TabsContent value="points" className="mt-0">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>النقاط الممنوحة والمستبدلة عبر الزمن</CardTitle>
+              <InsightTooltip
+                chartType="points_time_series"
+                dataPoints={timeSeriesData}
+                metric="points"
+                dateRange={dateRange}
+              />
             </CardHeader>
             <CardContent>
               {transactionsLoading ? (
