@@ -206,51 +206,84 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   // Start a guided tour
   const startTour = (tourIds: string[]) => {
     if (tourIds.length > 0) {
-      // Set the localStorage flag to indicate tour is active
-      localStorage.setItem('tooltip_tour_active', 'true');
-      
-      setCurrentTour({
-        tourIds,
-        currentIndex: 0,
-        isActive: true
-      });
-      showTooltip(tourIds[0]);
+      try {
+        // Clear any existing tooltips first
+        hideTooltip();
+        
+        // Set the localStorage flag to indicate tour is active and pause data refresh
+        localStorage.setItem('tooltip_tour_active', 'true');
+        
+        // Update tour state
+        setCurrentTour({
+          tourIds,
+          currentIndex: 0,
+          isActive: true
+        });
+        
+        // Add a small delay before showing the first tooltip
+        setTimeout(() => {
+          if (localStorage.getItem('tooltip_tour_active') === 'true') {
+            showTooltip(tourIds[0]);
+          }
+        }, 100);
+      } catch (error) {
+        console.error("Error in startTour:", error);
+        localStorage.removeItem('tooltip_tour_active');
+      }
     }
   };
 
   // Go to next tooltip in tour
   const nextTourStep = () => {
     if (currentTour.isActive && activeTooltip) {
-      // First hide the current tooltip to avoid overlapping tooltips during transition
-      hideTooltip();
-
-      // Mark the current tooltip as seen
-      if (!hasSeenTooltip(activeTooltip.id)) {
-        setSeenTooltips([...seenTooltips, activeTooltip.id]);
-      }
-      
-      const nextIndex = currentTour.currentIndex + 1;
-      
-      // If we have more steps in the tour
-      if (nextIndex < currentTour.tourIds.length) {
-        setCurrentTour({
-          ...currentTour,
-          currentIndex: nextIndex
-        });
+      try {
+        // First hide the current tooltip to avoid overlapping tooltips during transition
+        hideTooltip();
+  
+        // Mark the current tooltip as seen and save to localStorage immediately
+        if (!hasSeenTooltip(activeTooltip.id)) {
+          const newSeenTooltips = [...seenTooltips, activeTooltip.id];
+          setSeenTooltips(newSeenTooltips);
+          
+          if (user?.id) {
+            localStorage.setItem(`seen-tooltips-${user.id}`, JSON.stringify(newSeenTooltips));
+          }
+        }
         
-        // Add a small delay before showing the next tooltip to allow for proper transition
-        setTimeout(() => {
-          showTooltip(currentTour.tourIds[nextIndex]);
-        }, 50);
-      } else {
-        // End of tour
-        setCurrentTour({
-          tourIds: [],
-          currentIndex: 0,
-          isActive: false
-        });
+        const nextIndex = currentTour.currentIndex + 1;
         
-        // Remove the localStorage flag since tour is over
+        // If we have more steps in the tour
+        if (nextIndex < currentTour.tourIds.length) {
+          // Make sure refresh is paused while tour is active
+          localStorage.setItem('tooltip_tour_active', 'true');
+          
+          // Update tour state
+          setCurrentTour({
+            ...currentTour,
+            currentIndex: nextIndex
+          });
+          
+          // Add a longer delay to ensure proper transition
+          setTimeout(() => {
+            // Double-check the tour is still active before showing next tooltip
+            if (localStorage.getItem('tooltip_tour_active') === 'true') {
+              showTooltip(currentTour.tourIds[nextIndex]);
+            }
+          }, 100);
+        } else {
+          // End of tour
+          setCurrentTour({
+            tourIds: [],
+            currentIndex: 0,
+            isActive: false
+          });
+          
+          // Tour is over, resume data refreshing
+          localStorage.removeItem('tooltip_tour_active');
+        }
+      } catch (error) {
+        console.error("Error in nextTourStep:", error);
+        // If anything goes wrong, make sure to clean up
         localStorage.removeItem('tooltip_tour_active');
       }
     }
