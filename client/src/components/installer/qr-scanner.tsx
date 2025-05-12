@@ -25,27 +25,17 @@ interface ScanHistoryItem {
   message?: string;
 }
 
-// Advanced QR code tracker with both temporary cooldown and permanent tracking
+// QR code tracker for managing cooldown and tracking codes only within a single scanner session
 class QrCodeTracker {
   // Temporary cooldown for UI feedback
   private cooldownCodes: Map<string, number> = new Map();
-  // Permanent tracking of processed codes
+  // Tracking of processed codes (in this session only)
   private processedCodes: Set<string> = new Set();
   private readonly cooldownPeriod: number; // milliseconds
   
   constructor(cooldownPeriod: number = 5000) { // 5 seconds default cooldown
     this.cooldownPeriod = cooldownPeriod;
-    
-    // Try to restore processed codes from sessionStorage
-    try {
-      const saved = sessionStorage.getItem('processedQrCodes');
-      if (saved) {
-        this.processedCodes = new Set(JSON.parse(saved));
-        console.log(`Restored ${this.processedCodes.size} previously processed QR codes`);
-      }
-    } catch (e) {
-      console.error("Failed to restore processed QR codes:", e);
-    }
+    // No restore from storage - we want fresh tracking each time
   }
   
   // Check if code can be processed (not in cooldown and not processed before)
@@ -69,17 +59,11 @@ class QrCodeTracker {
     return !this.processedCodes.has(qrCode);
   }
   
-  // Mark a code as fully processed
+  // Mark a code as processed within this session only
   markProcessed(qrCode: string): void {
-    // Add to permanent processed set
+    // Add to processed set for this session only
     this.processedCodes.add(qrCode);
-    
-    // Save to sessionStorage for persistence
-    try {
-      sessionStorage.setItem('processedQrCodes', JSON.stringify([...this.processedCodes]));
-    } catch (e) {
-      console.error("Failed to save processed QR codes:", e);
-    }
+    // No persisting to storage
   }
   
   // Check if a code is already processed (without affecting cooldown)
@@ -106,15 +90,10 @@ class QrCodeTracker {
     this.cooldownCodes.clear();
   }
   
-  // Full reset (for testing)
+  // Full reset - just clears memory, no storage operations
   fullReset() {
     this.cooldownCodes.clear();
     this.processedCodes.clear();
-    try {
-      sessionStorage.removeItem('processedQrCodes');
-    } catch (e) {
-      console.error("Failed to clear processed QR codes:", e);
-    }
   }
 }
 
@@ -517,8 +496,18 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       setIsValidating(false);
       setShowHistory(false);
       
-      // Only reset the cooldown, not the processed codes memory
-      qrTrackerRef.current.resetCooldown();
+      // Reset all QR code tracking when dialog closes (as per requirements)
+      qrTrackerRef.current.fullReset();
+      setProcessedCodesCount(0);
+      
+      // Reset session stats
+      setTotalScansInSession(0);
+      setSuccessfulScansInSession(0);
+      setTotalPointsInSession(0);
+    } else {
+      // Also reset when reopening the scanner
+      qrTrackerRef.current.fullReset();
+      setProcessedCodesCount(0);
     }
   };
 
@@ -600,7 +589,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                     <div className="flex items-center">
                       <CheckCircle2 className="h-4 w-4 text-green-600 ml-1" />
                       <span className="text-xs">
-                        <span className="font-bold">{processedCodesCount}</span> كود تم معالجته
+                        <span className="font-bold">{processedCodesCount}</span> كود تم معالجته في هذه الجلسة
                       </span>
                     </div>
                     <Button 
@@ -608,12 +597,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                       size="sm"
                       className="h-6 p-0 px-1"
                       onClick={() => {
-                        if (confirm('هل أنت متأكد من حذف سجل الأكواد المعالجة؟')) {
+                        if (confirm('هل أنت متأكد من إعادة تعيين الأكواد التي تم مسحها في هذه الجلسة؟')) {
                           qrTrackerRef.current.fullReset();
                           setProcessedCodesCount(0);
                           toast({
-                            title: "تم المسح",
-                            description: "تم مسح سجل الأكواد المعالجة",
+                            title: "تم إعادة التعيين",
+                            description: "تم إعادة تعيين الأكواد المسجلة في هذه الجلسة",
                             variant: "default",
                           });
                         }
