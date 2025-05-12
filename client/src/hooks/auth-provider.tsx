@@ -20,7 +20,6 @@ interface AuthContextType {
   login: (userId: string, userRole: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  setTooltipTourActive: (active: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -113,22 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
-  // Create global state to track tooltip tours
-  const [isTooltipTourActive, setIsTooltipTourActive] = useState(false);
-  
-  // Expose method to disable auto-refresh during tooltip tours
-  const setTooltipTourActive = (active: boolean) => {
-    setIsTooltipTourActive(active);
-  };
-
-  // Set up auto-refresh for user data with a pause option
+  // Set up auto-refresh for user data
   useEffect(() => {
     if (!user) return;
-    
-    // If tooltip tour is active, don't set up auto-refresh at all
-    if (isTooltipTourActive) {
-      return;
-    }
     
     // Refresh user data every 2 seconds
     const intervalId = setInterval(() => {
@@ -137,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, [user?.id, isTooltipTourActive]);
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider
@@ -147,8 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         login,
         logout,
-        refreshUser,
-        setTooltipTourActive
+        refreshUser
       }}
     >
       {children}

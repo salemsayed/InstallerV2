@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
-import { useTooltips } from "@/hooks/use-tooltips";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
 import InviteForm from "@/components/admin/invite-form";
@@ -13,33 +12,14 @@ import EditUserDialog from "@/components/admin/edit-user-dialog";
 import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { User, TransactionType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
-import TooltipTrigger from "@/components/ui/tooltip-trigger";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { startTour } = useTooltips();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
-  // Start the tour for first-time admin users
-  useEffect(() => {
-    if (user?.role === "admin") {
-      // Wait for the UI to render before showing tooltips
-      const tourTimer = setTimeout(() => {
-        startTour([
-          'dashboard-overview',
-          'users-management',
-          'points-allocation',
-          'badges-management'
-        ]);
-      }, 1000);
-      
-      return () => clearTimeout(tourTimer);
-    }
-  }, [startTour, user?.role]);
 
   // Fetch users data
   const { 
@@ -192,52 +172,36 @@ export default function AdminDashboard() {
               <Skeleton className="h-24 rounded-xl" />
             </div>
           ) : (
-            <TooltipTrigger id="dashboard-overview">
-              <div className="w-full">
-                <OverviewCards
-                  totalUsers={totalInstallers}
-                  totalInstallations={totalInstallations}
-                  pointsAwarded={pointsAwarded || 0}
-                  pointsRedeemed={pointsRedeemed || 0}
-                />
-              </div>
-            </TooltipTrigger>
+            <OverviewCards
+              totalUsers={totalInstallers}
+              totalInstallations={totalInstallations}
+              pointsAwarded={pointsAwarded || 0}
+              pointsRedeemed={pointsRedeemed || 0}
+            />
           )}
 
           {/* User Invite Form */}
-          <TooltipTrigger id="users-management">
-            <div className="w-full">
-              <InviteForm onSuccess={() => {}} />
-            </div>
-          </TooltipTrigger>
+          <InviteForm onSuccess={() => {}} />
 
           {/* Recent Users Table */}
           {usersLoading ? (
             <Skeleton className="h-96 rounded-xl mb-6" />
           ) : (
-            <TooltipTrigger id="users-table">
-              <div className="w-full">
-                <UsersTable
-                  users={usersData?.users ? usersData.users.slice(0, 5) : []}
-                  onViewAll={() => setActiveTab("users")}
-                  onUserAction={handleUserAction}
-                />
-              </div>
-            </TooltipTrigger>
+            <UsersTable
+              users={usersData?.users ? usersData.users.slice(0, 5) : []}
+              onViewAll={() => setActiveTab("users")}
+              onUserAction={handleUserAction}
+            />
           )}
 
           {/* Points Allocation Form */}
-          <TooltipTrigger id="points-allocation">
-            <div className="w-full">
-              <PointsAllocationForm 
-                users={installers}
-                onSuccess={() => {
-                  refetchUsers();
-                  refetchTransactions();
-                }}
-              />
-            </div>
-          </TooltipTrigger>
+          <PointsAllocationForm 
+            users={installers}
+            onSuccess={() => {
+              refetchUsers();
+              refetchTransactions();
+            }}
+          />
         </>
       )}
 
@@ -270,15 +234,11 @@ export default function AdminDashboard() {
           {badgesLoading ? (
             <Skeleton className="h-96 rounded-xl" />
           ) : (
-            <TooltipTrigger id="badges-management">
-              <div className="w-full">
-                <BadgesManagement
-                  badges={badgesData?.badges || []}
-                  onRefresh={refetchBadges}
-                  userId={user?.id}
-                />
-              </div>
-            </TooltipTrigger>
+            <BadgesManagement
+              badges={badgesData?.badges || []}
+              onRefresh={refetchBadges}
+              userId={user?.id}
+            />
           )}
         </>
       )}
@@ -304,14 +264,10 @@ export default function AdminDashboard() {
           {productsLoading ? (
             <Skeleton className="h-96 rounded-xl" />
           ) : (
-            <TooltipTrigger id="products-management">
-              <div className="w-full">
-                <ProductsManagement
-                  products={productsData?.products || []}
-                  onRefresh={refetchProducts}
-                />
-              </div>
-            </TooltipTrigger>
+            <ProductsManagement
+              products={productsData?.products || []}
+              onRefresh={refetchProducts}
+            />
           )}
         </>
       )}

@@ -1,8 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/auth-provider";
-import { useTooltips } from "@/hooks/use-tooltips";
-import React, { useEffect } from "react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
@@ -11,29 +9,11 @@ import QrScanner from "@/components/installer/qr-scanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";
-import TooltipTrigger from "@/components/ui/tooltip-trigger";
 
 export default function InstallerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { startTour } = useTooltips();
-  
-  // Start the tour for first-time users when the component mounts
-  useEffect(() => {
-    // Wait for the component to fully render
-    const tourTimer = setTimeout(() => {
-      // Start the tour with these tooltips in sequence
-      startTour([
-        'dashboard-points',
-        'dashboard-installations',
-        'badges-section',
-        'scanner-button'
-      ]);
-    }, 1000);
-    
-    return () => clearTimeout(tourTimer);
-  }, [startTour]);
 
   // Fetch user's transactions with frequent refresh 
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
@@ -98,44 +78,28 @@ export default function InstallerDashboard() {
         {!user ? (
           <Skeleton className="h-36 w-full rounded-2xl" />
         ) : (
-          <TooltipTrigger id="dashboard-points">
-            <div className="w-full">
-              <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
-            </div>
-          </TooltipTrigger>
+          <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
         )}
       </section>
 
       {/* Achievement Card */}
       <section className="px-4 mb-8">
-        <TooltipTrigger id="badges-section">
-          <div className="w-full">
-            <AchievementCard
-              points={user.points}
-              badges={badgesData?.badges ? badgesData.badges : []}
-            />
-          </div>
-        </TooltipTrigger>
+        <AchievementCard
+          points={user.points}
+          badges={badgesData?.badges ? badgesData.badges : []}
+        />
       </section>
 
       {/* Recent Transactions */}
       <section className="px-4 mb-8">
-        <TooltipTrigger id="dashboard-installations">
-          <div className="w-full">
-            <TransactionsList 
-              transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
-              onViewAll={() => window.location.href = "/installer/stats"}
-            />
-          </div>
-        </TooltipTrigger>
+        <TransactionsList 
+          transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
+          onViewAll={() => window.location.href = "/installer/stats"}
+        />
       </section>
       
       {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}
-      <TooltipTrigger id="scanner-button">
-        <div className="w-full">
-          <QrScanner />
-        </div>
-      </TooltipTrigger>
+      <QrScanner />
     </InstallerLayout>
   );
 }
