@@ -37,11 +37,11 @@ export default function AdminLayout({
   return (
     <div className={cn("min-h-screen bg-neutral-50", className)}>
       {/* Admin Header */}
-      <header className="bg-primary text-white shadow-sm">
+      <header className="bg-primary text-white shadow-sm" dir="rtl">
         <div className="px-4 py-5 flex justify-between items-center">
           <div className="flex items-center">
             <img src={breegLogo} alt="بريق" className="h-6 ml-2" />
-            <span className="font-bold mr-1">لوحة الإدارة</span>
+            <span className="font-bold">لوحة الإدارة</span>
           </div>
           
           <DropdownMenu>
@@ -50,7 +50,7 @@ export default function AdminLayout({
                 <span className="material-icons">more_vert</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="start">
               <DropdownMenuItem onClick={logout}>
                 <span className="material-icons ml-2">logout</span>
                 <span>تسجيل الخروج</span>
@@ -61,34 +61,16 @@ export default function AdminLayout({
         
         {/* Admin Tab Navigation */}
         <div className="px-4 pb-2">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="bg-transparent hide-scrollbar overflow-x-auto w-full justify-start">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" dir="rtl">
+            <TabsList className="bg-transparent hide-scrollbar overflow-x-auto w-full justify-end">
               <TabsTrigger 
-                value="overview" 
+                value="stats" 
                 className={cn(
                   "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "overview" && "text-white/70"
+                  activeTab !== "stats" && "text-white/70"
                 )}
               >
-                نظرة عامة
-              </TabsTrigger>
-              <TabsTrigger 
-                value="users" 
-                className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "users" && "text-white/70"
-                )}
-              >
-                المستخدمين
-              </TabsTrigger>
-              <TabsTrigger 
-                value="products" 
-                className={cn(
-                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "products" && "text-white/70"
-                )}
-              >
-                المنتجات
+                الإحصائيات
               </TabsTrigger>
               <TabsTrigger 
                 value="badges" 
@@ -100,13 +82,31 @@ export default function AdminLayout({
                 الشارات
               </TabsTrigger>
               <TabsTrigger 
-                value="stats" 
+                value="products" 
                 className={cn(
                   "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  activeTab !== "stats" && "text-white/70"
+                  activeTab !== "products" && "text-white/70"
                 )}
               >
-                الإحصائيات
+                المنتجات
+              </TabsTrigger>
+              <TabsTrigger 
+                value="users" 
+                className={cn(
+                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "users" && "text-white/70"
+                )}
+              >
+                المستخدمين
+              </TabsTrigger>
+              <TabsTrigger 
+                value="overview" 
+                className={cn(
+                  "text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  activeTab !== "overview" && "text-white/70"
+                )}
+              >
+                نظرة عامة
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -119,7 +119,7 @@ export default function AdminLayout({
       </main>
       
       {/* Admin Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6" dir="rtl">
         <div className="w-1/3">
           <Link href="/admin/dashboard">
             <div className={cn(
