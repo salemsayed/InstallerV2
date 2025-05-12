@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
-import InviteForm from "@/components/admin/invite-form";
 import UsersTable from "@/components/admin/users-table";
 import PointsAllocationForm from "@/components/admin/points-allocation-form";
 import ProductsManagement from "@/components/admin/products-management";
@@ -180,9 +179,6 @@ export default function AdminDashboard() {
               pointsRedeemed={pointsRedeemed || 0}
             />
           )}
-
-          {/* User Invite Form */}
-          <InviteForm onSuccess={() => {}} />
 
           {/* Recent Users Table */}
           {usersLoading ? (
