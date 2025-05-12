@@ -69,7 +69,9 @@ export default function InstallerStats() {
               <p className="text-center py-4">جاري التحميل...</p>
             ) : (
               <TransactionsList 
-                transactions={transactionsData?.transactions || []} 
+                transactions={transactionsData?.transactions || []}
+                displayLimit={10}
+                showPagination={true}
               />
             )}
           </CardContent>
