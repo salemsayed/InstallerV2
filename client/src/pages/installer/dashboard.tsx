@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/auth-provider";
+import { useTooltips } from "@/hooks/use-tooltips";
+import React, { useEffect } from "react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
@@ -9,11 +11,29 @@ import QrScanner from "@/components/installer/qr-scanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";
+import TooltipTrigger from "@/components/ui/tooltip-trigger";
 
 export default function InstallerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { startTour } = useTooltips();
+  
+  // Start the tour for first-time users when the component mounts
+  useEffect(() => {
+    // Wait for the component to fully render
+    const tourTimer = setTimeout(() => {
+      // Start the tour with these tooltips in sequence
+      startTour([
+        'dashboard-points',
+        'dashboard-installations',
+        'badges-section',
+        'scanner-button'
+      ]);
+    }, 1000);
+    
+    return () => clearTimeout(tourTimer);
+  }, [startTour]);
 
   // Fetch user's transactions with frequent refresh 
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
