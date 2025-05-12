@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/auth-provider";
 
 interface AnalyticsSummaryProps {
   totalInstallers: number;
@@ -27,6 +28,7 @@ export function AnalyticsSummary({
   dateRange,
   className,
 }: AnalyticsSummaryProps) {
+  const { user } = useAuth();
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function AnalyticsSummary({
         to: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd')
       };
       
-      const res = await apiRequest("POST", "/api/analytics/summary", {
+      const res = await apiRequest("POST", `/api/analytics/summary?userId=${user?.id || 0}`, {
         totalInstallers,
         totalInstallations,
         pointsAwarded,

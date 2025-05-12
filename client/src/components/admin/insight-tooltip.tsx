@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { useAuth } from "@/hooks/auth-provider";
 
 interface InsightTooltipProps {
   chartType: string;
@@ -23,6 +24,7 @@ export function InsightTooltip({
   trigger,
   className,
 }: InsightTooltipProps) {
+  const { user } = useAuth();
   const [insight, setInsight] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function InsightTooltip({
         to: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd')
       };
       
-      const res = await apiRequest("POST", "/api/analytics/insight", {
+      const res = await apiRequest("POST", `/api/analytics/insight?userId=${user?.id || 0}`, {
         chartType,
         dataPoints,
         dateRange: formattedDateRange,
