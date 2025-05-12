@@ -564,24 +564,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                 </div>
               ) : (
                 <>
-                  <div className="relative">
-                    <div
-                      id="qr-reader"
-                      className={`w-full overflow-hidden rounded-lg border ${
-                        isScanning ? "h-64" : "h-0"
-                      }`}
-                    ></div>
-                    
-                    {/* Cooldown indicator */}
-                    {cooldownActive && (
-                      <div className="absolute inset-0 bg-orange-500/30 flex flex-col items-center justify-center z-10 pointer-events-none">
-                        <div className="bg-black/70 rounded-lg p-3 text-center">
-                          <p className="text-orange-300 font-bold">انتظر قليلاً</p>
-                          <p className="text-white text-xs">تم مسح هذا الكود بالفعل</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <div
+                    id="qr-reader"
+                    className={`w-full overflow-hidden rounded-lg border ${
+                      isScanning ? "h-64" : "h-0"
+                    }`}
+                  ></div>
+                  
+                  {/* Cooldown indicator (separate from scanner) */}
+                  {cooldownActive && isScanning && (
+                    <div className="mt-2 p-3 bg-orange-50 border border-orange-300 rounded-lg text-center">
+                      <p className="text-orange-600 font-bold">انتظر قليلاً</p>
+                      <p className="text-orange-600 text-xs">تم مسح هذا الكود بالفعل</p>
+                    </div>
+                  )}
 
                   {!isScanning ? (
                     <Button 
