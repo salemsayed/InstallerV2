@@ -615,42 +615,39 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               </div>
             )}
             
-            {/* Scan History */}
-            {showHistory && scanHistory.length > 0 && (
-              <div className="mb-3 max-h-40 overflow-y-auto p-2 border rounded-lg">
-                <h4 className="text-sm font-bold mb-2">سجل المسح</h4>
-                {scanHistory.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-xs mb-1 p-1 border-b last:border-b-0">
-                    <div className="flex items-center gap-1">
-                      {item.status === 'success' ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <XCircle className="h-3 w-3 text-red-500" />
-                      )}
-                      <span className="truncate max-w-[120px]">{item.productName}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {item.status === 'success' && (
-                        <Badge variant="outline" className="h-5 px-1">+{item.points}</Badge>
-                      )}
-                      <span className="text-muted-foreground">{formatTime(item.timestamp)}</span>
-                    </div>
+            {/* Scan History - uses opacity transition to prevent jitter */}
+            <div className={`mb-3 transition-opacity duration-150 ${showHistory && scanHistory.length > 0 ? "opacity-100 max-h-40" : "opacity-0 h-0"} overflow-y-auto p-2 border rounded-lg`}>
+              <h4 className="text-sm font-bold mb-2">سجل المسح</h4>
+              {scanHistory.map((item, index) => (
+                <div key={index} className="flex items-center justify-between text-xs mb-1 p-1 border-b last:border-b-0">
+                  <div className="flex items-center gap-1">
+                    {item.status === 'success' ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <XCircle className="h-3 w-3 text-red-500" />
+                    )}
+                    <span className="truncate max-w-[120px]">{item.productName}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex items-center gap-1">
+                    {item.status === 'success' && (
+                      <Badge variant="outline" className="h-5 px-1">+{item.points}</Badge>
+                    )}
+                    <span className="text-muted-foreground">{formatTime(item.timestamp)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            {/* Batch Mode Active Notification */}
-            {batchMode && isScanning && !isValidating && !error && (
-              <div className="mb-4 p-2 bg-green-100 text-green-800 rounded-lg border border-green-300 text-sm text-center">
+            {/* Fixed-height status message container to prevent layout jitter */}
+            <div className="min-h-[80px] mb-4">
+              {/* Batch Mode Active Notification */}
+              <div className={`p-2 bg-green-100 text-green-800 rounded-lg border border-green-300 text-sm text-center transition-opacity duration-150 ${batchMode && isScanning && !isValidating && !error ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
                 <div className="font-medium">وضع المسح المتتابع نشط</div>
                 <div className="text-xs">استمر في مسح المنتجات بشكل متتابع</div>
               </div>
-            )}
-            
-            {/* Error Display */}
-            {error && (
-              <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm">
+              
+              {/* Error Display */}
+              <div className={`p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm transition-opacity duration-150 ${error ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
                 <div className="whitespace-pre-wrap font-mono text-xs">{error}</div>
                 <Button 
                   variant="outline" 
@@ -661,7 +658,32 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   إغلاق الخطأ
                 </Button>
               </div>
-            )}
+              
+              {/* Cooldown indicator - moved inside fixed container */}
+              <div className={`p-3 rounded-lg text-center transition-opacity duration-150 ${
+                cooldownActive && isScanning && lastScannedCode ? "opacity-100" : "opacity-0 h-0 overflow-hidden"
+              } ${
+                qrTrackerRef.current.isProcessed(lastScannedCode || '') 
+                  ? 'bg-red-50 border border-red-300' 
+                  : 'bg-orange-50 border border-orange-300'
+              }`}>
+                {qrTrackerRef.current.isProcessed(lastScannedCode || '') ? (
+                  <>
+                    <p className="text-red-600 font-bold flex items-center justify-center gap-1">
+                      <XCircle className="h-4 w-4" /> تم معالجة هذا الكود مسبقاً
+                    </p>
+                    <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-orange-600 font-bold flex items-center justify-center gap-1">
+                      <Loader2 className="h-4 w-4 animate-spin" /> انتظر قليلاً
+                    </p>
+                    <p className="text-orange-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
+                  </>
+                )}
+              </div>
+            </div>
 
             <div className="flex flex-col items-center gap-4">
               {isValidating ? (
@@ -678,30 +700,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                     }`}
                   ></div>
                   
-                  {/* Cooldown indicator (separate from scanner) */}
-                  {cooldownActive && isScanning && lastScannedCode && (
-                    <div className={`mt-2 p-3 rounded-lg text-center ${
-                      qrTrackerRef.current.isProcessed(lastScannedCode) 
-                        ? 'bg-red-50 border border-red-300' 
-                        : 'bg-orange-50 border border-orange-300'
-                    }`}>
-                      {qrTrackerRef.current.isProcessed(lastScannedCode) ? (
-                        <>
-                          <p className="text-red-600 font-bold flex items-center justify-center gap-1">
-                            <XCircle className="h-4 w-4" /> تم معالجة هذا الكود مسبقاً
-                          </p>
-                          <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-orange-600 font-bold flex items-center justify-center gap-1">
-                            <Loader2 className="h-4 w-4 animate-spin" /> انتظر قليلاً
-                          </p>
-                          <p className="text-orange-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
-                        </>
-                      )}
-                    </div>
-                  )}
 
                   {!isScanning ? (
                     <Button 
