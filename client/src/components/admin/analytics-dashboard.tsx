@@ -381,8 +381,14 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
         
         <TabsContent value="regions" className="mt-0">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>توزيع المركبين حسب المنطقة</CardTitle>
+              <InsightTooltip
+                chartType="region_distribution"
+                dataPoints={Object.entries(regionDistribution).map(([name, count]) => ({ name, count }))}
+                metric="installers_by_region"
+                dateRange={dateRange}
+              />
             </CardHeader>
             <CardContent>
               {usersLoading ? (
@@ -437,8 +443,14 @@ export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) 
         
         <TabsContent value="products" className="mt-0">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>توزيع المنتجات المركبة</CardTitle>
+              <InsightTooltip
+                chartType="product_distribution"
+                dataPoints={productChartData}
+                metric="installations_by_product"
+                dateRange={dateRange}
+              />
             </CardHeader>
             <CardContent>
               {transactionsLoading ? (
