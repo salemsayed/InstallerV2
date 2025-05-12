@@ -1,5 +1,5 @@
-import { ReactNode, useState } from "react";
-import { useLocation, Link } from "wouter";
+import { ReactNode } from "react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import breegLogo from "@/assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
@@ -26,7 +26,6 @@ export default function AdminLayout({
   onTabChange
 }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  const [location] = useLocation();
 
   const handleTabChange = (value: string) => {
     if (onTabChange) {
@@ -63,70 +62,60 @@ export default function AdminLayout({
         <div className="px-4 pb-2">
           <div className="w-full" dir="rtl">
             <div className="flex bg-transparent overflow-x-auto w-full">
-              <Link href="/admin/dashboard">
-                <a
-                  onClick={() => handleTabChange("overview")}
-                  className={cn(
-                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                    activeTab === "overview" 
-                      ? "border-white" 
-                      : "border-transparent hover:text-white/80 text-white/70"
-                  )}
-                >
-                  نظرة عامة
-                </a>
+              <Link href="/admin/dashboard"
+                onClick={() => handleTabChange("overview")}
+                className={cn(
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "overview" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
+                )}
+              >
+                نظرة عامة
               </Link>
-              <Link href="/admin/users">
-                <a
-                  onClick={() => handleTabChange("users")}
-                  className={cn(
-                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                    activeTab === "users" 
-                      ? "border-white" 
-                      : "border-transparent hover:text-white/80 text-white/70"
-                  )}
-                >
-                  المستخدمين
-                </a>
+              <Link href="/admin/users"
+                onClick={() => handleTabChange("users")}
+                className={cn(
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "users" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
+                )}
+              >
+                المستخدمين
               </Link>
-              <Link href="/admin/dashboard">
-                <a
-                  onClick={() => handleTabChange("products")}
-                  className={cn(
-                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                    activeTab === "products" 
-                      ? "border-white" 
-                      : "border-transparent hover:text-white/80 text-white/70"
-                  )}
-                >
-                  المنتجات
-                </a>
+              <Link href="/admin/dashboard"
+                onClick={() => handleTabChange("products")}
+                className={cn(
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "products" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
+                )}
+              >
+                المنتجات
               </Link>
-              <Link href="/admin/dashboard">
-                <a
-                  onClick={() => handleTabChange("badges")}
-                  className={cn(
-                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                    activeTab === "badges" 
-                      ? "border-white" 
-                      : "border-transparent hover:text-white/80 text-white/70"
-                  )}
-                >
-                  الشارات
-                </a>
+              <Link href="/admin/dashboard"
+                onClick={() => handleTabChange("badges")}
+                className={cn(
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "badges" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
+                )}
+              >
+                الشارات
               </Link>
-              <Link href="/admin/dashboard">
-                <a
-                  onClick={() => handleTabChange("stats")}
-                  className={cn(
-                    "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
-                    activeTab === "stats" 
-                      ? "border-white" 
-                      : "border-transparent hover:text-white/80 text-white/70"
-                  )}
-                >
-                  الإحصائيات
-                </a>
+              <Link href="/admin/dashboard"
+                onClick={() => handleTabChange("stats")}
+                className={cn(
+                  "px-4 py-2 flex-shrink-0 text-white border-b-2 transition-colors",
+                  activeTab === "stats" 
+                    ? "border-white" 
+                    : "border-transparent hover:text-white/80 text-white/70"
+                )}
+              >
+                الإحصائيات
               </Link>
             </div>
           </div>
