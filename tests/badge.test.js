@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import sinon from 'sinon';
 import { storage } from '../server/storage.ts';
-import { checkBadgeQualification } from '../server/utils.ts';
+import { checkBadgeQualification } from '../client/src/lib/utils.ts';
 
 describe('Badge System Tests', function() {
   let storageStub;
@@ -17,8 +17,11 @@ describe('Badge System Tests', function() {
       checkBadgeQualification: sinon.stub()
     };
     
+    // Create an import target to stub
+    const utilsModule = { checkBadgeQualification };
+    
     // Replace the actual function with stub
-    sinon.replace({ checkBadgeQualification }, 'checkBadgeQualification', utilsStub.checkBadgeQualification);
+    sinon.replace(utilsModule, 'checkBadgeQualification', utilsStub.checkBadgeQualification);
   });
 
   afterEach(function() {
