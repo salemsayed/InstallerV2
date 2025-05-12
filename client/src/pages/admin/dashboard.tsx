@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
+import { useTooltips } from "@/hooks/use-tooltips";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
 import InviteForm from "@/components/admin/invite-form";
@@ -12,14 +13,33 @@ import EditUserDialog from "@/components/admin/edit-user-dialog";
 import DeleteConfirmationDialog from "@/components/admin/delete-confirmation-dialog";
 import { User, TransactionType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import TooltipTrigger from "@/components/ui/tooltip-trigger";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const { startTour } = useTooltips();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Start the tour for first-time admin users
+  useEffect(() => {
+    if (user?.role === "admin") {
+      // Wait for the UI to render before showing tooltips
+      const tourTimer = setTimeout(() => {
+        startTour([
+          'dashboard-overview',
+          'users-management',
+          'points-allocation',
+          'badges-management'
+        ]);
+      }, 1000);
+      
+      return () => clearTimeout(tourTimer);
+    }
+  }, [startTour, user?.role]);
 
   // Fetch users data
   const { 
@@ -172,12 +192,16 @@ export default function AdminDashboard() {
               <Skeleton className="h-24 rounded-xl" />
             </div>
           ) : (
-            <OverviewCards
-              totalUsers={totalInstallers}
-              totalInstallations={totalInstallations}
-              pointsAwarded={pointsAwarded || 0}
-              pointsRedeemed={pointsRedeemed || 0}
-            />
+            <TooltipTrigger id="dashboard-overview">
+              <div className="w-full">
+                <OverviewCards
+                  totalUsers={totalInstallers}
+                  totalInstallations={totalInstallations}
+                  pointsAwarded={pointsAwarded || 0}
+                  pointsRedeemed={pointsRedeemed || 0}
+                />
+              </div>
+            </TooltipTrigger>
           )}
 
           {/* User Invite Form */}

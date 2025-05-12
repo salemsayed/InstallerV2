@@ -98,28 +98,44 @@ export default function InstallerDashboard() {
         {!user ? (
           <Skeleton className="h-36 w-full rounded-2xl" />
         ) : (
-          <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
+          <TooltipTrigger id="dashboard-points">
+            <div className="w-full">
+              <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
+            </div>
+          </TooltipTrigger>
         )}
       </section>
 
       {/* Achievement Card */}
       <section className="px-4 mb-8">
-        <AchievementCard
-          points={user.points}
-          badges={badgesData?.badges ? badgesData.badges : []}
-        />
+        <TooltipTrigger id="badges-section">
+          <div className="w-full">
+            <AchievementCard
+              points={user.points}
+              badges={badgesData?.badges ? badgesData.badges : []}
+            />
+          </div>
+        </TooltipTrigger>
       </section>
 
       {/* Recent Transactions */}
       <section className="px-4 mb-8">
-        <TransactionsList 
-          transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
-          onViewAll={() => window.location.href = "/installer/stats"}
-        />
+        <TooltipTrigger id="dashboard-installations">
+          <div className="w-full">
+            <TransactionsList 
+              transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
+              onViewAll={() => window.location.href = "/installer/stats"}
+            />
+          </div>
+        </TooltipTrigger>
       </section>
       
       {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}
-      <QrScanner />
+      <TooltipTrigger id="scanner-button">
+        <div className="w-full">
+          <QrScanner />
+        </div>
+      </TooltipTrigger>
     </InstallerLayout>
   );
 }
