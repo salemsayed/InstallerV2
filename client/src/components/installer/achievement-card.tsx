@@ -51,13 +51,8 @@ export default function AchievementCard({ points, badges }: AchievementCardProps
     })
     .sort((a, b) => b.closeness - a.closeness);
   
-  // Select the top 3 closest badges to show by default
-  const topUnEarnedBadges = unEarnedBadges.slice(0, 3);
-  
-  // Badges to display depends on the showAll state
-  const displayBadges = showAll 
-    ? uniqueBadges 
-    : [...earnedBadges, ...topUnEarnedBadges].slice(0, 6);
+  // Display all unearned badges or just the top ones based on showAll state
+  const displayUnEarnedBadges = showAll ? unEarnedBadges : unEarnedBadges.slice(0, 3);
   
   return (
     <Card className="rounded-2xl shadow-sm border-0">
@@ -96,7 +91,7 @@ export default function AchievementCard({ points, badges }: AchievementCardProps
           <div>
             <h3 className="text-sm font-medium mb-3 text-neutral-600">الشارات القادمة</h3>
             <div className="grid grid-cols-3 gap-3">
-              {topUnEarnedBadges.slice(0, 3).map(badge => (
+              {displayUnEarnedBadges.map(badge => (
                 <div key={badge.id} className="flex flex-col items-center group relative">
                   <div className="w-14 h-14 rounded-full flex items-center justify-center mb-2 bg-neutral-200 opacity-70 group-hover:opacity-100 transition-opacity relative">
                     <span className="material-icons text-2xl text-neutral-500">{badge.icon}</span>
@@ -132,7 +127,8 @@ export default function AchievementCard({ points, badges }: AchievementCardProps
           </div>
         )}
         
-        {uniqueBadges.length > 6 && (
+        {/* Only show the button if there are more than 3 unearned badges */}
+        {unEarnedBadges.length > 3 && (
           <Button 
             variant="ghost" 
             className="w-full mt-4 text-sm" 
