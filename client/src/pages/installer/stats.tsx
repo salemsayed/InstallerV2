@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
+import { useToast } from "@/hooks/use-toast";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { Transaction } from "@shared/schema";
 
 export default function InstallerStats() {
   const { user } = useAuth();
+  const { toast } = useToast();
   
   // Fetch transactions with larger limit for stats page
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
@@ -72,8 +74,16 @@ export default function InstallerStats() {
             ) : (
               <TransactionsList 
                 transactions={transactions} 
-                limit={20}
+                limit={10}
                 showTotal={true}
+                onViewAll={() => {
+                  // Could be enhanced with more advanced pagination in the future
+                  // For now, this just shows that there's a way to see more
+                  toast({
+                    title: "التحديثات القادمة",
+                    description: "سيتم إضافة المزيد من خيارات عرض المعاملات في التحديثات القادمة",
+                  });
+                }}
               />
             )}
           </CardContent>

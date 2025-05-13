@@ -2,7 +2,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Transaction, TransactionType } from "@shared/schema";
 import { formatDate, formatNumber } from "@/lib/utils";
-import { useMemo } from "react";
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -17,19 +16,15 @@ export default function TransactionsList({
   limit = 5, 
   showTotal = true 
 }: TransactionsListProps) {
+  // Sort transactions by date (newest first)
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
   
-  // Get the most recent transactions up to the limit
-  const visibleTransactions = useMemo(() => {
-    // Sort transactions by date (newest first)
-    const sortedTransactions = [...transactions].sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
-    
-    // Return only up to the limit
-    return sortedTransactions.slice(0, limit);
-  }, [transactions, limit]);
+  // Get visible transactions (limited)
+  const visibleTransactions = sortedTransactions.slice(0, limit);
   
   // Total number of transactions
   const totalTransactions = transactions.length;
@@ -105,14 +100,15 @@ export default function TransactionsList({
               </div>
             ))}
             
-            {totalTransactions > limit && (
-              <div className="text-center pt-2">
+            {/* View all button */}
+            {totalTransactions > limit && onViewAll && (
+              <div className="text-center pt-4">
                 <Button 
                   variant="outline" 
                   onClick={onViewAll} 
                   className="w-full text-primary border-primary/30 hover:bg-primary/5"
                 >
-                  عرض كل المعاملات ({totalTransactions})
+                  عرض المزيد من المعاملات ({totalTransactions})
                 </Button>
               </div>
             )}
