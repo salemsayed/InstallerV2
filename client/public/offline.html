@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>غير متصل بالإنترنت | Offline - BAREEQ Rewards</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      color: #333;
+      text-align: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      max-width: 90%;
+      width: 400px;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #0264b4;
+    }
+    p {
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #0264b4;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #035093;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <img src="/icons/icon-192x192.png" alt="BAREEQ Logo" class="logo">
+  <div class="container">
+    <img src="/icons/offline-icon.svg" alt="Offline Icon" class="icon">
+    <h1>أنت غير متصل بالإنترنت</h1>
+    <p>يبدو أنك غير متصل بالإنترنت. تفقد اتصالك بالإنترنت وحاول مرة أخرى.</p>
+    <p>بعض ميزات التطبيق لا تزال متاحة وستتم مزامنة البيانات عند استعادة الاتصال.</p>
+    <button onclick="window.location.reload()">إعادة المحاولة</button>
+  </div>
+</body>
+</html>
