@@ -543,7 +543,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Filter for current month installations only
       const now = new Date();
-      const currentMonth = now.getMonth();
+      // In JavaScript, months are 0-indexed (0=January, 1=February, ..., 11=December)
+      const currentMonth = now.getMonth(); // May = 4 in JavaScript's Date API
       const currentYear = now.getFullYear();
       
       // Log for debugging
@@ -556,7 +557,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Count only current month installations for badge qualification
       const currentMonthInstallations = installationTransactions.filter(t => {
         const transactionDate = new Date(t.createdAt);
-        const transactionMonth = transactionDate.getMonth();
+        // In JavaScript, months are 0-indexed (0=January, 1=February, ..., 11=December)
+        const transactionMonth = transactionDate.getMonth(); // May = 4 in JavaScript's Date API
         const transactionYear = transactionDate.getFullYear();
         
         console.log(`[DEBUG] Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
