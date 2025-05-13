@@ -21,9 +21,9 @@ export default function InstallerProfile() {
     enabled: !!user?.id,
   });
   
-  // Fetch user's transactions to calculate accurate points balance with a higher limit
+  // Fetch user's transactions to calculate accurate points balance
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}&limit=1000`],
+    queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id,
   });
   

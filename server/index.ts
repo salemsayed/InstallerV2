@@ -1,22 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Session middleware for handling user sessions and logout
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'breeg-rewards-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -32,31 +20,16 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      // Only log important API calls (non-GET) or errors, or slow requests
-      const isImportantMethod = req.method !== "GET";
-      const isError = res.statusCode >= 400;
-      const isSlow = duration > 500; // Log if request took more than 500ms
-      
-      // Skip common polling endpoints
-      const isPollingEndpoint = 
-        path === "/api/users/me" || 
-        path === "/api/transactions" || 
-        path === "/api/badges";
-      
-      if (isImportantMethod || isError || isSlow || !isPollingEndpoint) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        
-        // Only include response details for non-GET methods or errors
-        if ((isImportantMethod || isError) && capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-  
-        if (logLine.length > 80) {
-          logLine = logLine.slice(0, 79) + "…";
-        }
-  
-        log(logLine);
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
     }
   });
 

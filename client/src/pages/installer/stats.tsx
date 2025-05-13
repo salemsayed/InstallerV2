@@ -8,9 +8,9 @@ import TransactionsList from "@/components/installer/transactions-list";
 export default function InstallerStats() {
   const { user } = useAuth();
   
-  // Fetch transactions with a higher limit
+  // Fetch transactions
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}&limit=1000`],
+    queryKey: [`/api/transactions?userId=${user?.id}`],
     enabled: !!user?.id,
   });
   
@@ -69,9 +69,7 @@ export default function InstallerStats() {
               <p className="text-center py-4">جاري التحميل...</p>
             ) : (
               <TransactionsList 
-                transactions={transactionsData?.transactions || []}
-                displayLimit={10}
-                showPagination={true}
+                transactions={transactionsData?.transactions || []} 
               />
             )}
           </CardContent>

@@ -33,24 +33,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if user is logged in on initial load
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    
-    // First check if this is right after a logout
-    const isJustLoggedOut = sessionStorage.getItem("just_logged_out");
-    if (isJustLoggedOut) {
-      // Clear the flag and ensure user is logged out
-      sessionStorage.removeItem("just_logged_out");
-      localStorage.removeItem("user");
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-    
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
         // Verify the user is still valid from the server
+        // This would check a session or token in a real app
         apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
           .then(res => res.json())
           .then(data => {
@@ -110,48 +99,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Also update localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
-        // Removed noisy console log
+        console.log("User data refreshed:", data.user);
       }
     } catch (error) {
-      // Only log refresh error if it's not a 401 unauthorized (which happens regularly during polling)
-      if (!(error instanceof Error && error.message.includes("401"))) {
-        console.error("Error refreshing user data:", error);
-      }
+      console.error("Error refreshing user data:", error);
     }
   };
 
-  const logout = async () => {
-    try {
-      // Set logout flag to prevent auto re-login
-      sessionStorage.setItem("just_logged_out", "true");
-      
-      // First clear the local data
-      setUser(null);
-      localStorage.removeItem("user");
-      
-      // Then make a server request to clear the session
-      await apiRequest("POST", "/api/auth/logout");
-      
-      // Finally redirect to home
-      setLocation("/");
-    } catch (error) {
-      console.error("Error during logout:", error);
-      // Even if the server request fails, ensure the user is logged out on the frontend
-      sessionStorage.setItem("just_logged_out", "true");
-      setUser(null);
-      localStorage.removeItem("user");
-      setLocation("/");
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    setLocation("/");
   };
 
   // Set up auto-refresh for user data
   useEffect(() => {
     if (!user) return;
     
-    // Refresh user data every 10 seconds instead of 2 seconds to reduce API load and console noise
+    // Refresh user data every 2 seconds
     const intervalId = setInterval(() => {
       refreshUser();
-    }, 10000);
+    }, 2000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);

@@ -21,22 +21,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { generateInsight, generateAnalyticsSummary } = await import('./openai');
 
   // AUTH ROUTES
-  // Logout endpoint
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    // Clear any session data
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) {
-          console.error("Error destroying session:", err);
-          return res.status(500).json({ success: false, message: "خطأ في تسجيل الخروج" });
-        }
-        res.status(200).json({ success: true, message: "تم تسجيل الخروج بنجاح" });
-      });
-    } else {
-      res.status(200).json({ success: true, message: "تم تسجيل الخروج بنجاح" });
-    }
-  });
-
   // Request OTP for login/registration
   app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
     try {
@@ -130,11 +114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Store user in session
-      if (req.session) {
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
-      }
+      // Create a JWT or session token here if needed
+      // For simplicity, we'll just return the user object
       
       return res.json({
         success: true,
@@ -165,21 +146,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Legacy endpoint for the old auth system
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // Get user from session
-    const userId = req.session?.userId;
+    // This would typically check session/token
+    // For demo, we'll use a query param
+    const userId = parseInt(req.query.userId as string);
     
-    // Support legacy query parameter if session isn't set
-    const queryUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
-    
-    // Use session ID first, fall back to query parameter
-    const userIdToUse = userId || queryUserId;
-    
-    if (!userIdToUse) {
+    if (!userId) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
     try {
-      const user = await storage.getUser(userIdToUse);
+      const user = await storage.getUser(userId);
       
       if (!user) {
         return res.status(404).json({ message: "المستخدم غير موجود." });
@@ -476,8 +452,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // INSTALLER ROUTES
   app.get("/api/transactions", async (req: Request, res: Response) => {
     const userId = parseInt(req.query.userId as string);
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 0; // 0 means no limit
-    const page = req.query.page ? parseInt(req.query.page as string) : 1;
     
     if (!userId) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
@@ -490,23 +464,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
-      // Get user transactions with the requested limit (1000 as a high default)
-      const transactions = await storage.getTransactionsByUserId(userId, limit || 1000);
+      // Get user transactions
+      const transactions = await storage.getTransactionsByUserId(userId);
       
-      // Count all transactions for this user for calculating total pages
-      const totalTransactions = transactions.length;
-      const totalPages = limit > 0 ? Math.ceil(totalTransactions / limit) : 1;
-      
-      // Return pagination metadata along with transactions
-      return res.status(200).json({
-        transactions,
-        pagination: {
-          total: totalTransactions,
-          page: page,
-          totalPages: totalPages,
-          limit: limit
-        }
-      });
+      return res.status(200).json({ transactions });
       
     } catch (error: any) {
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المعاملات" });
