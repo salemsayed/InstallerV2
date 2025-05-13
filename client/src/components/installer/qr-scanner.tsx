@@ -178,11 +178,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         
         console.log("SCANNER_DEBUG: Applying iOS-specific fixes to QR scanner");
         
-        // Force outer container dimensions
+        // Force outer container dimensions - more modest height to not break modal layout
         const outerContainer = document.querySelector('div.rounded-lg.border');
         if (outerContainer) {
-          (outerContainer as HTMLElement).style.height = '350px';
-          (outerContainer as HTMLElement).style.minHeight = '350px';
+          // Use a more reasonable height that won't break the dialog
+          (outerContainer as HTMLElement).style.height = '280px';
+          (outerContainer as HTMLElement).style.minHeight = '280px';
           console.log("SCANNER_DEBUG: Forced outer container height for iOS");
         }
         
@@ -190,16 +191,18 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         const qrContainer = document.getElementById('qr-reader');
         if (qrContainer) {
           qrContainer.style.height = '100%';
-          qrContainer.style.minHeight = '300px';
+          // Match the height of the outer container
+          qrContainer.style.minHeight = '280px';
           console.log("SCANNER_DEBUG: Applied styles to qr-reader container");
           
-          // Find and style HTML5QrCode's elements
+          // Fix the HTML5QrCode elements styling without breaking the modal
           
           // 1. Fix the scanning region (QR box)
           const scanBoxElement = qrContainer.querySelector('#qr-shaded-region');
           if (scanBoxElement) {
-            (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 99999px rgba(0, 0, 0, 0.5)';
-            (scanBoxElement as HTMLElement).style.border = '3px solid #fff';
+            // Use a more subtle shadow that won't completely obscure the UI
+            (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 99999px rgba(0, 0, 0, 0.3)';
+            (scanBoxElement as HTMLElement).style.border = '2px solid #fff';
             console.log("SCANNER_DEBUG: Enhanced QR scan box styles");
           }
           
@@ -211,13 +214,29 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             (videoElement as HTMLElement).style.height = '100%';
             console.log("SCANNER_DEBUG: Enhanced video element styles");
           }
+          
+          // 3. Fix the QR scanner UI elements
+          const scannerSection = document.querySelector('.h5-qrcode-section');
+          if (scannerSection) {
+            (scannerSection as HTMLElement).style.zIndex = '5';
+            console.log("SCANNER_DEBUG: Fixed scanner section z-index");
+          }
+        }
+        
+        // Fix the dialog positioning
+        const dialogContent = document.querySelector('[role="dialog"]');
+        if (dialogContent) {
+          // Make sure dialog has proper overflow settings
+          (dialogContent as HTMLElement).style.maxHeight = '90vh';
+          (dialogContent as HTMLElement).style.overflow = 'auto';
+          console.log("SCANNER_DEBUG: Fixed dialog content overflow");
         }
         
         // Log the dimensions after our fixes
         if (outerContainer && qrContainer) {
           console.log(`SCANNER_DEBUG: After iOS fixes - Outer: ${(outerContainer as HTMLElement).clientWidth}x${(outerContainer as HTMLElement).clientHeight}, Inner: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
         }
-      }, 1500); // Give enough time for the scanner to initialize
+      }, 1000); // Shorter delay so ui fixes apply faster
       
       return () => clearTimeout(timeout);
     }
@@ -273,14 +292,22 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           // Force height for iOS devices that might not render the container properly
           const parentElement = qrContainer.parentElement;
           if (parentElement) {
-            parentElement.style.height = "256px";
-            parentElement.style.minHeight = "256px";
+            // Use a smaller height that won't break the modal layout
+            parentElement.style.height = "240px";
+            parentElement.style.minHeight = "240px";
           }
-          qrContainer.style.height = "256px";
-          qrContainer.style.minHeight = "256px";
+          qrContainer.style.height = "240px";
+          qrContainer.style.minHeight = "240px";
           // Log the new dimensions after forcing height
           console.log(`SCANNER_DEBUG: Updated container dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
         }
+      }
+      
+      // Also fix the dialog content to ensure everything is visible
+      const dialogContent = document.querySelector('[role="dialog"]');
+      if (dialogContent) {
+        (dialogContent as HTMLElement).style.maxHeight = '90vh';
+        (dialogContent as HTMLElement).style.overflow = 'auto';
       }
 
       html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
@@ -842,15 +869,24 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               ) : (
                 <>
                   <div 
-                    className="w-full overflow-hidden rounded-lg border"
-                    style={{ height: isScanning ? '256px' : '0px' }}
+                    className="w-full overflow-hidden rounded-lg border relative"
+                    style={{ height: isScanning ? '240px' : '0px' }}
                   >
                     {/* Fixed size inner container for scanner */}
                     <div 
                       id="qr-reader" 
                       className="w-full h-full"
-                      style={{ minHeight: isScanning ? '256px' : '0px' }}
+                      style={{ minHeight: isScanning ? '240px' : '0px' }}
                     ></div>
+                    
+                    {/* Overlay with instructions for better visibility on iPhone */}
+                    {isScanning && (
+                      <div className="absolute top-2 left-0 right-0 text-center">
+                        <div className="bg-white/80 text-black px-2 py-1 rounded-full inline-block text-xs font-medium">
+                          وجه الكاميرا نحو رمز QR
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
 
