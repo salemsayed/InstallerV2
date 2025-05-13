@@ -349,11 +349,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLocalProductByName(name: string): Promise<LocalProduct | undefined> {
-    const [product] = await db
+    console.log(`[DEBUG] Looking for product with name: "${name}"`);
+    
+    // Try exact match first
+    let [product] = await db
       .select()
       .from(localProducts)
       .where(eq(localProducts.name, name));
-    return product;
+      
+    if (product) {
+      console.log(`[DEBUG] Found exact match for product: "${name}"`);
+      return product;
+    }
+    
+    // If no exact match, try to find if the name contains this product name
+    // or if any product name contains this name
+    console.log(`[DEBUG] No exact match found for "${name}", trying partial matches`);
+    
+    // Get all products for logging and diagnostic purposes
+    const allProducts = await db.select().from(localProducts);
+    console.log(`[DEBUG] All available products in database:`, 
+      allProducts.map(p => `"${p.name}" (ID: ${p.id}, Points: ${p.rewardPoints}, Active: ${p.isActive})`));
+    
+    // Look for partial matches both ways
+    for (const prod of allProducts) {
+      // Check if the product name from manufacturing DB contains our local product name
+      // or if our local product name contains the manufacturing name
+      if (name.includes(prod.name) || prod.name.includes(name)) {
+        console.log(`[DEBUG] Found partial match: "${prod.name}" for product: "${name}"`);
+        return prod;
+      }
+    }
+    
+    console.log(`[DEBUG] No matching product found for: "${name}"`);
+    return undefined;
   }
 
   async updateLocalProduct(id: number, data: Partial<LocalProduct>): Promise<LocalProduct | undefined> {
