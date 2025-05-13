@@ -59,7 +59,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/dashboard">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -71,7 +71,23 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </Link>
         </div>
         
-        <div className="w-1/3">
+        {/* Scanner - PWA-enabled quick access to standalone scanner */}
+        <div className="w-1/4">
+          <Link href="/scanner">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              location === "/scanner" ? "text-primary" : "text-neutral-500",
+              "relative -mt-5"
+            )}>
+              <div className="bg-primary text-white p-3 rounded-full shadow-lg border-4 border-white">
+                <span className="material-icons">qr_code_scanner</span>
+              </div>
+              <span className="text-xs mt-1">المسح</span>
+            </div>
+          </Link>
+        </div>
+        
+        <div className="w-1/4">
           <Link href="/installer/stats">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -83,7 +99,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </Link>
         </div>
         
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/profile">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",

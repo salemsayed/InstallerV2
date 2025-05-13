@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route } from "wouter";
 import LoginPage from "@/pages/auth/login-page";
 import InstallerDashboard from "@/pages/installer/dashboard";
@@ -8,6 +9,13 @@ import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
+import { setupPWA } from "@/pwa-utils";
+import { OfflineIndicator, OfflineBanner } from "@/components/ui/offline-indicator";
+import { PWAInstallPrompt } from "@/components/ui/pwa-install-prompt";
+import { PWAUpdateNotification } from "@/components/ui/pwa-update-notification";
+
+// Import scanner page
+import InstallerScanner from "@/pages/installer/scanner";
 
 function Router() {
   return (
@@ -20,6 +28,7 @@ function Router() {
       <Route path="/installer/dashboard" component={InstallerDashboard} />
       <Route path="/installer/stats" component={InstallerStats} />
       <Route path="/installer/profile" component={InstallerProfile} />
+      <Route path="/scanner" component={InstallerScanner} />
       
       {/* Admin Routes */}
       <Route path="/admin/dashboard" component={AdminDashboard} />
@@ -32,8 +41,29 @@ function Router() {
 }
 
 function App() {
+  // Initialize the PWA
+  useEffect(() => {
+    const initPWA = async () => {
+      try {
+        await setupPWA();
+        console.log('PWA setup complete');
+      } catch (error) {
+        console.error('Error setting up PWA:', error);
+      }
+    };
+
+    initPWA();
+  }, []);
+
   return (
     <AuthProvider>
+      {/* PWA Components */}
+      <OfflineBanner />
+      <OfflineIndicator />
+      <PWAInstallPrompt />
+      <PWAUpdateNotification />
+      
+      {/* Main App Content */}
       <Router />
     </AuthProvider>
   );
