@@ -43,7 +43,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const qrContainer = document.getElementById(qrCodeId);
     
     if (!qrContainer) {
-      setError("QR scanner element not found (ERROR_CODE: ELEMENT_NOT_FOUND)");
+      setError("عنصر الماسح الضوئي غير موجود (رمز الخطأ: ELEMENT_NOT_FOUND)");
       setIsScanning(false);
       return;
     }
@@ -71,7 +71,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      setError("Failed to start camera. Please grant camera permission. (ERROR_CODE: CAMERA_PERMISSION)");
+      setError("فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)");
       setIsScanning(false);
     }
   };
@@ -98,7 +98,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const match = url.match(urlRegex);
     
     if (!match) {
-      setError("Invalid QR code format. Please scan a valid warranty code. (ERROR_CODE: INVALID_FORMAT)\n\nExpected format: https://warranty.bareeq.lighting/p/[UUID]");
+      setError("صيغة رمز QR غير صالحة. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_FORMAT)\n\nالصيغة المتوقعة: https://warranty.bareeq.lighting/p/[UUID]");
       setIsValidating(false);
       return;
     }
@@ -108,7 +108,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
     // Step 2: UUID validation
     if (!isValidUUIDv4(uuid)) {
-      setError("Invalid product code UUID. Please scan a valid warranty code. (ERROR_CODE: INVALID_UUID)\n\nDetected UUID: " + uuid);
+      setError("رمز المنتج UUID غير صالح. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_UUID)\n\nالرمز المكتشف: " + uuid);
       setIsValidating(false);
       return;
     }
@@ -180,8 +180,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       // Show success toast
       toast({
-        title: "Product Verified Successfully ✓",
-        description: `Product: ${result.productName || "Unknown"}\nPoints awarded: ${result.pointsAwarded || 10}`,
+        title: "تم التحقق من المنتج بنجاح ✓",
+        description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
         variant: "default",
       });
       
@@ -191,7 +191,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
     } catch (err: any) {
       console.error("Validation error:", err);
-      setError(`Error validating QR code. Please try again. (ERROR_CODE: VALIDATION_ERROR)\n\nDetails: ${err.message || "Unknown error"}`);
+      setError(`خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى. (رمز الخطأ: VALIDATION_ERROR)\n\nتفاصيل: ${err.message || "خطأ غير معروف"}`);
       setIsValidating(false);
     }
   };
