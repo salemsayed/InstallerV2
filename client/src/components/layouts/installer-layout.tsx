@@ -1,9 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import arOnlyLogo from "@assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
-import QrButton from "@/components/ui/qr-button";
+import QrScanner from "@/components/installer/qr-scanner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,8 +54,8 @@ export default function InstallerLayout({ children, className }: InstallerLayout
         {children}
       </main>
       
-      {/* QR Scanner Button - Only show when not on the scanner page */}
-      {location !== "/scanner" && <QrButton />}
+      {/* QR Scanner */}
+      <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">

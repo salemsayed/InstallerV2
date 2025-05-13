@@ -99,10 +99,9 @@ class QrCodeTracker {
 
 interface QrScannerProps {
   onScanSuccess?: (productName: string) => void;
-  fullScreen?: boolean;
 }
 
-export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScannerProps) {
+export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -183,26 +182,6 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
       audioErrorRef.current.play().catch(e => console.error("Error playing error sound:", e));
     }
   };
-  
-  // Open scanner automatically if fullScreen mode is enabled
-  useEffect(() => {
-    if (fullScreen) {
-      setIsOpen(true);
-      setBatchMode(true); // Auto-enable batch mode in fullScreen
-    }
-  }, [fullScreen]);
-  
-  // Auto start the scanner when the dialog opens for fullScreen mode
-  useEffect(() => {
-    if (isOpen && !isScanning && fullScreen) {
-      // Add a delay to ensure DOM is fully rendered
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isScanning, fullScreen]);
 
   const startScanner = async () => {
     setIsScanning(true);
@@ -217,20 +196,9 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
       return;
     }
 
-    // Ensure any previous scanner is stopped
-    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-      try {
-        await html5QrcodeRef.current.stop();
-      } catch (e) {
-        console.error("Error stopping previous scanner instance:", e);
-      }
-    }
-    
-    // Create a fresh scanner instance
     html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
 
     try {
-      // Start the scanner with standard configuration
       await html5QrcodeRef.current.start(
         { facingMode: "environment" },
         {
@@ -561,18 +529,16 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
     return timestamp.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
   };
 
-
-
-  // If fullScreen, render dialog automatically
-  useEffect(() => {
-    if (fullScreen) {
-      setIsOpen(true);
-      setBatchMode(true);
-    }
-  }, [fullScreen]);
-  
   return (
     <>
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-14 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
+        aria-label="فتح الماسح الضوئي"
+      >
+        <QrCode className="h-8 w-8" />
+        <span className="text-[12px] mt-1 font-bold">مسح</span>
+      </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[425px]" dir="rtl">
