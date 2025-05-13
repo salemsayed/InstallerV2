@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, List, Loader2, QrCode, ToggleLeft, ToggleRight, XCircle } from "lucide-react";
+import { 
+  Camera, CheckCircle2, List, Loader2, QrCode, RefreshCw, 
+  ToggleLeft, ToggleRight, X, XCircle, Scan 
+} from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 // Validate if the UUID is a valid v4 UUID
@@ -25,7 +27,7 @@ interface ScanHistoryItem {
   message?: string;
 }
 
-// QR code tracker for managing cooldown and tracking codes only within a single scanner session
+// QR code tracker for managing cooldown and tracking codes within a scanner session
 class QrCodeTracker {
   // Temporary cooldown for UI feedback
   private cooldownCodes: Map<string, number> = new Map();
@@ -33,12 +35,11 @@ class QrCodeTracker {
   private processedCodes: Set<string> = new Set();
   private readonly cooldownPeriod: number; // milliseconds
   
-  constructor(cooldownPeriod: number = 5000) { // 5 seconds default cooldown
+  constructor(cooldownPeriod: number = 3000) { // 3 seconds default cooldown
     this.cooldownPeriod = cooldownPeriod;
-    // No restore from storage - we want fresh tracking each time
   }
   
-  // Check if code can be processed (not in cooldown and not processed before)
+  // Check if code can be processed (not in cooldown)
   canProcessCode(qrCode: string): boolean {
     const now = Date.now();
     const lastScanTime = this.cooldownCodes.get(qrCode);
@@ -49,48 +50,42 @@ class QrCodeTracker {
       return false;
     }
     
-    // Record this scan timing for cooldown
-    this.cooldownCodes.set(qrCode, now);
-    
-    // Cleanup expired cooldown entries
-    this.cleanup(now);
-    
-    // Check if code has been processed before
+    // Not in cooldown, and not processed before
     return !this.processedCodes.has(qrCode);
   }
   
-  // Mark a code as processed within this session only
+  // Mark a code as processed (will add to cooldown and permanent tracking)
   markProcessed(qrCode: string): void {
-    // Add to processed set for this session only
+    this.cooldownCodes.set(qrCode, Date.now());
     this.processedCodes.add(qrCode);
-    // No persisting to storage
+    this.cleanup(Date.now());
   }
   
-  // Check if a code is already processed (without affecting cooldown)
+  // Check if a code was already processed
   isProcessed(qrCode: string): boolean {
     return this.processedCodes.has(qrCode);
   }
   
-  // Get total number of processed codes
+  // Get count of processed codes
   getProcessedCount(): number {
     return this.processedCodes.size;
   }
   
+  // Clean up old entries from the cooldown map
   private cleanup(now: number) {
-    // Remove codes that have expired their cooldown period
-    Array.from(this.cooldownCodes.entries()).forEach(([code, time]) => {
-      if ((now - time) > this.cooldownPeriod) {
+    for (const [code, timestamp] of this.cooldownCodes.entries()) {
+      if (now - timestamp > this.cooldownPeriod) {
         this.cooldownCodes.delete(code);
       }
-    });
+    }
   }
   
-  // Reset temporary cooldown tracking but keep processed codes
+  // Reset cooldown only (but keep track of processed codes)
   resetCooldown() {
     this.cooldownCodes.clear();
   }
   
-  // Full reset - just clears memory, no storage operations
+  // Reset everything (all cooldowns and processed codes)
   fullReset() {
     this.cooldownCodes.clear();
     this.processedCodes.clear();
@@ -113,7 +108,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [successfulScansInSession, setSuccessfulScansInSession] = useState(0);
   const [processedCodesCount, setProcessedCodesCount] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
-  const [cooldownTime, setCooldownTime] = useState(3000); // 3 seconds cooldown
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
   const [cooldownActive, setCooldownActive] = useState(false);
   
@@ -124,26 +118,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
-
-  // Initialize audio elements and processed codes count
-  useEffect(() => {
-    // Create audio elements for success and error sounds
-    audioSuccessRef.current = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAAFpgCCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL///////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAYBAAAAAAAABaZ/9L2kAAAAAAAAAAAAAAAAAAAAAP/7kGQAD/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==");
-    audioErrorRef.current = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAAFpgCenp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp7///////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAaEAAAAAAAABaZeXp0BAAAAAAAAAAAAAAAAAAAAAAAA//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==");
-    
-    // Update the processed codes count
-    setProcessedCodesCount(qrTrackerRef.current.getProcessedCount());
-    
-    return () => {
-      // Cleanup audio elements
-      if (audioSuccessRef.current) {
-        audioSuccessRef.current = null;
-      }
-      if (audioErrorRef.current) {
-        audioErrorRef.current = null;
-      }
-    };
-  }, []);
 
   // Cleanup scanner on component unmount
   useEffect(() => {
@@ -182,8 +156,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         const outerContainer = document.querySelector('div.rounded-lg.border');
         if (outerContainer) {
           // Use a more reasonable height that won't break the dialog
-          (outerContainer as HTMLElement).style.height = '280px';
-          (outerContainer as HTMLElement).style.minHeight = '280px';
+          (outerContainer as HTMLElement).style.height = '200px';
+          (outerContainer as HTMLElement).style.minHeight = '200px';
           console.log("SCANNER_DEBUG: Forced outer container height for iOS");
         }
         
@@ -192,10 +166,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         if (qrContainer) {
           qrContainer.style.height = '100%';
           // Match the height of the outer container
-          qrContainer.style.minHeight = '280px';
+          qrContainer.style.minHeight = '200px';
           console.log("SCANNER_DEBUG: Applied styles to qr-reader container");
-          
-          // Fix the HTML5QrCode elements styling without breaking the modal
           
           // 1. Fix the scanning region (QR box)
           const scanBoxElement = qrContainer.querySelector('#qr-shaded-region');
@@ -214,22 +186,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             (videoElement as HTMLElement).style.height = '100%';
             console.log("SCANNER_DEBUG: Enhanced video element styles");
           }
-          
-          // 3. Fix the QR scanner UI elements
-          const scannerSection = document.querySelector('.h5-qrcode-section');
-          if (scannerSection) {
-            (scannerSection as HTMLElement).style.zIndex = '5';
-            console.log("SCANNER_DEBUG: Fixed scanner section z-index");
-          }
-        }
-        
-        // Fix the dialog positioning
-        const dialogContent = document.querySelector('[role="dialog"]');
-        if (dialogContent) {
-          // Make sure dialog has proper overflow settings
-          (dialogContent as HTMLElement).style.maxHeight = '90vh';
-          (dialogContent as HTMLElement).style.overflow = 'auto';
-          console.log("SCANNER_DEBUG: Fixed dialog content overflow");
         }
         
         // Log the dimensions after our fixes
@@ -293,11 +249,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           const parentElement = qrContainer.parentElement;
           if (parentElement) {
             // Use a smaller height that won't break the modal layout
-            parentElement.style.height = "240px";
-            parentElement.style.minHeight = "240px";
+            parentElement.style.height = "180px";
+            parentElement.style.minHeight = "180px";
           }
-          qrContainer.style.height = "240px";
-          qrContainer.style.minHeight = "240px";
+          qrContainer.style.height = "180px";
+          qrContainer.style.minHeight = "180px";
           // Log the new dimensions after forcing height
           console.log(`SCANNER_DEBUG: Updated container dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
         }
@@ -315,11 +271,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       // Continue with starting the camera
       initializeCamera(deviceType);
-    }, 100); // Short delay to ensure DOM updates
+    }, 200); // Short delay to ensure DOM updates
   };
   
   const initializeCamera = async (deviceType: string) => {
-    
     // Set lower FPS for iPhone to improve performance
     const scannerFps = deviceType === "iPhone" ? 5 : 10;
     
@@ -427,228 +382,161 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     
     // Then check if it's in cooldown period
     if (!qrTrackerRef.current.canProcessCode(decodedText)) {
-      console.log(`SCANNER_DEBUG: QR code in cooldown period, ignoring (time since start: ${performance.now() - startTime}ms)`);
-      // Show visual feedback that code is in cooldown
+      console.log(`SCANNER_DEBUG: QR code in cooldown (time since start: ${performance.now() - startTime}ms)`);
+      // Show visual feedback for cooldown
       setCooldownActive(true);
       
-      // Keep cooldown indicator visible longer for better UX
-      // This won't cause jittering since we moved it to a fixed-height container
+      // Keep the cooldown indicator visible for 1.5 seconds
       setTimeout(() => {
         setCooldownActive(false);
-        console.log(`SCANNER_DEBUG: Cooldown reset after cooldown period (time: ${performance.now() - startTime}ms)`);
-      }, 2000);
+        console.log(`SCANNER_DEBUG: Cooldown reset (time: ${performance.now() - startTime}ms)`);
+      }, 1500);
+      
+      // Play error sound for feedback
+      playErrorSound();
       
       return;
     }
     
-    console.log(`SCANNER_DEBUG: Processing new QR code (time since start: ${performance.now() - startTime}ms)`);
-    
-    
-    // In batch mode, we don't stop the scanner between scans
+    // If not in batch mode, stop the scanner while validating
     if (!batchMode) {
-      await stopScanner();
+      if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
+        await stopScanner();
+      }
     }
     
-    await validateQrCode(decodedText);
-  };
-
-  const validateQrCode = async (url: string) => {
-    setIsValidating(true);
-    setError(null);
-    setTotalScansInSession(prev => prev + 1);
-
-    // Step 1: URL shape validation
-    const urlRegex = /^https:\/\/warranty\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
-    const match = url.match(urlRegex);
+    // On iOS, we need to keep the camera open even in non-batch mode to avoid re-initialization issues
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && !batchMode) {
+      // Don't actually stop the scanner on iOS
+      setIsScanning(false);
+    }
     
-    if (!match) {
-      const errorMsg = "Invalid QR code format. Please scan a valid warranty code. (ERROR_CODE: INVALID_FORMAT)";
-      setError(errorMsg);
-      setIsValidating(false);
-      playErrorSound();
+    // Stage 1: Simple validations
+    // Validate UUID format (simple local check)
+    if (!isValidUUIDv4(decodedText)) {
+      console.log(`SCANNER_DEBUG: Invalid UUID format (time since start: ${performance.now() - startTime}ms)`);
+      setError("Invalid QR code format. Please scan a valid QR code. (ERROR_CODE: INVALID_FORMAT)");
       
-      // Add to scan history
       addToScanHistory({
-        productName: "Unknown",
+        productName: "Invalid Format",
         timestamp: new Date(),
         points: 0,
         status: 'error',
-        message: "Invalid QR code format"
+        message: "تنسيق غير صالح"
       });
       
-      // In batch mode, restart scanner after error
-      if (batchMode) {
-        // Don't need to restart scanner as it's already running
-        setIsValidating(false);
-      }
-      
-      return;
-    }
-
-    const uuid = match[1];
-    console.log("Extracted UUID:", uuid);
-
-    // Step 2: UUID validation
-    if (!isValidUUIDv4(uuid)) {
-      const errorMsg = "Invalid product code UUID. Please scan a valid warranty code. (ERROR_CODE: INVALID_UUID)";
-      setError(errorMsg);
-      setIsValidating(false);
       playErrorSound();
-      
-      // Add to scan history
-      addToScanHistory({
-        productName: "Unknown",
-        timestamp: new Date(),
-        points: 0,
-        status: 'error',
-        message: "Invalid UUID format"
-      });
-      
-      // In batch mode, restart scanner after error
-      if (batchMode) {
-        // Don't need to restart scanner as it's already running
-        setIsValidating(false);
-      }
-      
       return;
     }
-
+    
+    // Add to cooldown tracking
+    qrTrackerRef.current.markProcessed(decodedText);
+    setProcessedCodesCount(qrTrackerRef.current.getProcessedCount());
+    
     try {
-      // Step 3: Send to server for validation and processing
-      const scanResult = await apiRequest(
-        "POST", 
-        "/api/scan-qr", 
-        {
-          uuid,
-          userId: user?.id
-        }
-      );
+      // Stage 2: Server-side validation
+      console.log(`SCANNER_DEBUG: Starting server validation (time since start: ${performance.now() - startTime}ms)`);
+      setIsValidating(true);
       
-      const result = await scanResult.json();
+      // Call API to validate the QR code
+      const response = await apiRequest("POST", "/api/scan-qr", { 
+        uuid: decodedText,
+        userId: user?.id
+      });
       
-      if (!result.success) {
-        const errorDetails = result.details ? JSON.stringify(result.details, null, 2) : '';
-        const errorCode = result.error_code ? ` (${result.error_code})` : '';
-        const errorMsg = `${result.message}${errorCode}\n${errorDetails}`;
+      const result = await response.json();
+      console.log(`SCANNER_DEBUG: Server validation complete (time since start: ${performance.now() - startTime}ms)`);
+      
+      if (result.success) {
+        // Success: code was validated and points were awarded
+        console.log(`SCANNER_DEBUG: Successful scan: ${result.points} points awarded for ${result.productName} (time since start: ${performance.now() - startTime}ms)`);
         
-        setError(errorMsg);
-        setIsValidating(false);
+        // Play success sound
+        playSuccessSound();
+        
+        // Show success toast
+        toast({
+          title: "تم التحقق بنجاح!",
+          description: `تم إضافة ${result.points} نقطة لحسابك للمنتج "${result.productName}"`,
+        });
+        
+        // Call success callback if provided
+        if (onScanSuccess) {
+          onScanSuccess(result.productName);
+        }
+        
+        // Add to scan history
+        addToScanHistory({
+          productName: result.productName,
+          timestamp: new Date(),
+          points: result.points,
+          status: 'success'
+        });
+        
+        // Update session stats
+        setTotalScansInSession(prev => prev + 1);
+        setSuccessfulScansInSession(prev => prev + 1);
+        setTotalPointsInSession(prev => prev + result.points);
+        
+        // Refresh user data to update points
+        refreshUser();
+      } else {
+        // Error: code was not valid or already scanned
+        console.log(`SCANNER_DEBUG: Scan error: ${result.message} (time since start: ${performance.now() - startTime}ms)`);
+        
+        // Play error sound
         playErrorSound();
         
-        console.error('QR Validation Error:', {
-          message: result.message,
-          code: result.error_code,
-          details: result.details
+        // Show error toast
+        toast({
+          title: "فشل التحقق",
+          description: result.message,
+          variant: "destructive",
         });
         
         // Add to scan history
         addToScanHistory({
-          productName: result.productName || "Unknown",
+          productName: result.productName || "Unknown Product",
           timestamp: new Date(),
           points: 0,
           status: 'error',
           message: result.message
         });
         
-        if (result.details?.duplicate) {
-          // If it's a duplicate, allow user to scan again
-          if (!batchMode) {
-            startScanner();
-          } else {
-            // In batch mode, don't need to restart the scanner
-            setIsValidating(false);
-          }
-        }
-        
-        return;
+        // Update session stats (total only, not successful)
+        setTotalScansInSession(prev => prev + 1);
       }
+    } catch (error) {
+      console.error("SCANNER_DEBUG: Error validating QR code:", error);
       
-      // Success path
-      setIsValidating(false);
-      playSuccessSound();
-      setSuccessfulScansInSession(prev => prev + 1);
-      
-      // Update points total for this session
-      const pointsAwarded = result.pointsAwarded || 0;
-      setTotalPointsInSession(prev => prev + pointsAwarded);
-      
-      // Mark this QR code as permanently processed
-      // This will prevent it from being scanned again in this session
-      qrTrackerRef.current.markProcessed(url);
-      console.log(`Marked QR code as processed: ${url}`);
-      
-      // Update processed codes count
-      setProcessedCodesCount(qrTrackerRef.current.getProcessedCount());
-      
-      // If not in batch mode, close the dialog
-      if (!batchMode) {
-        setIsOpen(false);
-      }
-      
-      // Log success and product name
-      console.log("Scanned product:", result.productName);
-      
-      // Add to scan history
-      addToScanHistory({
-        productName: result.productName || "Unknown",
-        timestamp: new Date(),
-        points: pointsAwarded,
-        status: 'success'
-      });
-      
-      // Call refreshUser to update user data directly in the auth context
-      refreshUser()
-        .then(() => console.log("User refreshed after successful scan"))
-        .catch(err => console.error("Error refreshing user after scan:", err));
-      
-      // Aggressively invalidate and immediately refetch all relevant queries
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
-      
-      // Force instant refetch of all invalidated queries
-      queryClient.refetchQueries({ 
-        queryKey: [`/api/transactions?userId=${user?.id}`],
-        exact: true 
-      });
-      queryClient.refetchQueries({ 
-        queryKey: ['/api/badges', user?.id],
-        exact: true 
-      });
-      queryClient.refetchQueries({ 
-        queryKey: ['/api/users/me'],
-        exact: true 
-      });
-      
-      // Show success toast only if not in batch mode 
-      // In batch mode we show a floating notification instead
-      if (!batchMode) {
-        toast({
-          title: "Product Verified Successfully ✓",
-          description: `Product: ${result.productName || "Unknown"}\nPoints awarded: ${pointsAwarded}`,
-          variant: "default",
-        });
-      }
-      
-      if (onScanSuccess) {
-        onScanSuccess(result.productName);
-      }
-      
-    } catch (err: any) {
-      console.error("Validation error:", err);
-      const errorMsg = `Error validating QR code. Please try again. (ERROR_CODE: VALIDATION_ERROR)\n\nDetails: ${err.message || "Unknown error"}`;
-      setError(errorMsg);
-      setIsValidating(false);
+      // Play error sound
       playErrorSound();
       
+      // Show error toast
+      toast({
+        title: "حدث خطأ",
+        description: "حدث خطأ أثناء التحقق من الكود. يرجى المحاولة مرة أخرى.",
+        variant: "destructive",
+      });
+      
       // Add to scan history
       addToScanHistory({
-        productName: "Unknown",
+        productName: "Error",
         timestamp: new Date(),
         points: 0,
         status: 'error',
-        message: err.message || "Validation Error"
+        message: "خطأ في الاتصال"
       });
+    } finally {
+      setIsValidating(false);
+      
+      // If we're in batch mode, reset cooldown to allow immediate scanning of another code
+      if (batchMode) {
+        setCooldownActive(false);
+      }
+      
+      console.log(`SCANNER_DEBUG: Full scan process complete (time: ${performance.now() - startTime}ms)`);
     }
   };
 
@@ -709,208 +597,213 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         <QrCode className="h-8 w-8" />
         <span className="text-[12px] mt-1 font-bold">مسح</span>
       </Button>
-
+      
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[425px]" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-center font-bold text-xl">
+        <DialogContent className="sm:max-w-[425px] p-4 max-h-[85vh] overflow-auto" dir="rtl">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-center font-bold text-lg">
               مسح رمز الاستجابة السريعة
             </DialogTitle>
           </DialogHeader>
 
-          <div className="my-2">
-            {/* Batch Mode Toggle */}
-            <div className="flex items-center justify-between mb-3 rounded-lg p-2 bg-primary/10">
-              <div className="flex items-center gap-2">
-                <Switch id="batch-mode" checked={batchMode} onCheckedChange={toggleBatchMode} />
-                <Label htmlFor="batch-mode" className="text-sm font-medium cursor-pointer">
-                  وضع المسح المتتابع {batchMode ? <ToggleRight className="inline h-4 w-4 ml-1" /> : <ToggleLeft className="inline h-4 w-4 ml-1" />}
-                </Label>
-              </div>
-              
-              {/* History Toggle */}
+          {/* Main Content */}
+          <div className="space-y-3">
+            {/* Controls Row */}
+            <div className="grid grid-cols-2 gap-2">
               <Button 
-                variant="ghost" 
+                variant={batchMode ? "default" : "outline"}
+                size="sm" 
+                onClick={toggleBatchMode}
+                className="text-xs"
+              >
+                <Scan className="h-4 w-4 ml-1" />
+                وضع المسح المتتابع
+              </Button>
+              
+              <Button 
+                variant={showHistory ? "default" : "outline"}
                 size="sm" 
                 onClick={() => setShowHistory(!showHistory)}
-                className={cn("px-2 py-1 h-8", showHistory ? "bg-primary/20" : "")}
+                className="text-xs"
               >
-                <List className="h-4 w-4 mr-1" />
-                <span className="text-xs">السجل</span>
+                <List className="h-4 w-4 ml-1" />
+                سجل المسح
               </Button>
             </div>
             
             {/* Session Stats */}
             {(totalScansInSession > 0 || batchMode) && (
-              <div className="flex flex-col gap-2 mb-3">
-                <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
-                  <div className="text-xs text-center flex-1">
-                    <div className="font-bold">{successfulScansInSession}</div>
-                    <div>ناجح</div>
-                  </div>
-                  <div className="text-xs text-center flex-1">
-                    <div className="font-bold">{totalScansInSession}</div>
-                    <div>إجمالي</div>
-                  </div>
-                  <div className="text-xs text-center flex-1">
-                    <div className="font-bold">{totalPointsInSession}</div>
-                    <div>نقاط</div>
-                  </div>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
+                <div className="text-xs text-center flex-1">
+                  <div className="font-bold">{successfulScansInSession}</div>
+                  <div>ناجح</div>
                 </div>
+                <div className="text-xs text-center flex-1">
+                  <div className="font-bold">{totalScansInSession}</div>
+                  <div>إجمالي</div>
+                </div>
+                <div className="text-xs text-center flex-1">
+                  <div className="font-bold">{totalPointsInSession}</div>
+                  <div>نقاط</div>
+                </div>
+              </div>
+            )}
+            
+            {/* Processed Codes Counter */}
+            {processedCodesCount > 0 && (
+              <div className="flex items-center justify-between p-2 bg-slate-100 text-slate-800 rounded-lg border border-slate-200">
+                <div className="flex items-center">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 ml-1" />
+                  <span className="text-xs">
+                    <span className="font-bold">{processedCodesCount}</span> كود تم معالجته
+                  </span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-6 p-0 px-1"
+                  onClick={() => {
+                    if (confirm('هل أنت متأكد من إعادة تعيين الأكواد التي تم مسحها في هذه الجلسة؟')) {
+                      qrTrackerRef.current.fullReset();
+                      setProcessedCodesCount(0);
+                      toast({
+                        title: "تم إعادة التعيين",
+                        description: "تم إعادة تعيين الأكواد المسجلة في هذه الجلسة",
+                      });
+                    }
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            
+            {/* Scan History */}
+            {showHistory && (
+              <div className="max-h-28 overflow-y-auto bg-slate-50 rounded-lg p-2">
+                <h3 className="text-sm font-medium mb-1">آخر عمليات المسح</h3>
                 
-                {/* Total processed codes (persistent across sessions) */}
-                {processedCodesCount > 0 && (
-                  <div className="flex items-center justify-between p-2 bg-slate-100 text-slate-800 rounded-lg border border-slate-200">
-                    <div className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 ml-1" />
-                      <span className="text-xs">
-                        <span className="font-bold">{processedCodesCount}</span> كود تم معالجته في هذه الجلسة
-                      </span>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="h-6 p-0 px-1"
-                      onClick={() => {
-                        if (confirm('هل أنت متأكد من إعادة تعيين الأكواد التي تم مسحها في هذه الجلسة؟')) {
-                          qrTrackerRef.current.fullReset();
-                          setProcessedCodesCount(0);
-                          toast({
-                            title: "تم إعادة التعيين",
-                            description: "تم إعادة تعيين الأكواد المسجلة في هذه الجلسة",
-                            variant: "default",
-                          });
-                        }
-                      }}
-                    >
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    </Button>
+                {scanHistory.length === 0 ? (
+                  <p className="text-center text-xs text-gray-500 py-1">لا توجد عمليات مسح سابقة</p>
+                ) : (
+                  <div className="space-y-1">
+                    {scanHistory.map((item, idx) => (
+                      <div key={idx} className={`text-xs p-1.5 rounded-lg flex items-center justify-between ${
+                        item.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                      }`}>
+                        <div className="flex items-center">
+                          {item.status === 'success' ? (
+                            <CheckCircle2 className="h-3 w-3 ml-1" />
+                          ) : (
+                            <XCircle className="h-3 w-3 ml-1" />
+                          )}
+                          <span className="font-medium truncate max-w-[120px]">{item.productName}</span>
+                        </div>
+                        <div className="flex items-center">
+                          {item.status === 'success' && (
+                            <span className="bg-green-100 text-green-800 rounded-full px-1.5 py-0.5 mr-1 text-[10px]">
+                              +{item.points}
+                            </span>
+                          )}
+                          <span className="text-[10px] tabular-nums">{formatTime(item.timestamp)}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
-            
-            {/* Scan History - uses opacity transition to prevent jitter */}
-            <div className={`mb-3 transition-opacity duration-150 ${showHistory && scanHistory.length > 0 ? "opacity-100 max-h-40" : "opacity-0 h-0"} overflow-y-auto p-2 border rounded-lg`}>
-              <h4 className="text-sm font-bold mb-2">سجل المسح</h4>
-              {scanHistory.map((item, index) => (
-                <div key={index} className="flex items-center justify-between text-xs mb-1 p-1 border-b last:border-b-0">
-                  <div className="flex items-center gap-1">
-                    {item.status === 'success' ? (
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <XCircle className="h-3 w-3 text-red-500" />
-                    )}
-                    <span className="truncate max-w-[120px]">{item.productName}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {item.status === 'success' && (
-                      <Badge variant="outline" className="h-5 px-1">+{item.points}</Badge>
-                    )}
-                    <span className="text-muted-foreground">{formatTime(item.timestamp)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Fixed-height status message container to prevent layout jitter */}
-            <div className="min-h-[120px] mb-4 relative">
-              {/* Batch Mode Active Notification */}
-              <div className={`p-2 bg-green-100 text-green-800 rounded-lg border border-green-300 text-sm text-center transition-opacity duration-150 ${batchMode && isScanning && !isValidating && !error ? "opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
-                <div className="font-medium">وضع المسح المتتابع نشط</div>
-                <div className="text-xs">استمر في مسح المنتجات بشكل متتابع</div>
-              </div>
-              
-              {/* Error Display */}
-              <div className={`absolute top-0 left-0 right-0 p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm transition-opacity duration-150 ${error ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"}`}>
-                <div className="whitespace-pre-wrap font-mono text-xs max-h-[60px] overflow-y-auto">{error}</div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2 w-full" 
-                  onClick={() => setError(null)}
-                >
-                  إغلاق الخطأ
-                </Button>
-              </div>
-              
-              {/* Cooldown indicator - moved inside fixed container */}
-              <div className={`absolute top-0 left-0 right-0 p-3 rounded-lg text-center transition-opacity duration-150 ${
-                cooldownActive && isScanning && lastScannedCode ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
-              } ${
-                qrTrackerRef.current.isProcessed(lastScannedCode || '') 
-                  ? 'bg-red-50 border border-red-300' 
-                  : 'bg-orange-50 border border-orange-300'
-              }`}>
-                {qrTrackerRef.current.isProcessed(lastScannedCode || '') ? (
-                  <>
-                    <p className="text-red-600 font-bold flex items-center justify-center gap-1">
-                      <XCircle className="h-4 w-4" /> تم معالجة هذا الكود مسبقاً
-                    </p>
-                    <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-orange-600 font-bold flex items-center justify-center gap-1">
-                      <Loader2 className="h-4 w-4 animate-spin" /> انتظر قليلاً
-                    </p>
-                    <p className="text-orange-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center gap-4">
+            {/* Scanner Container */}
+            <div className="relative my-1">
               {isValidating ? (
-                <div className="flex flex-col items-center gap-2 py-8">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-center text-gray-500">جارٍ التحقق من الكود...</p>
+                <div className="rounded-lg border border-gray-200 bg-white p-6 flex flex-col items-center justify-center h-48">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary mb-2" />
+                  <p className="text-center text-gray-600">جارٍ التحقق من الكود...</p>
                 </div>
               ) : (
                 <>
-                  <div 
-                    className="w-full overflow-hidden rounded-lg border relative"
-                    style={{ height: isScanning ? '240px' : '0px' }}
-                  >
-                    {/* Fixed size inner container for scanner */}
-                    <div 
-                      id="qr-reader" 
-                      className="w-full h-full"
-                      style={{ minHeight: isScanning ? '240px' : '0px' }}
-                    ></div>
-                    
-                    {/* Overlay with instructions for better visibility on iPhone */}
-                    {isScanning && (
+                  {isScanning ? (
+                    <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-black relative" style={{ height: "200px" }}>
+                      {/* Camera Feed */}
+                      <div id="qr-reader" className="w-full h-full" style={{ minHeight: "200px" }}></div>
+                      
+                      {/* Scan Target Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-40 h-40 border-2 border-white rounded-lg opacity-70"></div>
+                      </div>
+                      
+                      {/* Instructions */}
                       <div className="absolute top-2 left-0 right-0 text-center">
-                        <div className="bg-white/80 text-black px-2 py-1 rounded-full inline-block text-xs font-medium">
+                        <div className="bg-white/90 text-black px-2 py-1 rounded-md inline-block text-xs font-medium shadow-sm">
                           وجه الكاميرا نحو رمز QR
                         </div>
                       </div>
-                    )}
-                  </div>
-                  
-
-                  {!isScanning ? (
-                    <Button 
-                      onClick={startScanner} 
-                      className="w-full"
-                    >
-                      <QrCode className="mr-2 h-4 w-4" />
-                      فتح الكاميرا
-                    </Button>
+                      
+                      {/* Cooldown Overlay */}
+                      {cooldownActive && lastScannedCode && (
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center ${
+                          qrTrackerRef.current.isProcessed(lastScannedCode) 
+                            ? 'bg-red-900/30' 
+                            : 'bg-amber-900/30'
+                        }`}>
+                          {qrTrackerRef.current.isProcessed(lastScannedCode) ? (
+                            <div className="bg-white/95 rounded-lg p-3 max-w-[80%] text-center shadow-md">
+                              <XCircle className="h-6 w-6 text-red-500 mx-auto mb-1" />
+                              <p className="text-red-600 font-bold text-sm">تم معالجة هذا الكود مسبقاً</p>
+                              <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
+                            </div>
+                          ) : (
+                            <div className="bg-white/95 rounded-lg p-3 max-w-[80%] text-center shadow-md">
+                              <Loader2 className="h-6 w-6 animate-spin text-amber-500 mx-auto mb-1" />
+                              <p className="text-amber-600 font-bold text-sm">انتظر قليلاً</p>
+                              <p className="text-amber-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <Button 
-                      onClick={stopScanner} 
-                      variant="outline" 
-                      className="w-full"
-                    >
-                      إغلاق الكاميرا
-                    </Button>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center h-48">
+                      <QrCode className="h-12 w-12 text-gray-400 mb-2" />
+                      <p className="text-center text-gray-600 mb-4">قم بفتح الكاميرا لبدء المسح</p>
+                      <Button onClick={startScanner} className="text-sm">
+                        <Camera className="mr-2 h-4 w-4" />
+                        فتح الكاميرا
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
+              
+              {/* Error Message */}
+              {error && (
+                <div className="absolute inset-0 bg-red-50/95 rounded-lg border border-red-200 flex flex-col items-center justify-center p-4">
+                  <XCircle className="h-8 w-8 text-red-500 mb-2" />
+                  <p className="text-center text-sm text-red-700 mb-3">{error}</p>
+                  <Button variant="outline" onClick={() => setError(null)}>
+                    حاول مرة أخرى
+                  </Button>
+                </div>
+              )}
             </div>
+            
+            {/* Camera Controls */}
+            {isScanning && !isValidating && !error && (
+              <Button onClick={stopScanner} variant="outline" className="w-full">
+                <X className="mr-2 h-4 w-4" />
+                إغلاق الكاميرا
+              </Button>
+            )}
           </div>
+          
+          {/* Hidden audio elements */}
+          <audio ref={audioSuccessRef} preload="auto">
+            <source src="/sounds/success.mp3" type="audio/mpeg" />
+          </audio>
+          <audio ref={audioErrorRef} preload="auto">
+            <source src="/sounds/error.mp3" type="audio/mpeg" />
+          </audio>
         </DialogContent>
       </Dialog>
     </>
