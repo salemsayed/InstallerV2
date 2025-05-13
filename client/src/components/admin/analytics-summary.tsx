@@ -59,7 +59,7 @@ export function AnalyticsSummary({
       if (data.success && data.summary) {
         setSummary(data.summary);
       } else {
-        setError(data.message || "Failed to generate summary");
+        setError(data.message || "فشل في إنشاء الملخص");
       }
     } catch (err) {
       console.error("Error fetching summary:", err);

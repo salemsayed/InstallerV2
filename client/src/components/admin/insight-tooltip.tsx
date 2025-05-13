@@ -55,7 +55,7 @@ export function InsightTooltip({
       if (data.success && data.insight) {
         setInsight(data.insight);
       } else {
-        setError(data.message || "Failed to generate insight");
+        setError(data.message || "فشل في إنشاء التحليل");
       }
     } catch (err) {
       console.error("Error fetching insight:", err);

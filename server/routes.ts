@@ -965,7 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
         return res.status(400).json({ 
           success: false, 
-          message: "This product is not registered in our manufacturing database",
+          message: "هذا المنتج غير مسجل في قاعدة بيانات التصنيع لدينا",
           error_code: "INVALID_PRODUCT",
           details: { uuid, uuidNoHyphens }
         });
@@ -1112,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(404).json({
           success: false,
-          message: "User not found",
+          message: "المستخدم غير موجود",
           error_code: "USER_NOT_FOUND",
           details: { userId }
         });
@@ -1122,9 +1122,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("QR scanning error:", error);
       return res.status(500).json({
         success: false,
-        message: "An error occurred while processing the QR code",
+        message: "حدث خطأ أثناء معالجة رمز QR",
         error_code: "PROCESSING_ERROR",
-        details: { error: error.message || "Unknown error" }
+        details: { error: error.message || "خطأ غير معروف" }
       });
     }
   });
@@ -1137,7 +1137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(400).json({ 
           success: false,
-          message: "Please provide a user ID",
+          message: "يرجى تقديم معرف المستخدم",
           error_code: "MISSING_USER_ID"
         });
       }
@@ -1158,9 +1158,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching scanned products:", error);
       return res.status(500).json({
         success: false,
-        message: "Error retrieving installed products",
+        message: "حدث خطأ أثناء استرجاع المنتجات المثبتة",
         error_code: "FETCH_ERROR",
-        details: { error: error.message || "Unknown error" }
+        details: { error: error.message || "خطأ غير معروف" }
       });
     }
   });
@@ -1461,9 +1461,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating insight:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to generate insight",
+        message: "فشل في إنشاء التحليل",
         error_code: "INSIGHT_ERROR",
-        details: { error: error.message || "Unknown error" }
+        details: { error: error.message || "خطأ غير معروف" }
       });
     }
   });
@@ -1501,9 +1501,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating summary:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to generate summary",
+        message: "فشل في إنشاء الملخص",
         error_code: "SUMMARY_ERROR",
-        details: { error: error.message || "Unknown error" }
+        details: { error: error.message || "خطأ غير معروف" }
       });
     }
   });
