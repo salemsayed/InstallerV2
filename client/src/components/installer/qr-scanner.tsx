@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, QrCode } from "lucide-react";
+import { Loader2, QrCode, X, Camera, Scan } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 
@@ -54,9 +54,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       await html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          fps: 15, 
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            // Make QR box responsive - use 70% of the smaller dimension
+            const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+            const boxSize = Math.floor(minDimension * 0.7);
+            return {width: boxSize, height: boxSize};
+          },
+          aspectRatio: window.innerHeight > window.innerWidth ? window.innerHeight / window.innerWidth : 1.0,
         },
         handleScanSuccess,
         (errorMessage) => {
@@ -218,63 +223,110 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-center font-bold text-xl">
-              مسح رمز الاستجابة السريعة
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-full max-h-[100dvh] h-[100dvh] w-full p-0 rounded-none border-0">
+          {/* Header */}
+          <div className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 to-transparent p-4 flex justify-between items-center">
+            <h2 className="text-white font-bold text-xl">مسح رمز QR للمنتج</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={() => handleOpenChange(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </div>
 
-          <div className="my-4">
-            {error && (
-              <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded border border-destructive text-sm">
-                <div className="whitespace-pre-wrap font-mono text-xs">{error}</div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2 w-full" 
-                  onClick={() => setError(null)}
-                >
-                  Dismiss Error
-                </Button>
-              </div>
-            )}
-
-            <div className="flex flex-col items-center gap-4">
-              {isValidating ? (
-                <div className="flex flex-col items-center gap-2 py-8">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-center text-gray-500">جارٍ التحقق من الكود...</p>
+          {/* QR Scanner Area */}
+          <div className="relative h-full w-full bg-black flex items-center justify-center">
+            {isValidating ? (
+              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4 z-40">
+                <div className="bg-black/50 p-6 rounded-xl backdrop-blur-sm flex flex-col items-center">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                  <p className="text-center text-white text-lg font-medium">جارٍ التحقق من الكود...</p>
                 </div>
-              ) : (
-                <>
-                  <div
-                    id="qr-reader"
-                    className={`w-full overflow-hidden rounded-lg border ${
-                      isScanning ? "h-64" : "h-0"
-                    }`}
-                  ></div>
-
-                  {!isScanning ? (
+              </div>
+            ) : error ? (
+              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4 z-40 p-6">
+                <div className="bg-black/50 p-6 rounded-xl backdrop-blur-sm max-w-md w-full">
+                  <div className="text-destructive font-bold text-lg mb-2">حدث خطأ</div>
+                  <div className="text-white/90 whitespace-pre-wrap mb-4 max-h-[50vh] overflow-y-auto">{error}</div>
+                  <div className="flex gap-2 mt-4">
                     <Button 
-                      onClick={startScanner} 
-                      className="w-full"
+                      variant="outline" 
+                      className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white" 
+                      onClick={() => setError(null)}
                     >
-                      <QrCode className="mr-2 h-4 w-4" />
-                      فتح الكاميرا
+                      المحاولة مرة أخرى
                     </Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={() => handleOpenChange(false)}
+                    >
+                      العودة
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Scanner */}
+                <div
+                  id="qr-reader"
+                  className={`w-full h-full ${!isScanning ? 'hidden' : ''}`}
+                ></div>
+
+                {/* Scanner overlay - corners to guide scanning */}
+                {isScanning && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative w-[80vmin] h-[80vmin] max-w-sm max-h-sm">
+                        {/* Scan animation */}
+                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
+                        
+                        {/* Corners */}
+                        <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
+                        <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
+                        <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
+                        <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-24 left-0 right-0 flex justify-center">
+                      <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
+                        وجه الكاميرا نحو رمز QR الخاص بالمنتج
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Scanner controls */}
+                <div className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent ${isScanning ? '' : 'bg-black/90 bottom-0 top-0 flex items-center justify-center'}`}>
+                  {!isScanning ? (
+                    <div className="flex flex-col items-center gap-6 max-w-md mx-auto p-4">
+                      <Scan className="h-20 w-20 text-primary mb-4" />
+                      <h3 className="text-white text-xl font-bold">مسح رمز QR للمنتج</h3>
+                      <p className="text-white/70 text-center mb-6">قم بمسح رمز QR الموجود على المنتج للتحقق من أصالته وإضافة النقاط لحسابك</p>
+                      <Button 
+                        onClick={startScanner} 
+                        className="w-full gap-2"
+                        size="lg"
+                      >
+                        <Camera className="h-5 w-5" />
+                        فتح الكاميرا
+                      </Button>
+                    </div>
                   ) : (
                     <Button 
                       onClick={stopScanner} 
                       variant="outline" 
-                      className="w-full"
+                      className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white"
                     >
                       إغلاق الكاميرا
                     </Button>
                   )}
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

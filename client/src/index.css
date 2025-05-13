@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes scanline {
+  0% {
+    top: 0;
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-scanline {
+    animation: scanline 2s linear infinite;
+  }
+}
+
 @font-face {
   font-family: 'Tajawal';
   font-style: normal;
