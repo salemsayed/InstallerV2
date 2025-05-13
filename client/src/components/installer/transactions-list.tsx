@@ -2,20 +2,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Transaction, TransactionType } from "@shared/schema";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { useState } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 
 interface TransactionsListProps {
   transactions: Transaction[];
   onViewAll?: () => void;
   limit?: number;
   showTotal?: boolean;
+  showPagination?: boolean;
 }
 
 export default function TransactionsList({ 
   transactions, 
   onViewAll, 
   limit = 5, 
-  showTotal = true 
+  showTotal = true,
+  showPagination = false
 }: TransactionsListProps) {
+  // Add pagination state when pagination is enabled
+  const [currentPage, setCurrentPage] = useState(0);
+  
   // Sort transactions by date (newest first)
   const sortedTransactions = [...transactions].sort((a, b) => {
     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -23,8 +30,13 @@ export default function TransactionsList({
     return dateB - dateA;
   });
   
-  // Get visible transactions (limited)
-  const visibleTransactions = sortedTransactions.slice(0, limit);
+  // Calculate pagination information
+  const totalPages = Math.ceil(sortedTransactions.length / limit);
+  
+  // Get visible transactions based on whether pagination is enabled
+  const visibleTransactions = showPagination
+    ? sortedTransactions.slice(currentPage * limit, (currentPage + 1) * limit)
+    : sortedTransactions.slice(0, limit);
   
   // Total number of transactions
   const totalTransactions = transactions.length;
@@ -100,17 +112,48 @@ export default function TransactionsList({
               </div>
             ))}
             
-            {/* View all button */}
-            {totalTransactions > limit && onViewAll && (
-              <div className="text-center pt-4">
+            {/* Pagination Controls */}
+            {showPagination && totalPages > 1 ? (
+              <div className="flex justify-between items-center gap-2 pt-4">
                 <Button 
                   variant="outline" 
-                  onClick={onViewAll} 
-                  className="w-full text-primary border-primary/30 hover:bg-primary/5"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  disabled={currentPage === 0}
+                  className="flex items-center justify-center gap-1"
                 >
-                  عرض المزيد من المعاملات ({totalTransactions})
+                  <ChevronRight className="h-4 w-4" />
+                  <span>السابق</span>
+                </Button>
+                
+                <span className="text-sm text-gray-500">
+                  {currentPage + 1} من {totalPages}
+                </span>
+                
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="flex items-center justify-center gap-1"
+                >
+                  <span>التالي</span>
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
+            ) : (
+              /* View All Button */
+              totalTransactions > limit && onViewAll && (
+                <div className="text-center pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={onViewAll} 
+                    className="w-full text-primary border-primary/30 hover:bg-primary/5"
+                  >
+                    عرض المزيد من المعاملات ({totalTransactions})
+                  </Button>
+                </div>
+              )
             )}
           </div>
         )}

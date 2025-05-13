@@ -76,14 +76,7 @@ export default function InstallerStats() {
                 transactions={transactions} 
                 limit={10}
                 showTotal={true}
-                onViewAll={() => {
-                  // Could be enhanced with more advanced pagination in the future
-                  // For now, this just shows that there's a way to see more
-                  toast({
-                    title: "التحديثات القادمة",
-                    description: "سيتم إضافة المزيد من خيارات عرض المعاملات في التحديثات القادمة",
-                  });
-                }}
+                showPagination={true}
               />
             )}
           </CardContent>
