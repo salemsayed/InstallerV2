@@ -73,11 +73,13 @@ class QrCodeTracker {
   
   // Clean up old entries from the cooldown map
   private cleanup(now: number) {
-    for (const [code, timestamp] of this.cooldownCodes.entries()) {
+    // Convert to array first to avoid iteration issues
+    const entries = Array.from(this.cooldownCodes.entries());
+    entries.forEach(([code, timestamp]) => {
       if (now - timestamp > this.cooldownPeriod) {
         this.cooldownCodes.delete(code);
       }
-    }
+    });
   }
   
   // Reset cooldown only (but keep track of processed codes)
@@ -141,58 +143,70 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
   }, [isOpen, totalScansInSession]);
   
-  // iOS-specific scanner fixes to handle rendering issues
+  // Post-scanner initialization stylings for better camera visibility
   useEffect(() => {
     if (isScanning) {
-      // Use a delay to ensure elements are rendered
+      // Apply fixes after the scanner has had time to initialize its UI
       const timeout = setTimeout(() => {
-        // Check if we're on an iOS device
+        console.log("SCANNER_DEBUG: Applying post-initialization styling fixes");
+        
+        // Check if we're on an iOS device for specialized handling
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (!isIOS) return;
+        const deviceType = isIOS ? 
+          (/iPad/.test(navigator.userAgent) ? "iPad" : "iPhone") : 
+          "Other device";
         
-        console.log("SCANNER_DEBUG: Applying iOS-specific fixes to QR scanner");
-        
-        // Force outer container dimensions - more modest height to not break modal layout
-        const outerContainer = document.querySelector('div.rounded-lg.border');
-        if (outerContainer) {
-          // Use a more reasonable height that won't break the dialog
-          (outerContainer as HTMLElement).style.height = '200px';
-          (outerContainer as HTMLElement).style.minHeight = '200px';
-          console.log("SCANNER_DEBUG: Forced outer container height for iOS");
-        }
-        
-        // Fix QR reader container
+        // Fix QR reader container to take maximum space
         const qrContainer = document.getElementById('qr-reader');
         if (qrContainer) {
+          // Make container fill all available space
+          qrContainer.style.position = 'absolute';
+          qrContainer.style.inset = '0';
+          qrContainer.style.width = '100%';
           qrContainer.style.height = '100%';
-          // Match the height of the outer container
-          qrContainer.style.minHeight = '200px';
-          console.log("SCANNER_DEBUG: Applied styles to qr-reader container");
+          console.log("SCANNER_DEBUG: Applied absolute positioning to QR container");
           
-          // 1. Fix the scanning region (QR box)
-          const scanBoxElement = qrContainer.querySelector('#qr-shaded-region');
-          if (scanBoxElement) {
-            // Use a more subtle shadow that won't completely obscure the UI
-            (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 99999px rgba(0, 0, 0, 0.3)';
-            (scanBoxElement as HTMLElement).style.border = '2px solid #fff';
-            console.log("SCANNER_DEBUG: Enhanced QR scan box styles");
-          }
-          
-          // 2. Style the video element
+          // Find and style the video element for better visibility
           const videoElement = qrContainer.querySelector('video');
           if (videoElement) {
+            // Make video fill the container
             (videoElement as HTMLElement).style.objectFit = 'cover';
             (videoElement as HTMLElement).style.width = '100%';
             (videoElement as HTMLElement).style.height = '100%';
-            console.log("SCANNER_DEBUG: Enhanced video element styles");
+            
+            // For iPhone, add additional optimizations
+            if (deviceType === "iPhone") {
+              // Try to adjust video size for better visibility on small screens
+              (videoElement as HTMLElement).style.objectPosition = 'center';
+              console.log("SCANNER_DEBUG: Applied specialized video styling for iPhone");
+            }
           }
+          
+          // Improve scan box visibility for all devices
+          const scanBoxElement = qrContainer.querySelector('#qr-shaded-region');
+          if (scanBoxElement) {
+            // For iPhones, use more prominent scan box styling
+            if (deviceType === "iPhone") {
+              (scanBoxElement as HTMLElement).style.border = '4px solid white';
+              (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 100vmax rgba(0, 0, 0, 0.6)';
+            } else {
+              // For other devices, use standard styling
+              (scanBoxElement as HTMLElement).style.border = '3px solid white';
+              (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 100vmax rgba(0, 0, 0, 0.5)';
+            }
+            console.log(`SCANNER_DEBUG: Enhanced scan box styling for ${deviceType}`);
+          }
+          
+          // Get all scanner-created elements for logging
+          const scannerElements = qrContainer.querySelectorAll('*');
+          console.log(`SCANNER_DEBUG: Scanner has ${scannerElements.length} child elements`);
+          
+          // Log final dimensions
+          console.log(`SCANNER_DEBUG: Final QR container dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+        } else {
+          console.log("SCANNER_DEBUG: QR container not found for post-initialization styling");
         }
-        
-        // Log the dimensions after our fixes
-        if (outerContainer && qrContainer) {
-          console.log(`SCANNER_DEBUG: After iOS fixes - Outer: ${(outerContainer as HTMLElement).clientWidth}x${(outerContainer as HTMLElement).clientHeight}, Inner: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
-        }
-      }, 1000); // Shorter delay so ui fixes apply faster
+      }, 1500); // Longer delay to ensure HTML5QrCode has initialized all its UI elements
       
       return () => clearTimeout(timeout);
     }
@@ -226,8 +240,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
     // Use setTimeout to ensure state updates have been applied
     setTimeout(() => {
-      // Get both outer container and inner QR container
-      const outerContainer = document.querySelector('div.rounded-lg.border');
       const qrCodeId = "qr-reader";
       const qrContainer = document.getElementById(qrCodeId);
       
@@ -238,66 +250,110 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         return;
       }
       
-      console.log(`SCANNER_DEBUG: Outer container dimensions: ${outerContainer?.clientWidth}x${outerContainer?.clientHeight}`);
       console.log(`SCANNER_DEBUG: QR container found with dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
       
-      // Force proper dimensions for iOS devices before initializing scanner
-      if (deviceType === "iPhone" || deviceType === "iPad") {
-        if (qrContainer.clientHeight < 50) {
-          console.log("SCANNER_DEBUG: Forcing container height for iOS device");
-          // Force height for iOS devices that might not render the container properly
-          const parentElement = qrContainer.parentElement;
-          if (parentElement) {
-            // Use a smaller height that won't break the modal layout
-            parentElement.style.height = "180px";
-            parentElement.style.minHeight = "180px";
-          }
-          qrContainer.style.height = "180px";
-          qrContainer.style.minHeight = "180px";
-          // Log the new dimensions after forcing height
-          console.log(`SCANNER_DEBUG: Updated container dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
-        }
+      // Get parent container dimensions for debugging
+      const parentElement = qrContainer.parentElement;
+      if (parentElement) {
+        console.log(`SCANNER_DEBUG: Parent container dimensions: ${parentElement.clientWidth}x${parentElement.clientHeight}`);
       }
       
-      // Also fix the dialog content to ensure everything is visible
-      const dialogContent = document.querySelector('[role="dialog"]');
-      if (dialogContent) {
-        (dialogContent as HTMLElement).style.maxHeight = '90vh';
-        (dialogContent as HTMLElement).style.overflow = 'auto';
+      // For iPhone, ensure we have enough height
+      if (deviceType === "iPhone") {
+        // Find the modal content container for better sizing
+        const dialogContent = document.querySelector('[role="dialog"]');
+        if (dialogContent) {
+          // Ensure dialog takes up maximum allowed space
+          (dialogContent as HTMLElement).style.maxHeight = '90vh';
+          (dialogContent as HTMLElement).style.overflow = 'hidden'; // Use hidden to prevent scrollbars
+          console.log(`SCANNER_DEBUG: Set dialog content to 90vh max height`);
+        }
+        
+        // Set main container to take maximum available height
+        if (parentElement) {
+          parentElement.style.height = "100%"; 
+          parentElement.style.maxHeight = "100%";
+          console.log(`SCANNER_DEBUG: Set parent container to 100% height`);
+        }
+        
+        // Make QR container fill available space
+        qrContainer.style.height = "100%";
+        qrContainer.style.width = "100%";
+        qrContainer.style.position = "absolute"; // Use absolute positioning
+        qrContainer.style.inset = "0"; // Fill the container
+        console.log(`SCANNER_DEBUG: Applied absolute positioning to QR container`);
+      }
+      
+      // Always ensure QR container has a minimum height
+      if (qrContainer.clientHeight < 100) {
+        console.log(`SCANNER_DEBUG: QR container height too small (${qrContainer.clientHeight}px), enforcing minimum`);
+        qrContainer.style.minHeight = "300px";
       }
 
+      // Initialize the scanner
       html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
       console.log("SCANNER_DEBUG: Html5Qrcode instance created");
       
-      // Continue with starting the camera
-      initializeCamera(deviceType);
-    }, 200); // Short delay to ensure DOM updates
+      // Add extra styles after scanner is created but before camera is started
+      setTimeout(() => {
+        // Find scanner-generated elements and improve their styling
+        const scanBox = document.querySelector('#qr-shaded-region');
+        if (scanBox) {
+          (scanBox as HTMLElement).style.border = "3px solid white";
+          (scanBox as HTMLElement).style.boxShadow = "0 0 0 100vmax rgba(0, 0, 0, 0.5)";
+          console.log("SCANNER_DEBUG: Enhanced scan box styling");
+        }
+        
+        // Continue with starting the camera
+        initializeCamera(deviceType);
+      }, 100);
+    }, 200);
   };
   
   const initializeCamera = async (deviceType: string) => {
-    // Set lower FPS for iPhone to improve performance
-    const scannerFps = deviceType === "iPhone" ? 5 : 10;
+    // Set extremely low FPS for iPhone to prioritize reliability over responsiveness
+    const scannerFps = deviceType === "iPhone" ? 3 : (deviceType === "iPad" ? 5 : 10);
     
     try {
       console.log(`SCANNER_DEBUG: Starting camera with environment facing mode, FPS: ${scannerFps}`);
       const startTime = performance.now();
       
-      // Create optimized configuration for iOS devices
+      // Create optimized configuration for mobile devices
       const isIOS = deviceType === "iPhone" || deviceType === "iPad";
+      const isSmallPhone = deviceType === "iPhone"; 
+      
       const cameraConfig = { 
         facingMode: "environment" 
       };
       
-      // iOS-specific optimizations
+      // Make scan box bigger for full-screen mode now that we have more space
+      let qrDimension = 250;
+      
+      // For iPhone, keep a more modest scan box to ensure performance
+      if (isSmallPhone) {
+        qrDimension = 220;
+      } else if (deviceType === "iPad") {
+        qrDimension = 300;
+      }
+      
+      // Optimize scanner configuration based on device
       const scannerConfig = {
         fps: scannerFps,
-        qrbox: isIOS ? { width: 200, height: 200 } : { width: 250, height: 250 },
-        aspectRatio: isIOS ? 1.5 : 1.0, // Different aspect ratio for iOS
+        qrbox: { width: qrDimension, height: qrDimension },
+        aspectRatio: isIOS ? 1.33 : 1.0, // Optimized aspect ratio for iOS
+        formatsToSupport: [0], // QR Code only to improve performance (0 = QR Code)
+        disableFlip: true, // Disable mirroring to improve performance
       };
       
-      console.log(`SCANNER_DEBUG: Using scanner config:`, JSON.stringify(scannerConfig));
+      console.log(`SCANNER_DEBUG: Using scanner config for ${deviceType}:`, JSON.stringify(scannerConfig));
       
-      // Ensure html5QrcodeRef.current is not null before proceeding
+      // Extra logging for container dimensions
+      const qrContainer = document.getElementById('qr-reader');
+      if (qrContainer) {
+        console.log(`SCANNER_DEBUG: QR container dimensions before start: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+      }
+      
+      // Ensure scanner instance exists
       if (!html5QrcodeRef.current) {
         console.error("SCANNER_DEBUG: Scanner instance is null, cannot start camera");
         setError("Scanner initialization failed (ERROR_CODE: SCANNER_NULL)");
@@ -310,7 +366,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         scannerConfig,
         handleScanSuccess,
         (errorMessage) => {
-          // Don't show QR scanning errors to users, as they are not useful
           // Filter out common "No QR code found" errors to reduce console noise
           if (!errorMessage.toString().includes("NotFoundException")) {
             console.log(`SCANNER_DEBUG: Error from scanner: ${errorMessage}`);
@@ -321,12 +376,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       const endTime = performance.now();
       console.log(`SCANNER_DEBUG: Camera started in ${endTime - startTime}ms`);
       
-      // Try to log camera permission status - use try/catch to handle different browser supports
-      try {
-        console.log("SCANNER_DEBUG: Checking camera permission status");
-      } catch (error) {
-        console.log("SCANNER_DEBUG: Error checking camera permission:", error);
-      };
+      // After camera is started, log dimensions again
+      setTimeout(() => {
+        const qrContainer = document.getElementById('qr-reader');
+        if (qrContainer) {
+          console.log(`SCANNER_DEBUG: QR container dimensions after start: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+          
+          // Manually check child elements
+          const videoElement = qrContainer.querySelector('video');
+          if (videoElement) {
+            console.log(`SCANNER_DEBUG: Video element dimensions: ${(videoElement as HTMLElement).clientWidth}x${(videoElement as HTMLElement).clientHeight}`);
+          }
+        }
+      }, 1000);
       
     } catch (err) {
       console.error("SCANNER_DEBUG: Error starting scanner:", err);
@@ -599,96 +661,166 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       </Button>
       
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[425px] p-4 max-h-[85vh] overflow-auto" dir="rtl">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-center font-bold text-lg">
-              مسح رمز الاستجابة السريعة
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Main Content */}
-          <div className="space-y-3">
-            {/* Controls Row */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant={batchMode ? "default" : "outline"}
-                size="sm" 
-                onClick={toggleBatchMode}
-                className="text-xs"
-              >
-                <Scan className="h-4 w-4 ml-1" />
-                وضع المسح المتتابع
-              </Button>
+        <DialogContent className="sm:max-w-[425px] p-0 max-h-[90vh] overflow-hidden" dir="rtl">
+          {/* FULLSCREEN CAMERA MODE - Optimized for mobile */}
+          <div className="flex flex-col h-[80vh] max-h-[80vh]">
+            {/* Camera Container - Takes maximum space */}
+            <div className="flex-grow overflow-hidden relative">
+              {isValidating ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-black/10">
+                  <Loader2 className="h-16 w-16 animate-spin text-white mb-3" />
+                  <p className="text-center text-white font-medium bg-black/30 px-3 py-1 rounded-full">
+                    جارٍ التحقق من الكود...
+                  </p>
+                </div>
+              ) : isScanning ? (
+                <div className="w-full h-full relative bg-black">
+                  {/* Camera Feed - FULLSCREEN */}
+                  <div id="qr-reader" className="w-full h-full absolute inset-0"></div>
+                  
+                  {/* Scan Target - LARGE & CENTERED */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-64 h-64 border-2 border-white rounded-lg opacity-80"></div>
+                  </div>
+                  
+                  {/* Status Bar - TOP */}
+                  <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-2 bg-black/50">
+                    <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 bg-black/30 text-white hover:bg-black/50"
+                        onClick={() => setShowHistory(!showHistory)}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button 
+                        variant={batchMode ? "default" : "ghost"}
+                        size="icon" 
+                        className={`h-8 w-8 ${!batchMode ? 'bg-black/30 text-white hover:bg-black/50' : ''}`}
+                        onClick={toggleBatchMode}
+                      >
+                        <Scan className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="bg-white/20 px-2 py-1 rounded-full text-white text-xs">
+                      {processedCodesCount > 0 && (
+                        <span className="ml-1">{processedCodesCount} تم مسحه</span>
+                      )}
+                      {totalScansInSession > 0 && (
+                        <span className="mx-1">{successfulScansInSession}/{totalScansInSession}</span>
+                      )}
+                      {totalPointsInSession > 0 && (
+                        <span className="mr-1">{totalPointsInSession} نقطة</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Action Bar - BOTTOM */}
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                    <Button 
+                      onClick={stopScanner} 
+                      variant="destructive" 
+                      size="sm"
+                      className="rounded-full"
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      إغلاق الكاميرا
+                    </Button>
+                  </div>
+                  
+                  {/* Instructions - UPPER MIDDLE */}
+                  <div className="absolute top-12 left-0 right-0 text-center pointer-events-none">
+                    <div className="bg-black/50 text-white px-3 py-1 rounded-full inline-block text-sm font-medium">
+                      وجه الكاميرا نحو رمز QR
+                    </div>
+                  </div>
+                  
+                  {/* Cooldown Overlay */}
+                  {cooldownActive && lastScannedCode && (
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center ${
+                      qrTrackerRef.current.isProcessed(lastScannedCode) 
+                        ? 'bg-red-900/40' 
+                        : 'bg-amber-900/40'
+                    }`}>
+                      {qrTrackerRef.current.isProcessed(lastScannedCode) ? (
+                        <div className="bg-black/80 border border-red-500 rounded-lg p-4 max-w-[85%] text-center shadow-md">
+                          <XCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                          <p className="text-white font-bold text-base">تم معالجة هذا الكود مسبقاً</p>
+                          <p className="text-gray-300 text-sm">لا يمكن مسح نفس الكود مرتين</p>
+                        </div>
+                      ) : (
+                        <div className="bg-black/80 border border-amber-500 rounded-lg p-4 max-w-[85%] text-center shadow-md">
+                          <Loader2 className="h-8 w-8 animate-spin text-amber-500 mx-auto mb-2" />
+                          <p className="text-white font-bold text-base">انتظر قليلاً</p>
+                          <p className="text-gray-300 text-sm">يرجى الانتظار قبل مسح كود آخر</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50">
+                  <QrCode className="h-16 w-16 text-gray-300 mb-3" />
+                  <p className="text-center text-gray-500 mb-5">قم بفتح الكاميرا لبدء المسح</p>
+                  <Button 
+                    onClick={startScanner} 
+                    size="lg"
+                    className="rounded-full px-8"
+                  >
+                    <Camera className="mr-2 h-5 w-5" />
+                    فتح الكاميرا
+                  </Button>
+                </div>
+              )}
               
-              <Button 
-                variant={showHistory ? "default" : "outline"}
-                size="sm" 
-                onClick={() => setShowHistory(!showHistory)}
-                className="text-xs"
-              >
-                <List className="h-4 w-4 ml-1" />
-                سجل المسح
-              </Button>
+              {/* Error Message */}
+              {error && (
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4">
+                  <XCircle className="h-12 w-12 text-red-500 mb-3" />
+                  <p className="text-center text-white mb-5 max-w-[80%]">{error}</p>
+                  <Button variant="outline" onClick={() => setError(null)}>
+                    حاول مرة أخرى
+                  </Button>
+                </div>
+              )}
             </div>
             
-            {/* Session Stats */}
-            {(totalScansInSession > 0 || batchMode) && (
-              <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{successfulScansInSession}</div>
-                  <div>ناجح</div>
-                </div>
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{totalScansInSession}</div>
-                  <div>إجمالي</div>
-                </div>
-                <div className="text-xs text-center flex-1">
-                  <div className="font-bold">{totalPointsInSession}</div>
-                  <div>نقاط</div>
-                </div>
-              </div>
-            )}
-            
-            {/* Processed Codes Counter */}
-            {processedCodesCount > 0 && (
-              <div className="flex items-center justify-between p-2 bg-slate-100 text-slate-800 rounded-lg border border-slate-200">
-                <div className="flex items-center">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 ml-1" />
-                  <span className="text-xs">
-                    <span className="font-bold">{processedCodesCount}</span> كود تم معالجته
-                  </span>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-6 p-0 px-1"
-                  onClick={() => {
-                    if (confirm('هل أنت متأكد من إعادة تعيين الأكواد التي تم مسحها في هذه الجلسة؟')) {
-                      qrTrackerRef.current.fullReset();
-                      setProcessedCodesCount(0);
-                      toast({
-                        title: "تم إعادة التعيين",
-                        description: "تم إعادة تعيين الأكواد المسجلة في هذه الجلسة",
-                      });
-                    }
-                  }}
-                >
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-            
-            {/* Scan History */}
+            {/* History Panel - Collapsible */}
             {showHistory && (
-              <div className="max-h-28 overflow-y-auto bg-slate-50 rounded-lg p-2">
-                <h3 className="text-sm font-medium mb-1">آخر عمليات المسح</h3>
+              <div className="bg-white p-2 border-t border-gray-200 max-h-[30vh] overflow-auto">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium">آخر عمليات المسح</h3>
+                  {processedCodesCount > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-6 py-0 px-2"
+                      onClick={() => {
+                        if (confirm('هل أنت متأكد من إعادة تعيين الأكواد التي تم مسحها في هذه الجلسة؟')) {
+                          qrTrackerRef.current.fullReset();
+                          setProcessedCodesCount(0);
+                          toast({
+                            title: "تم إعادة التعيين",
+                            description: "تم إعادة تعيين الأكواد المسجلة في هذه الجلسة",
+                          });
+                        }
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 ml-1" />
+                      <span className="text-xs">إعادة تعيين</span>
+                    </Button>
+                  )}
+                </div>
                 
                 {scanHistory.length === 0 ? (
-                  <p className="text-center text-xs text-gray-500 py-1">لا توجد عمليات مسح سابقة</p>
+                  <p className="text-center text-xs text-gray-500 py-2">لا توجد عمليات مسح سابقة</p>
                 ) : (
                   <div className="space-y-1">
                     {scanHistory.map((item, idx) => (
-                      <div key={idx} className={`text-xs p-1.5 rounded-lg flex items-center justify-between ${
+                      <div key={idx} className={`text-xs p-2 rounded-lg flex items-center justify-between ${
                         item.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                       }`}>
                         <div className="flex items-center">
@@ -712,88 +844,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Scanner Container */}
-            <div className="relative my-1">
-              {isValidating ? (
-                <div className="rounded-lg border border-gray-200 bg-white p-6 flex flex-col items-center justify-center h-48">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary mb-2" />
-                  <p className="text-center text-gray-600">جارٍ التحقق من الكود...</p>
-                </div>
-              ) : (
-                <>
-                  {isScanning ? (
-                    <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-black relative" style={{ height: "200px" }}>
-                      {/* Camera Feed */}
-                      <div id="qr-reader" className="w-full h-full" style={{ minHeight: "200px" }}></div>
-                      
-                      {/* Scan Target Overlay */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-40 h-40 border-2 border-white rounded-lg opacity-70"></div>
-                      </div>
-                      
-                      {/* Instructions */}
-                      <div className="absolute top-2 left-0 right-0 text-center">
-                        <div className="bg-white/90 text-black px-2 py-1 rounded-md inline-block text-xs font-medium shadow-sm">
-                          وجه الكاميرا نحو رمز QR
-                        </div>
-                      </div>
-                      
-                      {/* Cooldown Overlay */}
-                      {cooldownActive && lastScannedCode && (
-                        <div className={`absolute inset-0 flex flex-col items-center justify-center ${
-                          qrTrackerRef.current.isProcessed(lastScannedCode) 
-                            ? 'bg-red-900/30' 
-                            : 'bg-amber-900/30'
-                        }`}>
-                          {qrTrackerRef.current.isProcessed(lastScannedCode) ? (
-                            <div className="bg-white/95 rounded-lg p-3 max-w-[80%] text-center shadow-md">
-                              <XCircle className="h-6 w-6 text-red-500 mx-auto mb-1" />
-                              <p className="text-red-600 font-bold text-sm">تم معالجة هذا الكود مسبقاً</p>
-                              <p className="text-red-600 text-xs">لا يمكن مسح نفس الكود مرتين</p>
-                            </div>
-                          ) : (
-                            <div className="bg-white/95 rounded-lg p-3 max-w-[80%] text-center shadow-md">
-                              <Loader2 className="h-6 w-6 animate-spin text-amber-500 mx-auto mb-1" />
-                              <p className="text-amber-600 font-bold text-sm">انتظر قليلاً</p>
-                              <p className="text-amber-600 text-xs">يرجى الانتظار قبل مسح كود آخر</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center h-48">
-                      <QrCode className="h-12 w-12 text-gray-400 mb-2" />
-                      <p className="text-center text-gray-600 mb-4">قم بفتح الكاميرا لبدء المسح</p>
-                      <Button onClick={startScanner} className="text-sm">
-                        <Camera className="mr-2 h-4 w-4" />
-                        فتح الكاميرا
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Error Message */}
-              {error && (
-                <div className="absolute inset-0 bg-red-50/95 rounded-lg border border-red-200 flex flex-col items-center justify-center p-4">
-                  <XCircle className="h-8 w-8 text-red-500 mb-2" />
-                  <p className="text-center text-sm text-red-700 mb-3">{error}</p>
-                  <Button variant="outline" onClick={() => setError(null)}>
-                    حاول مرة أخرى
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {/* Camera Controls */}
-            {isScanning && !isValidating && !error && (
-              <Button onClick={stopScanner} variant="outline" className="w-full">
-                <X className="mr-2 h-4 w-4" />
-                إغلاق الكاميرا
-              </Button>
             )}
           </div>
           
