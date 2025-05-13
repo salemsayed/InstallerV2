@@ -183,6 +183,14 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
       audioErrorRef.current.play().catch(e => console.error("Error playing error sound:", e));
     }
   };
+  
+  // Open scanner automatically if fullScreen mode is enabled
+  useEffect(() => {
+    if (fullScreen) {
+      setIsOpen(true);
+      setBatchMode(true); // Auto-enable batch mode in fullScreen
+    }
+  }, [fullScreen]);
 
   const startScanner = async () => {
     setIsScanning(true);
@@ -530,27 +538,18 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
     return timestamp.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Open the dialog automatically if in fullScreen mode on component load
+
+
+  // If fullScreen, render dialog automatically
   useEffect(() => {
     if (fullScreen) {
       setIsOpen(true);
-      setBatchMode(true); // Auto-enable batch mode for fullScreen
+      setBatchMode(true);
     }
   }, [fullScreen]);
-
-  // Don't show the scan button in fullScreen mode
+  
   return (
     <>
-      {!fullScreen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-14 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
-          aria-label="فتح الماسح الضوئي"
-        >
-          <QrCode className="h-8 w-8" />
-          <span className="text-[12px] mt-1 font-bold">مسح</span>
-        </Button>
-      )}
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[425px]" dir="rtl">
