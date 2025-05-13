@@ -94,16 +94,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     setError(null);
 
     // Step 1: URL shape validation
-    const urlRegex = /^https:\/\/warranty\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
-    const match = url.match(urlRegex);
+    // Support two formats: warranty.bareeq.lighting and w.bareeq.lighting
+    const warrantyUrlRegex = /^https:\/\/warranty\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
+    const shortUrlRegex = /^https:\/\/w\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
     
-    if (!match) {
-      setError("صيغة رمز QR غير صالحة. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_FORMAT)\n\nالصيغة المتوقعة: https://warranty.bareeq.lighting/p/[UUID]");
+    const warrantyMatch = url.match(warrantyUrlRegex);
+    const shortMatch = url.match(shortUrlRegex);
+    
+    if (!warrantyMatch && !shortMatch) {
+      setError("صيغة رمز QR غير صالحة. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_FORMAT)\n\nالصيغة المتوقعة: https://warranty.bareeq.lighting/p/[UUID] أو https://w.bareeq.lighting/p/[UUID]");
       setIsValidating(false);
       return;
     }
 
-    const uuid = match[1];
+    const uuid = warrantyMatch ? warrantyMatch[1] : shortMatch![1];
     console.log("Extracted UUID:", uuid);
 
     // Step 2: UUID validation
