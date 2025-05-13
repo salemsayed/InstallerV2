@@ -257,17 +257,24 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   <div className="text-white/90 whitespace-pre-wrap mb-4 max-h-[50vh] overflow-y-auto">{error}</div>
                   <div className="flex gap-2 mt-4">
                     <Button 
-                      variant="outline" 
-                      className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white" 
+                      variant="default" 
+                      className="flex-1 bg-primary text-white hover:bg-primary/90" 
                       onClick={() => setError(null)}
                     >
-                      المحاولة مرة أخرى
+                      <span className="flex items-center gap-1">
+                        <Camera className="h-4 w-4" />
+                        المحاولة مرة أخرى
+                      </span>
                     </Button>
                     <Button 
-                      className="flex-1"
+                      variant="outline"
+                      className="flex-1 bg-transparent border-white/30 text-white hover:bg-white/10"
                       onClick={() => handleOpenChange(false)}
                     >
-                      العودة
+                      <span className="flex items-center gap-1">
+                        <X className="h-4 w-4" />
+                        العودة
+                      </span>
                     </Button>
                   </div>
                 </div>
