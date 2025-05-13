@@ -192,17 +192,17 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
     }
   }, [fullScreen]);
   
-  // Auto start the scanner as soon as dialog opens
+  // Auto start the scanner when the dialog opens for fullScreen mode
   useEffect(() => {
-    if (isOpen && !isScanning) {
-      // Add a small delay to ensure the DOM is ready
+    if (isOpen && !isScanning && fullScreen) {
+      // Add a delay to ensure DOM is fully rendered
       const timer = setTimeout(() => {
         startScanner();
-      }, 100);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [isOpen, isScanning]);
+  }, [isOpen, isScanning, fullScreen]);
 
   const startScanner = async () => {
     setIsScanning(true);
@@ -217,7 +217,7 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
       return;
     }
 
-    // Cleanup any previous scanner instance
+    // Ensure any previous scanner is stopped
     if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
       try {
         await html5QrcodeRef.current.stop();
@@ -226,29 +226,17 @@ export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScann
       }
     }
     
-    // Initialize scanner with optimized config
-    html5QrcodeRef.current = new Html5Qrcode(qrCodeId, { 
-      verbose: false
-    });
+    // Create a fresh scanner instance
+    html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
 
     try {
-      // Pre-warm camera access to reduce initialization delay
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        console.log(`Found ${videoDevices.length} video input devices`);
-      } catch (e) {
-        console.warn("Unable to enumerate devices:", e);
-      }
-      
-      // Start scanner with optimized settings
+      // Start the scanner with standard configuration
       await html5QrcodeRef.current.start(
         { facingMode: "environment" },
         {
-          fps: 15, // Higher FPS for faster detection
+          fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          disableFlip: false
         },
         handleScanSuccess,
         (errorMessage) => {
