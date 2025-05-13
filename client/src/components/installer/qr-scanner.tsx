@@ -56,22 +56,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       const newTorchState = !torchEnabled;
       
-      // Use the simpler approach
-      if (html5QrCodeRef.current) {
-        // Generic way to try to access camera torch
-        const track = (html5QrCodeRef.current as any).getRunningTrackSettings?.()?.getVideoTracks?.()?.[0];
-        
-        if (track && typeof track.applyConstraints === 'function') {
-          await track.applyConstraints({
-            advanced: [{ torch: newTorchState }]
-          });
-          
-          setTorchEnabled(newTorchState);
-          console.log("Torch toggled to:", newTorchState);
-        } else {
-          throw new Error("Camera track not available");
-        }
-      }
+      // Works with the standard HTML5QrCode API
+      // Note: This is not officially in TypeScript definitions but works in the browser
+      await (html5QrCodeRef.current as any).applyVideoConstraints({
+        advanced: [{ torch: newTorchState }]
+      });
+      
+      setTorchEnabled(newTorchState);
+      console.log("Torch toggled to:", newTorchState);
     } catch (err) {
       console.error("Error toggling torch:", err);
       toast({
@@ -112,12 +104,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Initialize scanner with reference
       html5QrCodeRef.current = new Html5Qrcode(qrCodeId);
       
-      // Use a simpler configuration to avoid dependency issues
+      // Configure for better scanning in different lighting conditions
       const config = {
-        fps: 10, // Standard frame rate for reliable performance
-        qrbox: {
-          width: 250,
-          height: 250,
+        fps: 20, // Increased frame rate for better performance
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          // Make QR box responsive - use 70% of the smaller dimension
+          const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+          const boxSize = Math.floor(minDimension * 0.7);
+          return {width: boxSize, height: boxSize};
+        },
+        aspectRatio: window.innerHeight > window.innerWidth ? window.innerHeight / window.innerWidth : 1.0,
+        disableFlip: false, // Allow image flipping for better recognition
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true // Use BarCode Detector API if available
         },
       };
       
@@ -146,14 +145,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const stopScanner = async () => {
     if (torchEnabled && html5QrCodeRef.current) {
       try {
-        // Turn off the torch using the same method as toggleTorch
-        const track = (html5QrCodeRef.current as any).getRunningTrackSettings?.()?.getVideoTracks?.()?.[0];
-        
-        if (track && typeof track.applyConstraints === 'function') {
-          await track.applyConstraints({
-            advanced: [{ torch: false }]
-          });
-        }
+        // Turn off the torch using the same method we used to turn it on
+        await (html5QrCodeRef.current as any).applyVideoConstraints({
+          advanced: [{ torch: false }]
+        });
       } catch (err) {
         console.error("Error turning off torch:", err);
       }
