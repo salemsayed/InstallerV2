@@ -166,6 +166,62 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       }
     }
   }, [isOpen, totalScansInSession]);
+  
+  // iOS-specific scanner fixes to handle rendering issues
+  useEffect(() => {
+    if (isScanning) {
+      // Use a delay to ensure elements are rendered
+      const timeout = setTimeout(() => {
+        // Check if we're on an iOS device
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (!isIOS) return;
+        
+        console.log("SCANNER_DEBUG: Applying iOS-specific fixes to QR scanner");
+        
+        // Force outer container dimensions
+        const outerContainer = document.querySelector('div.rounded-lg.border');
+        if (outerContainer) {
+          (outerContainer as HTMLElement).style.height = '350px';
+          (outerContainer as HTMLElement).style.minHeight = '350px';
+          console.log("SCANNER_DEBUG: Forced outer container height for iOS");
+        }
+        
+        // Fix QR reader container
+        const qrContainer = document.getElementById('qr-reader');
+        if (qrContainer) {
+          qrContainer.style.height = '100%';
+          qrContainer.style.minHeight = '300px';
+          console.log("SCANNER_DEBUG: Applied styles to qr-reader container");
+          
+          // Find and style HTML5QrCode's elements
+          
+          // 1. Fix the scanning region (QR box)
+          const scanBoxElement = qrContainer.querySelector('#qr-shaded-region');
+          if (scanBoxElement) {
+            (scanBoxElement as HTMLElement).style.boxShadow = '0 0 0 99999px rgba(0, 0, 0, 0.5)';
+            (scanBoxElement as HTMLElement).style.border = '3px solid #fff';
+            console.log("SCANNER_DEBUG: Enhanced QR scan box styles");
+          }
+          
+          // 2. Style the video element
+          const videoElement = qrContainer.querySelector('video');
+          if (videoElement) {
+            (videoElement as HTMLElement).style.objectFit = 'cover';
+            (videoElement as HTMLElement).style.width = '100%';
+            (videoElement as HTMLElement).style.height = '100%';
+            console.log("SCANNER_DEBUG: Enhanced video element styles");
+          }
+        }
+        
+        // Log the dimensions after our fixes
+        if (outerContainer && qrContainer) {
+          console.log(`SCANNER_DEBUG: After iOS fixes - Outer: ${(outerContainer as HTMLElement).clientWidth}x${(outerContainer as HTMLElement).clientHeight}, Inner: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+        }
+      }, 1500); // Give enough time for the scanner to initialize
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isScanning]);
 
   // Play success sound
   const playSuccessSound = () => {
@@ -258,6 +314,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       };
       
       console.log(`SCANNER_DEBUG: Using scanner config:`, JSON.stringify(scannerConfig));
+      
+      // Ensure html5QrcodeRef.current is not null before proceeding
+      if (!html5QrcodeRef.current) {
+        console.error("SCANNER_DEBUG: Scanner instance is null, cannot start camera");
+        setError("Scanner initialization failed (ERROR_CODE: SCANNER_NULL)");
+        setIsScanning(false);
+        return;
+      }
       
       await html5QrcodeRef.current.start(
         cameraConfig,
