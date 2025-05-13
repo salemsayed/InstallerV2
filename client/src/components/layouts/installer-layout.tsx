@@ -54,8 +54,10 @@ export default function InstallerLayout({ children, className }: InstallerLayout
         {children}
       </main>
       
-      {/* QR Scanner */}
-      <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+      {/* QR Scanner - Only show when not on the scanner page */}
+      {location !== "/scanner" && (
+        <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+      )}
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">

@@ -99,9 +99,10 @@ class QrCodeTracker {
 
 interface QrScannerProps {
   onScanSuccess?: (productName: string) => void;
+  fullScreen?: boolean;
 }
 
-export default function QrScanner({ onScanSuccess }: QrScannerProps) {
+export default function QrScanner({ onScanSuccess, fullScreen = false }: QrScannerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -529,16 +530,27 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     return timestamp.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Open the dialog automatically if in fullScreen mode on component load
+  useEffect(() => {
+    if (fullScreen) {
+      setIsOpen(true);
+      setBatchMode(true); // Auto-enable batch mode for fullScreen
+    }
+  }, [fullScreen]);
+
+  // Don't show the scan button in fullScreen mode
   return (
     <>
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-14 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
-        aria-label="فتح الماسح الضوئي"
-      >
-        <QrCode className="h-8 w-8" />
-        <span className="text-[12px] mt-1 font-bold">مسح</span>
-      </Button>
+      {!fullScreen && (
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-14 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
+          aria-label="فتح الماسح الضوئي"
+        >
+          <QrCode className="h-8 w-8" />
+          <span className="text-[12px] mt-1 font-bold">مسح</span>
+        </Button>
+      )}
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[425px]" dir="rtl">

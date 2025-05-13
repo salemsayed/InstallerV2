@@ -74,8 +74,13 @@ export default function ScannerPage() {
   
   return (
     <InstallerLayout>
-      <div className="pt-0">
-        <QrScanner />
+      <div className="pt-0 min-h-[80vh] flex justify-center items-center">
+        <QrScanner 
+          fullScreen={true} 
+          onScanSuccess={(productName) => {
+            console.log(`Scanned product in dedicated scanner: ${productName}`);
+          }} 
+        />
       </div>
     </InstallerLayout>
   );
