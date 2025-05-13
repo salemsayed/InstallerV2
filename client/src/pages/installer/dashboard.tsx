@@ -15,9 +15,9 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions with frequent refresh 
+  // Fetch user's transactions with frequent refresh and higher limit
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+    queryKey: [`/api/transactions?userId=${user?.id}&limit=100`],
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
@@ -55,12 +55,13 @@ export default function InstallerDashboard() {
   
   // Calculate actual points balance from transactions (same as on stats page)
   // Filter transactions by type
-  const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
-  const redemptionTransactions = transactionsData?.transactions?.filter(t => t.type === 'redemption') || [];
+  const transactions = transactionsData?.transactions || [];
+  const earningTransactions = transactions.filter((t: Transaction) => t.type === 'earning');
+  const redemptionTransactions = transactions.filter((t: Transaction) => t.type === 'redemption');
   
   // Calculate total earnings and redemptions
-  const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalEarnings = earningTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+  const totalRedemptions = redemptionTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
   
   // Calculate actual points balance (earnings minus redemptions)
   const pointsBalance = totalEarnings - totalRedemptions;
@@ -93,8 +94,10 @@ export default function InstallerDashboard() {
       {/* Recent Transactions */}
       <section className="px-4 mb-8">
         <TransactionsList 
-          transactions={transactionsData?.transactions ? transactionsData.transactions : []} 
+          transactions={transactions} 
           onViewAll={() => window.location.href = "/installer/stats"}
+          limit={5}
+          showTotal={true}
         />
       </section>
       

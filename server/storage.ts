@@ -139,13 +139,15 @@ export class DatabaseStorage implements IStorage {
     return transaction;
   }
 
-  async getTransactionsByUserId(userId: number, limit = 10): Promise<Transaction[]> {
+  async getTransactionsByUserId(userId: number, limit = 100): Promise<Transaction[]> {
+    console.log(`[DEBUG] Getting transactions for user ${userId} with limit ${limit}`);
     const result = await db
       .select()
       .from(transactions)
       .where(eq(transactions.userId, userId))
       .orderBy(desc(transactions.createdAt))
       .limit(limit);
+    console.log(`[DEBUG] Retrieved ${result.length} transactions for user ${userId}`);
     return result;
   }
   

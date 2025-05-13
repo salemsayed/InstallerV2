@@ -5,17 +5,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string): string {
+export function formatDate(date: Date | string | null): string {
   if (!date) return "";
   
-  const d = typeof date === "string" ? new Date(date) : date;
-  
-  // Format date in Arabic style with Gregorian calendar (day-month-year)
-  return d.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  try {
+    const d = typeof date === "string" ? new Date(date) : date;
+    
+    // Check if date is valid
+    if (isNaN(d.getTime())) {
+      return "";
+    }
+    
+    // Format date in Arabic style with Gregorian calendar (day-month-year)
+    return d.toLocaleDateString("ar-EG", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "";
+  }
 }
 
 export function formatNumber(num: number): string {

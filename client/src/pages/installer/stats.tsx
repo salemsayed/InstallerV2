@@ -4,23 +4,25 @@ import InstallerLayout from "@/components/layouts/installer-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
 import TransactionsList from "@/components/installer/transactions-list";
+import { Transaction } from "@shared/schema";
 
 export default function InstallerStats() {
   const { user } = useAuth();
   
-  // Fetch transactions
+  // Fetch transactions with larger limit for stats page
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}`],
+    queryKey: [`/api/transactions?userId=${user?.id}&limit=1000`],
     enabled: !!user?.id,
   });
   
   // Filter transactions by type
-  const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
-  const redemptionTransactions = transactionsData?.transactions?.filter(t => t.type === 'redemption') || [];
+  const transactions = transactionsData?.transactions || [];
+  const earningTransactions = transactions.filter((t: Transaction) => t.type === 'earning');
+  const redemptionTransactions = transactions.filter((t: Transaction) => t.type === 'redemption');
   
   // Calculate total earnings and redemptions
-  const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalEarnings = earningTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+  const totalRedemptions = redemptionTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
   
   // Calculate actual points balance (earnings minus redemptions)
   const pointsBalance = totalEarnings - totalRedemptions;
@@ -69,7 +71,9 @@ export default function InstallerStats() {
               <p className="text-center py-4">جاري التحميل...</p>
             ) : (
               <TransactionsList 
-                transactions={transactionsData?.transactions || []} 
+                transactions={transactions} 
+                limit={20}
+                showTotal={true}
               />
             )}
           </CardContent>

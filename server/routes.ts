@@ -452,6 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // INSTALLER ROUTES
   app.get("/api/transactions", async (req: Request, res: Response) => {
     const userId = parseInt(req.query.userId as string);
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     
     if (!userId) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
@@ -464,12 +465,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
-      // Get user transactions
-      const transactions = await storage.getTransactionsByUserId(userId);
+      // Get user transactions with a higher limit
+      const transactions = await storage.getTransactionsByUserId(userId, limit);
       
-      return res.status(200).json({ transactions });
+      return res.status(200).json({ 
+        transactions,
+        total: transactions.length 
+      });
       
     } catch (error: any) {
+      console.error("[ERROR] Error fetching transactions:", error);
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المعاملات" });
     }
   });
@@ -527,11 +532,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allBadges = await storage.listBadges(true);
       
       // Get user's installation count (transactions of type EARNING that have product installations)
-      const transactions = await storage.getTransactionsByUserId(userId);
-      const installationCount = transactions.filter(t => 
+      // Use a high limit to get all transactions for proper badge calculations
+      const transactions = await storage.getTransactionsByUserId(userId, 1000);
+      
+      // Count installations - filter by product installation transactions only
+      const installationTransactions = transactions.filter(t => 
         t.type === TransactionType.EARNING && 
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
-      ).length;
+      );
+      
+      // Filter for current month installations only
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Log for debugging
+      if (installationTransactions.length > 0) {
+        console.log("[DEBUG] First transaction sample:", JSON.stringify(installationTransactions[0]));
+        console.log("[DEBUG] First transaction type:", installationTransactions[0].type);
+        console.log("[DEBUG] First transaction date:", installationTransactions[0].createdAt);
+      }
+      
+      // Count only current month installations for badge qualification
+      const currentMonthInstallations = installationTransactions.filter(t => {
+        const transactionDate = new Date(t.createdAt);
+        const transactionMonth = transactionDate.getMonth();
+        const transactionYear = transactionDate.getFullYear();
+        
+        console.log(`[DEBUG] Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
+        console.log(`[DEBUG] Transaction ${t.id} date parsed as:`, t.createdAt, `Month: ${transactionMonth}, Year: ${transactionYear}`);
+        
+        const isCurrentMonth = (transactionMonth === currentMonth && transactionYear === currentYear);
+        console.log(`[DEBUG] Transaction ${t.id} current month check:`, isCurrentMonth, `(${transactionMonth} === ${currentMonth} && ${transactionYear} === ${currentYear})`);
+        
+        return isCurrentMonth;
+      });
+      
+      console.log(`[DEBUG] Current month/year:`, currentMonth, currentYear);
+      console.log(`[DEBUG] Filtered installation transactions:`, currentMonthInstallations.length);
+      console.log(`[DEBUG] Installation transactions:`, JSON.stringify(installationTransactions.slice(0, 6)));
+      
+      const installationCount = currentMonthInstallations.length;
       
       console.log(`[DEBUG] User ${userId} has ${installationCount} installations and ${user.points} points`);
       
