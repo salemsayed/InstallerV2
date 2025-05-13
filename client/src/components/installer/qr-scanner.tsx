@@ -224,6 +224,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-full max-h-[100dvh] h-[100dvh] w-full p-0 rounded-none border-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>مسح رمز QR للمنتج</DialogTitle>
+          </DialogHeader>
+          
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 to-transparent p-4 flex justify-between items-center">
             <h2 className="text-white font-bold text-xl">مسح رمز QR للمنتج</h2>
@@ -318,9 +322,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   ) : (
                     <Button 
                       onClick={stopScanner} 
-                      variant="outline" 
-                      className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white"
+                      variant="default" 
+                      className="w-full bg-primary text-white border-none hover:bg-primary/90"
                     >
+                      <X className="h-4 w-4 mr-2" />
                       إغلاق الكاميرا
                     </Button>
                   )}
