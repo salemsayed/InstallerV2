@@ -193,20 +193,49 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     setIsScanning(true);
     setError(null);
 
-    const qrCodeId = "qr-reader";
-    const qrContainer = document.getElementById(qrCodeId);
-    
-    if (!qrContainer) {
-      console.error("SCANNER_DEBUG: QR container not found");
-      setError("QR scanner element not found (ERROR_CODE: ELEMENT_NOT_FOUND)");
-      setIsScanning(false);
-      return;
-    }
-    
-    console.log(`SCANNER_DEBUG: QR container found with dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+    // Use setTimeout to ensure state updates have been applied
+    setTimeout(() => {
+      // Get both outer container and inner QR container
+      const outerContainer = document.querySelector('div.rounded-lg.border');
+      const qrCodeId = "qr-reader";
+      const qrContainer = document.getElementById(qrCodeId);
+      
+      if (!qrContainer) {
+        console.error("SCANNER_DEBUG: QR container not found");
+        setError("QR scanner element not found (ERROR_CODE: ELEMENT_NOT_FOUND)");
+        setIsScanning(false);
+        return;
+      }
+      
+      console.log(`SCANNER_DEBUG: Outer container dimensions: ${outerContainer?.clientWidth}x${outerContainer?.clientHeight}`);
+      console.log(`SCANNER_DEBUG: QR container found with dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+      
+      // Force proper dimensions for iOS devices before initializing scanner
+      if (deviceType === "iPhone" || deviceType === "iPad") {
+        if (qrContainer.clientHeight < 50) {
+          console.log("SCANNER_DEBUG: Forcing container height for iOS device");
+          // Force height for iOS devices that might not render the container properly
+          const parentElement = qrContainer.parentElement;
+          if (parentElement) {
+            parentElement.style.height = "256px";
+            parentElement.style.minHeight = "256px";
+          }
+          qrContainer.style.height = "256px";
+          qrContainer.style.minHeight = "256px";
+          // Log the new dimensions after forcing height
+          console.log(`SCANNER_DEBUG: Updated container dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
+        }
+      }
 
-    html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
-    console.log("SCANNER_DEBUG: Html5Qrcode instance created");
+      html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
+      console.log("SCANNER_DEBUG: Html5Qrcode instance created");
+      
+      // Continue with starting the camera
+      initializeCamera(deviceType);
+    }, 100); // Short delay to ensure DOM updates
+  };
+  
+  const initializeCamera = async (deviceType: string) => {
     
     // Set lower FPS for iPhone to improve performance
     const scannerFps = deviceType === "iPhone" ? 5 : 10;
@@ -215,14 +244,24 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       console.log(`SCANNER_DEBUG: Starting camera with environment facing mode, FPS: ${scannerFps}`);
       const startTime = performance.now();
       
+      // Create optimized configuration for iOS devices
+      const isIOS = deviceType === "iPhone" || deviceType === "iPad";
+      const cameraConfig = { 
+        facingMode: "environment" 
+      };
+      
+      // iOS-specific optimizations
+      const scannerConfig = {
+        fps: scannerFps,
+        qrbox: isIOS ? { width: 200, height: 200 } : { width: 250, height: 250 },
+        aspectRatio: isIOS ? 1.5 : 1.0, // Different aspect ratio for iOS
+      };
+      
+      console.log(`SCANNER_DEBUG: Using scanner config:`, JSON.stringify(scannerConfig));
+      
       await html5QrcodeRef.current.start(
-        { facingMode: "environment" },
-        {
-          fps: scannerFps,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          // Using standard config options only to avoid type errors
-        },
+        cameraConfig,
+        scannerConfig,
         handleScanSuccess,
         (errorMessage) => {
           // Don't show QR scanning errors to users, as they are not useful
@@ -738,12 +777,17 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                 </div>
               ) : (
                 <>
-                  <div
-                    id="qr-reader"
-                    className={`w-full overflow-hidden rounded-lg border ${
-                      isScanning ? "h-64" : "h-0"
-                    }`}
-                  ></div>
+                  <div 
+                    className="w-full overflow-hidden rounded-lg border"
+                    style={{ height: isScanning ? '256px' : '0px' }}
+                  >
+                    {/* Fixed size inner container for scanner */}
+                    <div 
+                      id="qr-reader" 
+                      className="w-full h-full"
+                      style={{ minHeight: isScanning ? '256px' : '0px' }}
+                    ></div>
+                  </div>
                   
 
                   {!isScanning ? (
