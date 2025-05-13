@@ -10,12 +10,11 @@ import AdminSettings from "@/pages/admin/settings";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
 import { setupPWA } from "@/pwa-utils";
-import { OfflineIndicator, OfflineBanner } from "@/components/ui/offline-indicator";
-import { PWAInstallPrompt } from "@/components/ui/pwa-install-prompt";
-import { PWAUpdateNotification } from "@/components/ui/pwa-update-notification";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { InstallPrompt } from "@/components/ui/install-prompt";
 
 // Import scanner page
-import InstallerScanner from "@/pages/installer/scanner";
+import ScannerPage from "@/pages/installer/scanner";
 
 function Router() {
   return (
@@ -28,7 +27,7 @@ function Router() {
       <Route path="/installer/dashboard" component={InstallerDashboard} />
       <Route path="/installer/stats" component={InstallerStats} />
       <Route path="/installer/profile" component={InstallerProfile} />
-      <Route path="/scanner" component={InstallerScanner} />
+      <Route path="/scanner" component={ScannerPage} />
       
       {/* Admin Routes */}
       <Route path="/admin/dashboard" component={AdminDashboard} />
@@ -58,10 +57,8 @@ function App() {
   return (
     <AuthProvider>
       {/* PWA Components */}
-      <OfflineBanner />
       <OfflineIndicator />
-      <PWAInstallPrompt />
-      <PWAUpdateNotification />
+      <InstallPrompt />
       
       {/* Main App Content */}
       <Router />
