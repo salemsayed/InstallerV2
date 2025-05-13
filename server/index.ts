@@ -32,16 +32,31 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      // Only log important API calls (non-GET) or errors, or slow requests
+      const isImportantMethod = req.method !== "GET";
+      const isError = res.statusCode >= 400;
+      const isSlow = duration > 500; // Log if request took more than 500ms
+      
+      // Skip common polling endpoints
+      const isPollingEndpoint = 
+        path === "/api/users/me" || 
+        path === "/api/transactions" || 
+        path === "/api/badges";
+      
+      if (isImportantMethod || isError || isSlow || !isPollingEndpoint) {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        
+        // Only include response details for non-GET methods or errors
+        if ((isImportantMethod || isError) && capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+  
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+  
+        log(logLine);
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
     }
   });
 

@@ -209,7 +209,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         handleScanSuccess,
         (errorMessage) => {
           // Don't show QR scanning errors to users, as they are not useful
-          console.log("QR scan error:", errorMessage);
+          // Filter out common "No QR code found" errors to reduce console noise
+          if (!errorMessage.toString().includes("NotFoundException")) {
+            console.log("QR scan error:", errorMessage);
+          }
         }
       );
     } catch (err) {

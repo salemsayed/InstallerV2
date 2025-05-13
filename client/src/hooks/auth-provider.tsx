@@ -110,10 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Also update localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
-        console.log("User data refreshed:", data.user);
+        // Removed noisy console log
       }
     } catch (error) {
-      console.error("Error refreshing user data:", error);
+      // Only log refresh error if it's not a 401 unauthorized (which happens regularly during polling)
+      if (!(error instanceof Error && error.message.includes("401"))) {
+        console.error("Error refreshing user data:", error);
+      }
     }
   };
 
@@ -145,10 +148,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     
-    // Refresh user data every 2 seconds
+    // Refresh user data every 10 seconds instead of 2 seconds to reduce API load and console noise
     const intervalId = setInterval(() => {
       refreshUser();
-    }, 2000);
+    }, 10000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
