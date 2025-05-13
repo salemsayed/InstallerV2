@@ -184,6 +184,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const startScanner = async () => {
+    console.log("SCANNER_DEBUG: Starting QR scanner");
+    const deviceType = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 
+      (/iPad/.test(navigator.userAgent) ? "iPad" : "iPhone") : 
+      "Other device";
+    console.log(`SCANNER_DEBUG: Device detected: ${deviceType}, User Agent: ${navigator.userAgent}`);
+    
     setIsScanning(true);
     setError(null);
 
@@ -191,32 +197,54 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const qrContainer = document.getElementById(qrCodeId);
     
     if (!qrContainer) {
+      console.error("SCANNER_DEBUG: QR container not found");
       setError("QR scanner element not found (ERROR_CODE: ELEMENT_NOT_FOUND)");
       setIsScanning(false);
       return;
     }
+    
+    console.log(`SCANNER_DEBUG: QR container found with dimensions: ${qrContainer.clientWidth}x${qrContainer.clientHeight}`);
 
     html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
-
+    console.log("SCANNER_DEBUG: Html5Qrcode instance created");
+    
+    // Set lower FPS for iPhone to improve performance
+    const scannerFps = deviceType === "iPhone" ? 5 : 10;
+    
     try {
+      console.log(`SCANNER_DEBUG: Starting camera with environment facing mode, FPS: ${scannerFps}`);
+      const startTime = performance.now();
+      
       await html5QrcodeRef.current.start(
         { facingMode: "environment" },
         {
-          fps: 10,
+          fps: scannerFps,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
+          // Using standard config options only to avoid type errors
         },
         handleScanSuccess,
         (errorMessage) => {
           // Don't show QR scanning errors to users, as they are not useful
           // Filter out common "No QR code found" errors to reduce console noise
           if (!errorMessage.toString().includes("NotFoundException")) {
-            console.log("QR scan error:", errorMessage);
+            console.log(`SCANNER_DEBUG: Error from scanner: ${errorMessage}`);
           }
         }
       );
+      
+      const endTime = performance.now();
+      console.log(`SCANNER_DEBUG: Camera started in ${endTime - startTime}ms`);
+      
+      // Try to log camera permission status - use try/catch to handle different browser supports
+      try {
+        console.log("SCANNER_DEBUG: Checking camera permission status");
+      } catch (error) {
+        console.log("SCANNER_DEBUG: Error checking camera permission:", error);
+      };
+      
     } catch (err) {
-      console.error("Error starting scanner:", err);
+      console.error("SCANNER_DEBUG: Error starting scanner:", err);
       setError("Failed to start camera. Please grant camera permission. (ERROR_CODE: CAMERA_PERMISSION)");
       setIsScanning(false);
     }
@@ -230,14 +258,18 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const handleScanSuccess = async (decodedText: string) => {
-    console.log("QR code detected:", decodedText);
+    const scanTime = new Date().toISOString();
+    console.log(`SCANNER_DEBUG: [${scanTime}] QR code detected: ${decodedText.substring(0, 30)}...`);
+    
+    // Performance tracking
+    const startTime = performance.now();
     
     // Always set the last scanned code
     setLastScannedCode(decodedText);
     
     // First check if it's already been fully processed (validated and saved)
     if (qrTrackerRef.current.isProcessed(decodedText)) {
-      console.log("QR code already processed:", decodedText);
+      console.log(`SCANNER_DEBUG: QR code already processed (time since start: ${performance.now() - startTime}ms)`);
       // Show visual feedback for already processed code
       setCooldownActive(true);
       
@@ -254,6 +286,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // This won't cause jittering since we moved it to a fixed-height container
       setTimeout(() => {
         setCooldownActive(false);
+        console.log(`SCANNER_DEBUG: Cooldown reset after already processed code (time: ${performance.now() - startTime}ms)`);
       }, 2000);
       
       // Play error sound for feedback
@@ -264,7 +297,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     
     // Then check if it's in cooldown period
     if (!qrTrackerRef.current.canProcessCode(decodedText)) {
-      console.log("QR code in cooldown period, ignoring:", decodedText);
+      console.log(`SCANNER_DEBUG: QR code in cooldown period, ignoring (time since start: ${performance.now() - startTime}ms)`);
       // Show visual feedback that code is in cooldown
       setCooldownActive(true);
       
@@ -272,10 +305,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // This won't cause jittering since we moved it to a fixed-height container
       setTimeout(() => {
         setCooldownActive(false);
+        console.log(`SCANNER_DEBUG: Cooldown reset after cooldown period (time: ${performance.now() - startTime}ms)`);
       }, 2000);
       
       return;
     }
+    
+    console.log(`SCANNER_DEBUG: Processing new QR code (time since start: ${performance.now() - startTime}ms)`);
+    
     
     // In batch mode, we don't stop the scanner between scans
     if (!batchMode) {
