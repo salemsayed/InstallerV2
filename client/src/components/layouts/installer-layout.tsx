@@ -56,12 +56,25 @@ export default function InstallerLayout({ children, className }: InstallerLayout
       
       {/* QR Scanner - Only show when not on the scanner page */}
       {location !== "/scanner" && (
-        <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+        <>
+          <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+          
+          {/* Floating Action Button for Scanner Page */}
+          <Link href="/scanner">
+            <Button
+              className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
+              aria-label="صفحة المسح الضوئي"
+            >
+              <span className="material-icons text-3xl">qr_code_scanner</span>
+              <span className="text-[12px] mt-1 font-bold">مسح</span>
+            </Button>
+          </Link>
+        </>
       )}
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/4">
+        <div className="w-1/3">
           <Link href="/installer/dashboard">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -73,23 +86,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </Link>
         </div>
         
-        {/* Scanner - PWA-enabled quick access to standalone scanner */}
-        <div className="w-1/4">
-          <Link href="/scanner">
-            <div className={cn(
-              "flex flex-col items-center cursor-pointer",
-              location === "/scanner" ? "text-primary" : "text-neutral-500",
-              "relative -mt-5"
-            )}>
-              <div className="bg-primary text-white p-3 rounded-full shadow-lg border-4 border-white">
-                <span className="material-icons">qr_code_scanner</span>
-              </div>
-              <span className="text-xs mt-1">المسح</span>
-            </div>
-          </Link>
-        </div>
-        
-        <div className="w-1/4">
+        <div className="w-1/3">
           <Link href="/installer/stats">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -101,7 +98,7 @@ export default function InstallerLayout({ children, className }: InstallerLayout
           </Link>
         </div>
         
-        <div className="w-1/4">
+        <div className="w-1/3">
           <Link href="/installer/profile">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
