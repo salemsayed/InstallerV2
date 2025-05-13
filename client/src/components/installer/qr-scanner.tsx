@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, QrCode, X, Camera, Scan } from "lucide-react";
+import { Loader2, QrCode, X, Camera, Scan, Zap, ZapOff } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 
@@ -22,15 +22,65 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState<boolean>(false);
+  const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
 
-  let html5QrCode: Html5Qrcode | null = null;
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
+  // Check if torch/flashlight is supported
+  const checkTorchSupport = async () => {
+    try {
+      if (!html5QrCodeRef.current) return;
+      
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length) {
+        // Set to true for devices that likely support torch
+        // We'll handle failures gracefully in the toggleTorch function
+        setTorchSupported(true);
+        console.log("Torch likely supported (based on camera access)");
+      } else {
+        setTorchSupported(false);
+      }
+    } catch (err) {
+      console.error("Error checking cameras:", err);
+      setTorchSupported(false);
+    }
+  };
+
+  // Toggle torch/flashlight
+  const toggleTorch = async () => {
+    try {
+      if (!html5QrCodeRef.current || !torchSupported) return;
+      
+      const newTorchState = !torchEnabled;
+      
+      // Works with the standard HTML5QrCode API
+      // Note: This is not officially in TypeScript definitions but works in the browser
+      await (html5QrCodeRef.current as any).applyVideoConstraints({
+        advanced: [{ torch: newTorchState }]
+      });
+      
+      setTorchEnabled(newTorchState);
+      console.log("Torch toggled to:", newTorchState);
+    } catch (err) {
+      console.error("Error toggling torch:", err);
+      toast({
+        title: "خطأ في الفلاش",
+        description: "تعذر تشغيل/إيقاف الفلاش. قد لا يكون هذا الجهاز مدعومًا.",
+        variant: "destructive",
+      });
+      
+      // Set torch supported to false since it didn't work
+      setTorchSupported(false);
+    }
+  };
+  
   useEffect(() => {
     return () => {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(error => console.error("Error stopping scanner:", error));
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().catch(error => console.error("Error stopping scanner:", error));
       }
     };
   }, []);
@@ -38,6 +88,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const startScanner = async () => {
     setIsScanning(true);
     setError(null);
+    // Reset torch state
+    setTorchEnabled(false);
 
     const qrCodeId = "qr-reader";
     const qrContainer = document.getElementById(qrCodeId);
@@ -48,27 +100,41 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       return;
     }
 
-    html5QrCode = new Html5Qrcode(qrCodeId);
-
     try {
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 15, 
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Make QR box responsive - use 70% of the smaller dimension
-            const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
-            const boxSize = Math.floor(minDimension * 0.7);
-            return {width: boxSize, height: boxSize};
-          },
-          aspectRatio: window.innerHeight > window.innerWidth ? window.innerHeight / window.innerWidth : 1.0,
+      // Initialize scanner with reference
+      html5QrCodeRef.current = new Html5Qrcode(qrCodeId);
+      
+      // Configure for better scanning in different lighting conditions
+      const config = {
+        fps: 20, // Increased frame rate for better performance
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          // Make QR box responsive - use 70% of the smaller dimension
+          const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+          const boxSize = Math.floor(minDimension * 0.7);
+          return {width: boxSize, height: boxSize};
         },
+        aspectRatio: window.innerHeight > window.innerWidth ? window.innerHeight / window.innerWidth : 1.0,
+        disableFlip: false, // Allow image flipping for better recognition
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true // Use BarCode Detector API if available
+        },
+      };
+      
+      await html5QrCodeRef.current.start(
+        { 
+          facingMode: "environment",
+        },
+        config,
         handleScanSuccess,
-        (errorMessage) => {
+        (errorMessage: string) => {
           // Don't show QR scanning errors to users, as they are not useful
           console.log("QR scan error:", errorMessage);
         }
       );
+      
+      // Check for torch support after scanner is initialized
+      await checkTorchSupport();
+      
     } catch (err) {
       console.error("Error starting scanner:", err);
       setError("فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)");
@@ -77,8 +143,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const stopScanner = async () => {
-    if (html5QrCode && html5QrCode.isScanning) {
-      await html5QrCode.stop();
+    if (torchEnabled && html5QrCodeRef.current) {
+      try {
+        // Turn off the torch using the same method we used to turn it on
+        await (html5QrCodeRef.current as any).applyVideoConstraints({
+          advanced: [{ torch: false }]
+        });
+      } catch (err) {
+        console.error("Error turning off torch:", err);
+      }
+      setTorchEnabled(false);
+    }
+    
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      await html5QrCodeRef.current.stop();
     }
     setIsScanning(false);
   };
@@ -203,7 +281,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     
-    if (!open && html5QrCode && html5QrCode.isScanning) {
+    if (!open && html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       stopScanner();
     }
     
@@ -331,14 +409,38 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                       </Button>
                     </div>
                   ) : (
-                    <Button 
-                      onClick={stopScanner} 
-                      variant="default" 
-                      className="w-full bg-primary text-white border-none hover:bg-primary/90"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      إغلاق الكاميرا
-                    </Button>
+                    <div className="flex flex-col gap-4">
+                      {/* Flashlight button - only show if supported */}
+                      {torchSupported && (
+                        <Button
+                          onClick={toggleTorch}
+                          variant="outline"
+                          className="w-full text-white border-white/30 hover:bg-white/10 mb-2"
+                        >
+                          {torchEnabled ? (
+                            <>
+                              <ZapOff className="h-4 w-4 mr-2" />
+                              إطفاء الفلاش
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-4 w-4 mr-2" />
+                              تشغيل الفلاش
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {/* Stop scanner button */}
+                      <Button 
+                        onClick={stopScanner} 
+                        variant="default" 
+                        className="w-full bg-primary text-white border-none hover:bg-primary/90"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        إغلاق الكاميرا
+                      </Button>
+                    </div>
                   )}
                 </div>
               </>
