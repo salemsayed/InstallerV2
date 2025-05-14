@@ -73,7 +73,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       const { ScanditSDK, ScanditCore } = window as any;
       
       // License key from environment variables
-      const licenseKey = import.meta.env.SCANDIT_LICENSE_KEY;
+      // Note: In Vite, client-side environment variables must be prefixed with VITE_
+      const licenseKey = import.meta.env.VITE_SCANDIT_LICENSE_KEY || import.meta.env.SCANDIT_LICENSE_KEY;
+      console.log("Using Scandit license key:", licenseKey ? "Available ✓" : "Not found ✗");
+      
       if (!licenseKey) {
         throw new Error("No Scandit license key provided");
       }
@@ -322,9 +325,18 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
   };
 
-  // Check if Scandit license key is available
+  // Check if Scandit license key is available and log the status
   useEffect(() => {
-    if (!import.meta.env.SCANDIT_LICENSE_KEY) {
+    // Log all available environment variables (excluding their values for security)
+    console.log("Available environment variables:", 
+      Object.keys(import.meta.env)
+        .filter(key => key.startsWith('VITE_') || key === 'SCANDIT_LICENSE_KEY')
+        .map(key => `${key}: ${key === 'SCANDIT_LICENSE_KEY' ? '✓' : '✓'}`)
+    );
+    
+    if (import.meta.env.SCANDIT_LICENSE_KEY) {
+      console.log("Scandit license key is available.");
+    } else {
       console.error("Warning: No Scandit license key found in environment variables.");
     }
   }, []);
