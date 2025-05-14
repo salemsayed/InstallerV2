@@ -256,52 +256,79 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const stopScanner = async () => {
+    console.log("[SCANDIT DEBUG] Stopping scanner...");
+    
     try {
       // Disable barcode tracking
       if (barcodeTrackingRef.current) {
+        console.log("[SCANDIT DEBUG] Disabling barcode tracking");
         try {
           await barcodeTrackingRef.current.setEnabled(false);
+          console.log("[SCANDIT DEBUG] Barcode tracking disabled successfully");
         } catch (err) {
-          // Error disabling barcode tracking
+          console.error("[SCANDIT DEBUG] Error disabling barcode tracking:", err);
         }
         barcodeTrackingRef.current = null;
+        console.log("[SCANDIT DEBUG] Barcode tracking reference cleared");
+      } else {
+        console.log("[SCANDIT DEBUG] No barcode tracking to disable");
       }
       
       // Turn off camera
       if (cameraRef.current) {
         if (cameraRef.current.desiredState !== ScanditCore.FrameSourceState.Off) {
+          console.log("[SCANDIT DEBUG] Turning off camera");
           try {
             await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.Off);
+            console.log("[SCANDIT DEBUG] Camera turned off successfully");
           } catch (err) {
-            // Error turning off camera
+            console.error("[SCANDIT DEBUG] Error turning off camera:", err);
           }
+        } else {
+          console.log("[SCANDIT DEBUG] Camera is already off");
         }
         cameraRef.current = null;
+        console.log("[SCANDIT DEBUG] Camera reference cleared");
+      } else {
+        console.log("[SCANDIT DEBUG] No camera to turn off");
       }
       
       // Clear the view reference
       if (viewRef.current && containerRef.current) {
+        console.log("[SCANDIT DEBUG] Disconnecting view from container");
         try {
           containerRef.current.innerHTML = '';
+          console.log("[SCANDIT DEBUG] Container cleared");
           viewRef.current = null;
+          console.log("[SCANDIT DEBUG] View reference cleared");
         } catch (err) {
-          // Error clearing view
+          console.error("[SCANDIT DEBUG] Error clearing view:", err);
         }
+      } else {
+        console.log("[SCANDIT DEBUG] No view/container to clear");
       }
       
       // Clear the context reference
       if (contextRef.current) {
-        contextRef.current = null;
+        console.log("[SCANDIT DEBUG] Clearing context reference");
+        try {
+          contextRef.current = null;
+          console.log("[SCANDIT DEBUG] Context reference cleared");
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Error clearing context:", err);
+        }
       }
       
+      console.log("[SCANDIT DEBUG] Scanner stopped successfully");
       setIsScanning(false);
     } catch (error) {
-      // Global error in stopScanner
+      console.error("[SCANDIT DEBUG] Global error in stopScanner:", error);
       setIsScanning(false);
     }
   };
 
   const validateQrCode = async (url: string) => {
+    console.log("[SCANDIT VALIDATION] Starting QR validation for URL:", url);
     setIsValidating(true);
     setError(null);
 
@@ -310,20 +337,26 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const warrantyUrlRegex = /^https:\/\/warranty\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
     const shortUrlRegex = /^https:\/\/w\.bareeq\.lighting\/p\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
     
+    console.log("[SCANDIT VALIDATION] Checking URL against regex patterns");
     const warrantyMatch = url.match(warrantyUrlRegex);
     const shortMatch = url.match(shortUrlRegex);
     
     if (!warrantyMatch && !shortMatch) {
+      console.error("[SCANDIT VALIDATION] URL failed regex validation:", url);
+      console.log("[SCANDIT VALIDATION] warrantyMatch:", warrantyMatch);
+      console.log("[SCANDIT VALIDATION] shortMatch:", shortMatch);
       setError("صيغة رمز QR غير صالحة. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_FORMAT)\n\nالصيغة المتوقعة: https://warranty.bareeq.lighting/p/[UUID] أو https://w.bareeq.lighting/p/[UUID]");
       setIsValidating(false);
       return;
     }
 
     const uuid = warrantyMatch ? warrantyMatch[1] : shortMatch![1];
-    console.log("Extracted UUID:", uuid);
+    console.log("[SCANDIT VALIDATION] Extracted UUID:", uuid);
 
     // Step 2: UUID validation
+    console.log("[SCANDIT VALIDATION] Validating UUID format:", uuid);
     if (!isValidUUIDv4(uuid)) {
+      console.error("[SCANDIT VALIDATION] Invalid UUID format:", uuid);
       setError("رمز المنتج UUID غير صالح. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_UUID)\n\nالرمز المكتشف: " + uuid);
       setIsValidating(false);
       return;
@@ -331,6 +364,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
     try {
       // Step 3: Send to server for validation and processing
+      console.log("[SCANDIT VALIDATION] Sending UUID to server for validation:", uuid);
+      console.log("[SCANDIT VALIDATION] User ID:", user?.id);
+      
       const scanResult = await apiRequest(
         "POST", 
         "/api/scan-qr", 
@@ -340,22 +376,26 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         }
       );
       
+      console.log("[SCANDIT VALIDATION] Server response status:", scanResult.status);
       const result = await scanResult.json();
+      console.log("[SCANDIT VALIDATION] Server response data:", result);
       
       if (!result.success) {
+        console.log("[SCANDIT VALIDATION] Server validation failed");
         const errorDetails = result.details ? JSON.stringify(result.details, null, 2) : '';
         const errorCode = result.error_code ? ` (${result.error_code})` : '';
         
         setError(`${result.message}${errorCode}\n${errorDetails}`);
         setIsValidating(false);
         
-        console.error('QR Validation Error:', {
+        console.error('[SCANDIT VALIDATION] Error details:', {
           message: result.message,
           code: result.error_code,
           details: result.details
         });
         
         if (result.details?.duplicate) {
+          console.log("[SCANDIT VALIDATION] Duplicate scan detected, restarting scanner");
           // If it's a duplicate, allow user to scan again
           startScanner();
         }
@@ -364,16 +404,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       }
       
       // Success path
+      console.log("[SCANDIT VALIDATION] Server validation successful!");
       setIsValidating(false);
       setIsOpen(false);
       
       // Log success and product name
-      console.log("Scanned product:", result.productName);
+      console.log("[SCANDIT VALIDATION] Scanned product:", result.productName);
+      console.log("[SCANDIT VALIDATION] Points awarded:", result.pointsAwarded);
       
       // Call refreshUser to update user data directly in the auth context
+      console.log("[SCANDIT VALIDATION] Refreshing user data...");
       refreshUser()
-        .then(() => console.log("User refreshed after successful scan"))
-        .catch(err => console.error("Error refreshing user after scan:", err));
+        .then(() => console.log("[SCANDIT VALIDATION] User data refreshed successfully"))
+        .catch(err => console.error("[SCANDIT VALIDATION] Error refreshing user data:", err));
       
       // Aggressively invalidate and immediately refetch all relevant queries
       queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
