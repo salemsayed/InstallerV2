@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 import TransactionsList from "@/components/installer/transactions-list";
 import { Transaction } from "@shared/schema";
@@ -40,7 +41,11 @@ export default function InstallerStats() {
               <CardTitle className="text-center text-lg">النقاط المكتسبة</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-center text-green-600">{totalEarnings}</p>
+              {transactionsLoading ? (
+                <Skeleton className="h-10 w-20 mx-auto" />
+              ) : (
+                <p className="text-3xl font-bold text-center text-green-600">{totalEarnings}</p>
+              )}
             </CardContent>
           </Card>
           
@@ -49,7 +54,11 @@ export default function InstallerStats() {
               <CardTitle className="text-center text-lg">النقاط المستخدمة</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-center text-red-600">{totalRedemptions}</p>
+              {transactionsLoading ? (
+                <Skeleton className="h-10 w-20 mx-auto" />
+              ) : (
+                <p className="text-3xl font-bold text-center text-red-600">{totalRedemptions}</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -60,7 +69,11 @@ export default function InstallerStats() {
             <CardDescription>إجمالي النقاط المتاحة (المكتسبة - المستخدمة)</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-center">{pointsBalance}</p>
+            {transactionsLoading ? (
+              <Skeleton className="h-10 w-24 mx-auto" />
+            ) : (
+              <p className="text-3xl font-bold text-center">{pointsBalance}</p>
+            )}
           </CardContent>
         </Card>
         
@@ -69,16 +82,13 @@ export default function InstallerStats() {
             <CardTitle>آخر العمليات</CardTitle>
           </CardHeader>
           <CardContent>
-            {transactionsLoading ? (
-              <p className="text-center py-4">جاري التحميل...</p>
-            ) : (
-              <TransactionsList 
-                transactions={transactions} 
-                limit={10}
-                showTotal={true}
-                showPagination={true}
-              />
-            )}
+            <TransactionsList 
+              transactions={transactions} 
+              limit={10}
+              showTotal={true}
+              showPagination={true}
+              isLoading={transactionsLoading}
+            />
           </CardContent>
         </Card>
       </div>

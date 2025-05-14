@@ -40,9 +40,94 @@ const CHART_COLORS = ["#11a683", "#3b82f6", "#8b5cf6", "#ef4444", "#f59e0b"];
 
 interface AnalyticsDashboardProps {
   userId?: number;
+  isLoading?: boolean;
 }
 
-export default function AnalyticsDashboard({ userId }: AnalyticsDashboardProps) {
+export function AnalyticsDashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Date Range Picker Skeleton */}
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-10 w-72" />
+      </div>
+      
+      {/* Summary Card Skeleton */}
+      <Card>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-6 w-40 mb-2" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/6" />
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Charts Skeletons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Point Activities Chart Skeleton */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        
+        {/* User Registrations Chart Skeleton */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        
+        {/* Top Products Chart Skeleton */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        
+        {/* User Distribution Chart Skeleton */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function AnalyticsDashboard({ userId, isLoading = false }: AnalyticsDashboardProps) {
+  if (isLoading) {
+    return <AnalyticsDashboardSkeleton />;
+  }
   // Set default date range to last 30 days
   const today = new Date();
   const thirtyDaysAgo = subDays(today, 29);

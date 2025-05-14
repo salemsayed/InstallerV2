@@ -167,7 +167,10 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold text-primary mb-1">لوحة الإحصائيات</h1>
             <p className="text-gray-500">عرض تحليلي للبيانات وإحصائيات التركيب والنقاط</p>
           </div>
-          <AnalyticsDashboard userId={user?.id} />
+          <AnalyticsDashboard 
+            userId={user?.id} 
+            isLoading={transactionsLoading || usersLoading || productsLoading} 
+          />
         </>
       )}
 

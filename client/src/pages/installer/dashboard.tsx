@@ -76,11 +76,10 @@ export default function InstallerDashboard() {
 
       {/* Points Card */}
       <section className="px-4 mb-8">
-        {!user ? (
-          <Skeleton className="h-36 w-full rounded-2xl" />
-        ) : (
-          <PointsCard points={transactionsLoading ? user.points : pointsBalance} />
-        )}
+        <PointsCard 
+          points={transactionsLoading ? user.points : pointsBalance} 
+          isLoading={transactionsLoading}
+        />
       </section>
 
       {/* Achievement Card */}
@@ -88,6 +87,7 @@ export default function InstallerDashboard() {
         <AchievementCard
           points={user.points}
           badges={badgesData?.badges ? badgesData.badges : []}
+          isLoading={badgesLoading}
         />
       </section>
 
@@ -98,6 +98,7 @@ export default function InstallerDashboard() {
           onViewAll={() => window.location.href = "/installer/stats"}
           limit={5}
           showTotal={true}
+          isLoading={transactionsLoading}
         />
       </section>
       
