@@ -188,8 +188,16 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         
         // Configure barcode settings to scan only QR codes
         const settings = new ScanditSDK.BarcodeCaptureSettings();
-        // Disable all symbologies by default
+        
+        // Disable all symbologies by default and only enable QR codes
         settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
+        
+        // Set basic barcode settings without high-end features
+        const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
+        if (qrSettings && qrSettings.blurryRecognition !== undefined) {
+          qrSettings.blurryRecognition = true; // Enable only if property exists
+        }
+        
         console.log("Configured barcode settings");
         
         // Configure viewfinder
