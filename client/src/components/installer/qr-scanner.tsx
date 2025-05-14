@@ -47,13 +47,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   }, []);
 
   const startScanner = async () => {
-    console.log("[SCANDIT DEBUG] Starting scanner...");
     setIsScanning(true);
     setError(null);
     
     try {
       // First configure Scandit with the license key
-      console.log("[SCANDIT DEBUG] Attempting to configure Scandit...");
       
       try {
         await ScanditCore.configure({
@@ -258,73 +256,47 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const stopScanner = async () => {
-    console.log("[SCANDIT DEBUG] Stopping scanner...");
-    
     try {
       // Disable barcode tracking
       if (barcodeTrackingRef.current) {
-        console.log("[SCANDIT DEBUG] Disabling barcode tracking");
         try {
           await barcodeTrackingRef.current.setEnabled(false);
-          console.log("[SCANDIT DEBUG] Barcode tracking disabled successfully");
         } catch (err) {
-          console.error("[SCANDIT DEBUG] Error disabling barcode tracking:", err);
+          // Error disabling barcode tracking
         }
         barcodeTrackingRef.current = null;
-        console.log("[SCANDIT DEBUG] Barcode tracking reference cleared");
-      } else {
-        console.log("[SCANDIT DEBUG] No barcode tracking to disable");
       }
       
       // Turn off camera
       if (cameraRef.current) {
         if (cameraRef.current.desiredState !== ScanditCore.FrameSourceState.Off) {
-          console.log("[SCANDIT DEBUG] Turning off camera");
           try {
             await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.Off);
-            console.log("[SCANDIT DEBUG] Camera turned off successfully");
           } catch (err) {
-            console.error("[SCANDIT DEBUG] Error turning off camera:", err);
+            // Error turning off camera
           }
-        } else {
-          console.log("[SCANDIT DEBUG] Camera is already off");
         }
         cameraRef.current = null;
-        console.log("[SCANDIT DEBUG] Camera reference cleared");
-      } else {
-        console.log("[SCANDIT DEBUG] No camera to turn off");
       }
       
       // Clear the view reference
       if (viewRef.current && containerRef.current) {
-        console.log("[SCANDIT DEBUG] Disconnecting view from container");
         try {
           containerRef.current.innerHTML = '';
-          console.log("[SCANDIT DEBUG] Container cleared");
           viewRef.current = null;
-          console.log("[SCANDIT DEBUG] View reference cleared");
         } catch (err) {
-          console.error("[SCANDIT DEBUG] Error clearing view:", err);
+          // Error clearing view
         }
-      } else {
-        console.log("[SCANDIT DEBUG] No view/container to clear");
       }
       
       // Clear the context reference
       if (contextRef.current) {
-        console.log("[SCANDIT DEBUG] Clearing context reference");
-        try {
-          contextRef.current = null;
-          console.log("[SCANDIT DEBUG] Context reference cleared");
-        } catch (err) {
-          console.error("[SCANDIT DEBUG] Error clearing context:", err);
-        }
+        contextRef.current = null;
       }
       
-      console.log("[SCANDIT DEBUG] Scanner stopped successfully");
       setIsScanning(false);
     } catch (error) {
-      console.error("[SCANDIT DEBUG] Global error in stopScanner:", error);
+      // Global error in stopScanner
       setIsScanning(false);
     }
   };
