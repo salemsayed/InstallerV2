@@ -38,13 +38,27 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     // Configure Scandit with the license key
     const initializeScandit = async () => {
       try {
+        console.log("[SCANDIT DEBUG] Attempting to configure Scandit...");
+        
+        // Use the shorter test key format which should be more compatible
         await ScanditCore.configure({
-          licenseKey: "AIDYWPTI5JGPQxrDPEeuqyLdx9OqY+Kl0VUqLrDLulDh4zuxv1I17NVN/IOIBGHCUZmgF7uRzTMQzuhRwTjUJ3YwqkuxiJVMVPQRaEsf9Z6Hkw4kkEbXzpHulBn7mNGkDCYCMmXgjDJBbY1pxPNv7D/JWAeWcbuF62Y9NXdmn+9T+CeD23jLpHVSrWb32RlUu9c+zNM2Hm7oaS3L2+lJz1NhfZPNZPvE25zYZbgOJrD97fRkxUZZDpYFyQUKI2n5+i51fntEvIPdkXzQ6hh5qSGFSw2OHY9cxKEf4jKh2QbItgz4aG1B/n3W4WiG0yK/0RM9WCZy2XP/5cTJh4tTgFiQfV1zMkVYbzGT75vOCMjXbsEvXAdQsJSsMmilI5jy1gTB4sHTb9M/qKHNcZ3kON7f0KTYDHfTEAYUkUw68SzEeKKdLz0BQ3TjfOG1hMY5AEfFrjxm/3KQAg1kO8G1Mm+MkLuSmxuXAQRCkQOOQSX5/yQkW+5rFVqG0CugYnLXbf4gUg==",
-          libraryLocation: "/node_modules/@scandit"
+          licenseKey: "AcQXJW5qOZMFbF8g+qfXS0TOxq1kkC0TxSFohuxDZ/gCYS6FWoYQQ80WAK61zPU59flE7GfkdM5IWVTZajB06T+2zBHh5jop9jKwLUVLJnZ71eD1fKO0NA==",
+          libraryLocation: "/node_modules/@scandit",
+          moduleLoaders: []
         });
-        console.log("Scandit configured successfully");
+        
+        console.log("[SCANDIT DEBUG] Scandit configured successfully");
       } catch (error) {
-        console.error("Error configuring Scandit:", error);
+        console.error("[SCANDIT DEBUG] Error configuring Scandit:", error);
+        
+        // Log more details about the error
+        if (error && typeof error === 'object') {
+          console.error("[SCANDIT DEBUG] Error details:", {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+        }
       }
     };
     
@@ -52,109 +66,185 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     
     // Cleanup when component unmounts
     return () => {
+      console.log("[SCANDIT DEBUG] Component unmounting, cleaning up scanner");
       stopScanner();
     };
   }, []);
 
   const startScanner = async () => {
+    console.log("[SCANDIT DEBUG] Starting scanner...");
     setIsScanning(true);
     setError(null);
     
     try {
       // Create DataCaptureContext if not already created
       if (!contextRef.current) {
+        console.log("[SCANDIT DEBUG] Creating new DataCaptureContext");
         contextRef.current = new ScanditCore.DataCaptureContext();
       }
       
       // Initialize camera
+      console.log("[SCANDIT DEBUG] Initializing camera...");
       if (!cameraRef.current) {
-        cameraRef.current = ScanditCore.Camera.defaultCamera;
-        if (!cameraRef.current) {
+        console.log("[SCANDIT DEBUG] Getting default camera");
+        const defaultCamera = ScanditCore.Camera.defaultCamera;
+        console.log("[SCANDIT DEBUG] Default camera:", defaultCamera);
+        
+        if (!defaultCamera) {
+          console.error("[SCANDIT DEBUG] No default camera available");
           throw new Error("No camera available");
         }
         
+        cameraRef.current = defaultCamera;
+        
         // Add camera to context
+        console.log("[SCANDIT DEBUG] Setting camera as frame source");
         await contextRef.current.setFrameSource(cameraRef.current);
       }
       
       // Setup barcode tracking
+      console.log("[SCANDIT DEBUG] Setting up barcode tracking");
       if (!barcodeTrackingRef.current) {
-        // Create barcode tracking settings
-        const settings = new ScanditBarcode.BarcodeTrackingSettings();
-        settings.scenario = ScanditBarcode.BarcodeTrackingScenario.A;
-        
-        // Enable only QR codes for performance
-        settings.enableSymbologies([ScanditBarcode.Barcode.Symbology.QR]);
-        
-        // Create and attach barcode tracking to context
-        barcodeTrackingRef.current = ScanditBarcode.BarcodeTracking.forContext(contextRef.current, settings);
-        
-        // Add a listener for tracking results
-        barcodeTrackingRef.current.addListener({
-          didUpdateSession: (_, session) => {
-            // Process tracked barcodes
-            const trackedCodes = session.trackedBarcodes;
-            for (const identifier of Object.keys(trackedCodes)) {
-              const barcode = trackedCodes[identifier]?.barcode;
-              if (barcode && barcode.data) {
-                // We found a barcode, process it
-                const decodedText = barcode.data;
-                console.log("QR code detected:", decodedText);
-                
-                // Stop scanning and validate the code
-                stopScanner();
-                validateQrCode(decodedText);
-                return;
+        try {
+          // Create barcode tracking settings
+          console.log("[SCANDIT DEBUG] Creating barcode tracking settings");
+          const settings = new ScanditBarcode.BarcodeTrackingSettings();
+          settings.scenario = ScanditBarcode.BarcodeTrackingScenario.A;
+          
+          // Enable only QR codes for performance
+          console.log("[SCANDIT DEBUG] Enabling QR code symbology");
+          settings.enableSymbologies([ScanditBarcode.Barcode.Symbology.QR]);
+          
+          // Create and attach barcode tracking to context
+          console.log("[SCANDIT DEBUG] Creating barcode tracking for context");
+          barcodeTrackingRef.current = ScanditBarcode.BarcodeTracking.forContext(contextRef.current, settings);
+          
+          // Add a listener for tracking results
+          console.log("[SCANDIT DEBUG] Adding listener for barcode tracking");
+          barcodeTrackingRef.current.addListener({
+            didUpdateSession: (_, session) => {
+              // Process tracked barcodes
+              const trackedCodes = session.trackedBarcodes;
+              const codeCount = Object.keys(trackedCodes).length;
+              
+              if (codeCount > 0) {
+                console.log(`[SCANDIT DEBUG] Found ${codeCount} tracked codes`);
+              }
+              
+              for (const identifier of Object.keys(trackedCodes)) {
+                try {
+                  const barcode = trackedCodes[identifier]?.barcode;
+                  if (barcode && barcode.data) {
+                    // We found a barcode, process it
+                    const decodedText = barcode.data;
+                    console.log("[SCANDIT DEBUG] QR code detected:", decodedText);
+                    
+                    // Stop scanning and validate the code
+                    stopScanner();
+                    validateQrCode(decodedText);
+                    return;
+                  }
+                } catch (err) {
+                  console.error("[SCANDIT DEBUG] Error processing barcode:", err);
+                }
               }
             }
-          }
-        });
+          });
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Error setting up barcode tracking:", err);
+          throw err;
+        }
       }
       
-      // Start barcode tracking
-      await barcodeTrackingRef.current.setEnabled(true);
-      
-      // Start camera
-      await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.On);
-      
-      // Create and setup the DataCaptureView for the UI
-      if (!viewRef.current && containerRef.current) {
-        viewRef.current = ScanditCore.DataCaptureView.forContext(contextRef.current);
+      try {
+        // Start barcode tracking
+        console.log("[SCANDIT DEBUG] Enabling barcode tracking");
+        await barcodeTrackingRef.current.setEnabled(true);
         
-        // Add a basic overlay to show the tracked barcodes
-        const overlay = ScanditBarcode.BarcodeTrackingBasicOverlay.withBarcodeTrackingForViewWithStyle(
-          barcodeTrackingRef.current,
-          viewRef.current,
-          ScanditBarcode.BarcodeTrackingBasicOverlayStyle.Frame
-        );
+        // Start camera
+        console.log("[SCANDIT DEBUG] Switching camera to ON state");
+        await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.On);
         
-        // Add camera controls
-        viewRef.current.addControl(new ScanditCore.TorchControl());
-        viewRef.current.addControl(new ScanditCore.CameraSwitchControl());
-        
-        // Connect the view to the HTML container
-        containerRef.current.innerHTML = '';
-        viewRef.current.connectToElement(containerRef.current);
+        // Create and setup the DataCaptureView for the UI
+        if (!viewRef.current && containerRef.current) {
+          console.log("[SCANDIT DEBUG] Creating DataCaptureView for UI");
+          viewRef.current = ScanditCore.DataCaptureView.forContext(contextRef.current);
+          
+          try {
+            // Add a basic overlay to show the tracked barcodes
+            console.log("[SCANDIT DEBUG] Creating barcode tracking overlay");
+            const overlay = ScanditBarcode.BarcodeTrackingBasicOverlay.withBarcodeTrackingForViewWithStyle(
+              barcodeTrackingRef.current,
+              viewRef.current,
+              ScanditBarcode.BarcodeTrackingBasicOverlayStyle.Frame
+            );
+            
+            console.log("[SCANDIT DEBUG] Created overlay:", overlay ? "success" : "failed");
+            
+            // Add camera controls
+            console.log("[SCANDIT DEBUG] Adding camera controls");
+            viewRef.current.addControl(new ScanditCore.TorchControl());
+            viewRef.current.addControl(new ScanditCore.CameraSwitchControl());
+          } catch (err) {
+            console.error("[SCANDIT DEBUG] Error adding overlay or controls:", err);
+          }
+          
+          // Connect the view to the HTML container
+          console.log("[SCANDIT DEBUG] Connecting view to HTML container");
+          if (containerRef.current) {
+            containerRef.current.innerHTML = '';
+            viewRef.current.connectToElement(containerRef.current);
+            console.log("[SCANDIT DEBUG] View connected to container");
+          } else {
+            console.error("[SCANDIT DEBUG] Container reference is null");
+          }
+        }
+      } catch (err) {
+        console.error("[SCANDIT DEBUG] Error in final setup steps:", err);
+        throw err;
       }
       
     } catch (err: any) {
       console.error("Error starting Scandit scanner:", err);
       
+      console.error("[SCANDIT DEBUG] Full error:", err);
+      
       // Check for Scandit error in a safer way
-      if (err && typeof err === 'object' && 'name' in err) {
-        if (err.name === 'CameraNotAvailableError') {
-          setError("الكاميرا غير متوفرة. (رمز الخطأ: CAMERA_NOT_AVAILABLE)");
-        } else if (err.name === 'CameraAccessDeniedError') {
-          setError("تم رفض الوصول إلى الكاميرا. يرجى منح الإذن. (رمز الخطأ: CAMERA_ACCESS_DENIED)");
-        } else if (err.name === 'NoLicenseKeyError' || err.name === 'LicenseKeyError') {
-          setError("مفتاح الترخيص لمسح الباركود غير صالح. (رمز الخطأ: LICENSE_KEY_ERROR)");
-        } else if (err.name === 'MisconfigurationError') {
-          setError("خطأ في إعدادات الماسح الضوئي. (رمز الخطأ: MISCONFIGURATION_ERROR)");
+      if (err && typeof err === 'object') {
+        console.log("[SCANDIT DEBUG] Error props:", Object.keys(err));
+        
+        if ('name' in err) {
+          console.log("[SCANDIT DEBUG] Error name:", err.name);
+          
+          if (err.name === 'CameraNotAvailableError') {
+            setError("الكاميرا غير متوفرة. (رمز الخطأ: CAMERA_NOT_AVAILABLE)");
+          } else if (err.name === 'CameraAccessDeniedError') {
+            setError("تم رفض الوصول إلى الكاميرا. يرجى منح الإذن. (رمز الخطأ: CAMERA_ACCESS_DENIED)");
+          } else if (err.name === 'NoLicenseKeyError' || err.name === 'LicenseKeyError') {
+            setError("مفتاح الترخيص لمسح الباركود غير صالح. (رمز الخطأ: LICENSE_KEY_ERROR)");
+          } else if (err.name === 'MisconfigurationError') {
+            setError("خطأ في إعدادات الماسح الضوئي. (رمز الخطأ: MISCONFIGURATION_ERROR)");
+          } else {
+            setError(`خطأ في تشغيل الماسح: ${err.message || err.name || "UNKNOWN"}`);
+          }
         } else {
-          setError(`خطأ في تشغيل الماسح: ${err.message || err.name || "UNKNOWN"}`);
+          console.log("[SCANDIT DEBUG] Error has no name property");
+          
+          if ('message' in err) {
+            setError(`خطأ في تشغيل الماسح: ${err.message}`);
+          } else {
+            // Try to stringify the error
+            try {
+              const errorString = JSON.stringify(err);
+              setError(`خطأ في تشغيل الماسح: ${errorString}`);
+            } catch {
+              setError("خطأ غير معروف في تشغيل الماسح الضوئي.");
+            }
+          }
         }
       } else {
-        setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err && err.message ? err.message : "UNKNOWN_ERROR"})`);
+        console.log("[SCANDIT DEBUG] Error is not an object:", typeof err, err);
+        setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err && err.toString ? err.toString() : "UNKNOWN_ERROR"})`);
       }
       
       setIsScanning(false);
