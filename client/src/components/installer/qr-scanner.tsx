@@ -58,6 +58,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     if (scanditRef.current.isInitialized) return true;
     
     try {
+      // Make sure we have a logged in user
+      if (!user) {
+        throw new Error("User must be logged in to access the scanner");
+      }
+      
       if (!scanditLibraryLoadedRef.current) {
         // Dynamic import of Scandit modules - this loads the library on demand
         const ScanditSDK = await import('scandit-web-datacapture-barcode');
@@ -72,13 +77,20 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Get the library modules from window object
       const { ScanditSDK, ScanditCore } = window as any;
       
-      // License key from environment variables
-      // Note: In Vite, client-side environment variables must be prefixed with VITE_
-      const licenseKey = import.meta.env.VITE_SCANDIT_LICENSE_KEY || import.meta.env.SCANDIT_LICENSE_KEY;
-      console.log("Using Scandit license key:", licenseKey ? "Available ✓" : "Not found ✗");
+      // Fetch the license key from our API endpoint
+      console.log("Fetching Scandit license key for user:", user.id);
+      const licenseResponse = await fetch(`/api/scandit-license?userId=${user.id}`);
+      if (!licenseResponse.ok) {
+        throw new Error("Failed to get Scandit license key from server");
+      }
+      
+      const licenseData = await licenseResponse.json();
+      const licenseKey = licenseData.licenseKey;
+      
+      console.log("Using Scandit license key from API:", licenseKey ? "Available ✓" : "Not found ✗");
       
       if (!licenseKey) {
-        throw new Error("No Scandit license key provided");
+        throw new Error("No Scandit license key provided from server");
       }
       
       // Create and configure the data capture context
@@ -138,6 +150,13 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const startScanner = async () => {
     setIsScanning(true);
     setError(null);
+    
+    // Make sure user is logged in before starting scanner
+    if (!user) {
+      setError("يجب تسجيل الدخول لاستخدام الماسح. (رمز الخطأ: USER_NOT_LOGGED_IN)");
+      setIsScanning(false);
+      return;
+    }
     
     if (!scannerContainerRef.current) {
       setError("عنصر الماسح الضوئي غير موجود. (رمز الخطأ: ELEMENT_NOT_FOUND)");

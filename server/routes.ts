@@ -1132,6 +1132,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get scanned products for a user
+  // Add endpoint to expose the Scandit license key to the client
+  app.get("/api/scandit-license", (req: Request, res: Response) => {
+    try {
+      // Only return the license to authenticated users
+      const userId = parseInt(req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+      }
+      
+      const licenseKey = process.env.SCANDIT_LICENSE_KEY;
+      if (!licenseKey) {
+        return res.status(500).json({ message: "مفتاح ترخيص Scandit غير متوفر" });
+      }
+      
+      // Return the license key to the client
+      res.json({ licenseKey });
+    } catch (error) {
+      console.error("Error fetching Scandit license:", error);
+      res.status(500).json({ message: "حدث خطأ أثناء جلب مفتاح ترخيص Scandit" });
+    }
+  });
+  
   app.get("/api/scanned-products", async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.query.userId as string);
