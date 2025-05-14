@@ -1,4 +1,3 @@
-import { log } from './vite';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 
@@ -109,7 +108,7 @@ export class MockSmsService {
       await db.execute(sql`DELETE FROM otps WHERE phone_number = ${formattedPhone}`);
       return true;
     } catch (error) {
-      log(`Error verifying OTP: ${error}`, 'sms');
+      console.error(`Error verifying OTP: ${error}`);
       return false;
     }
   }
@@ -121,7 +120,7 @@ export class MockSmsService {
     const egyptPhoneRegex = /^(\+20|0)1[0-2,5]{1}[0-9]{8}$/;
     
     if (!egyptPhoneRegex.test(phoneNumber)) {
-      log(`Invalid Egyptian phone number format: ${phoneNumber}`, 'sms');
+      // Invalid Egyptian phone number format
       return false;
     }
     
@@ -130,7 +129,7 @@ export class MockSmsService {
       phoneNumber = '+2' + phoneNumber;
     }
     
-    log(`📱 SMS to ${phoneNumber}: ${message}`, 'sms');
+    // Mock SMS would be sent here in production
     return true;
   }
   
@@ -150,14 +149,14 @@ export class MockSmsService {
       const sent = await this.sendSms(formattedPhone, message);
       
       if (sent) {
-        log(`OTP sent to ${formattedPhone}: ${otp}`, 'sms');
+        // OTP sent successfully
         // Return OTP in development for easy testing
         return { success: true, otp };
       } else {
         return { success: false };
       }
     } catch (error) {
-      log(`Error sending OTP: ${error}`, 'sms');
+      console.error(`Error sending OTP: ${error}`);
       return { success: false };
     }
   }

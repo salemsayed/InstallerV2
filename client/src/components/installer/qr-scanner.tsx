@@ -37,11 +37,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   useEffect(() => {
     // A simpler approach for now - in a future iteration we can improve this
     // but for now let's focus on getting basic version working
-    console.log("[SCANDIT DEBUG] Component mounted, configuring will happen when scan is requested");
+    // Component mounted, will configure Scandit when scan is requested
     
     // Cleanup when component unmounts
     return () => {
-      console.log("[SCANDIT DEBUG] Component unmounting, cleaning up scanner");
+      // Cleanup scanner resources
       stopScanner();
     };
   }, []);
