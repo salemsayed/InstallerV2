@@ -38,13 +38,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     // Configure Scandit with the license key
     const initializeScandit = async () => {
       try {
-        // Try to get the license key - we need to make this available to the client
-        // For security, in a real production environment, this would typically be
-        // handled via a secure proxy endpoint that doesn't expose the key client-side
         await ScanditCore.configure({
-          licenseKey: 'AbZxY0U3Mi8SLDovMkJ3MVpkMy9QeEo2V1RqUy8vNUQxaHpvdHpibFh0ZWFBWnBhRHF2VE9JQXpodFdLdFZ5S0R5SGJOb3dWd0YxQlQySW55MnNwU3FiZWt4dFRrcWhNTVdWckJwVmRGbmlzT1YxZXJxbENtcU1jMTI3UXVYVmd0YlBDQkVJaGxleGVsVjBOYkdVaWg3ZElpMEV4cDJFdEpLMTBKZ2o3T3E0M0pjMUxkU0MwcVBDTy8xQzh3dEM3ekordVhVeCtoQVpxSUNUZ0hXZytpbGY2ZnJSMklZbmRwZnJRTlNjZUQwS2lTNXdVa0JVbTZkUFZrMkxwYzZsOUp4SUhMVElFUS9YbWhXTW5CbThNbTFHczJvY0lEVWJTL0hXaVRBd0JvVnVFVmlOSENFdldoZEJxdlFvQTNBRVlPbnZ0REg4U010cnVGSWFqWjNWOXBkUXRKam5vOHplVldJNGphVHF5MHpwQ3ZpaW1rTmZqTEF3QitUd0dJbnYxSmVKRGdPVmRmbXRjNGlxTG9pTXhTcXRPdEF2K3ArcnU2YkdUMy9GdXJuMzNlVFlzdmIvTEhQb01EYlloVXZmT3dIMW5XS3JBYWM3b0psd0I5WXZQR2RoY2tPWlVXZytoUzV1MzJ0N1BsbGdyTC9PZEg1U0l0TjFjcE85dzN6R1hHNXR1ZnlGLy83S3haWGZVdzdFVTA2VWE1Rk9ZUkp5RGZQVEtZZkczV3JhWkpURStobUdlQVZMVjZ2Y0pVS3RwM2YzT3hxeE14WXljPXJKMFFTblA0T2RlNg==',
-          libraryLocation: '/node_modules/@scandit',
-          moduleLoaders: []
+          licenseKey: "AIDYWPTI5JGPQxrDPEeuqyLdx9OqY+Kl0VUqLrDLulDh4zuxv1I17NVN/IOIBGHCUZmgF7uRzTMQzuhRwTjUJ3YwqkuxiJVMVPQRaEsf9Z6Hkw4kkEbXzpHulBn7mNGkDCYCMmXgjDJBbY1pxPNv7D/JWAeWcbuF62Y9NXdmn+9T+CeD23jLpHVSrWb32RlUu9c+zNM2Hm7oaS3L2+lJz1NhfZPNZPvE25zYZbgOJrD97fRkxUZZDpYFyQUKI2n5+i51fntEvIPdkXzQ6hh5qSGFSw2OHY9cxKEf4jKh2QbItgz4aG1B/n3W4WiG0yK/0RM9WCZy2XP/5cTJh4tTgFiQfV1zMkVYbzGT75vOCMjXbsEvXAdQsJSsMmilI5jy1gTB4sHTb9M/qKHNcZ3kON7f0KTYDHfTEAYUkUw68SzEeKKdLz0BQ3TjfOG1hMY5AEfFrjxm/3KQAg1kO8G1Mm+MkLuSmxuXAQRCkQOOQSX5/yQkW+5rFVqG0CugYnLXbf4gUg==",
+          libraryLocation: "/node_modules/@scandit"
         });
         console.log("Scandit configured successfully");
       } catch (error) {
@@ -144,18 +140,21 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     } catch (err: any) {
       console.error("Error starting Scandit scanner:", err);
       
-      if (err instanceof ScanditCore.ScanditError) {
-        if (err.code === ScanditCore.ScanditEngineErrorCode.CAMERA_NOT_AVAILABLE) {
+      // Check for Scandit error in a safer way
+      if (err && typeof err === 'object' && 'name' in err) {
+        if (err.name === 'CameraNotAvailableError') {
           setError("الكاميرا غير متوفرة. (رمز الخطأ: CAMERA_NOT_AVAILABLE)");
-        } else if (err.code === ScanditCore.ScanditEngineErrorCode.CAMERA_ACCESS_DENIED) {
+        } else if (err.name === 'CameraAccessDeniedError') {
           setError("تم رفض الوصول إلى الكاميرا. يرجى منح الإذن. (رمز الخطأ: CAMERA_ACCESS_DENIED)");
-        } else if (err.code === ScanditCore.ScanditEngineErrorCode.LICENSE_KEY_MISSING) {
-          setError("مفتاح الترخيص لمسح الباركود مفقود. (رمز الخطأ: LICENSE_KEY_MISSING)");
+        } else if (err.name === 'NoLicenseKeyError' || err.name === 'LicenseKeyError') {
+          setError("مفتاح الترخيص لمسح الباركود غير صالح. (رمز الخطأ: LICENSE_KEY_ERROR)");
+        } else if (err.name === 'MisconfigurationError') {
+          setError("خطأ في إعدادات الماسح الضوئي. (رمز الخطأ: MISCONFIGURATION_ERROR)");
         } else {
-          setError(`خطأ في تشغيل الماسح: ${err.message} (رمز الخطأ: ${err.code})`);
+          setError(`خطأ في تشغيل الماسح: ${err.message || err.name || "UNKNOWN"}`);
         }
       } else {
-        setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err.message || "UNKNOWN_ERROR"})`);
+        setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err && err.message ? err.message : "UNKNOWN_ERROR"})`);
       }
       
       setIsScanning(false);
