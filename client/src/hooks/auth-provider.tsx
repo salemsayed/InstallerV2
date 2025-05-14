@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Also update localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
-        console.log("User data refreshed:", data.user);
+        // Set user data silently
       }
     } catch (error) {
       console.error("Error refreshing user data:", error);
