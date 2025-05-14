@@ -53,12 +53,31 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     try {
       // First configure Scandit with the license key
       
+      console.log("[SCANDIT DEBUG] About to configure Scandit with the correct modules");
+      console.log("[SCANDIT DEBUG] Checking library imports - ScanditCore:", typeof ScanditCore);
+      console.log("[SCANDIT DEBUG] Checking library imports - ScanditBarcode:", typeof ScanditBarcode);
+      
       try {
+        // The fix for "Main modules must be loaded before side modules"
+        console.log("[SCANDIT DEBUG] Attempting to configure Scandit with proper module order");
+        
         await ScanditCore.configure({
           licenseKey: "AcQXJW5qOZMFbF8g+qfXS0TOxq1kkC0TxSFohuxDZ/gCYS6FWoYQQ80WAK61zPU59flE7GfkdM5IWVTZajB06T+2zBHh5jop9jKwLUVLJnZ71eD1fKO0NA==",
-          libraryLocation: "/node_modules/@scandit",
+          // Use correct library location with origin URL
+          libraryLocation: window.location.origin + "/node_modules/@scandit/web-datacapture-core",
+          // The critical fix: make sure main modules are loaded before side modules
+          // First load the core module - this MUST come before barcode
           moduleLoaders: [
-            { name: "barcode", load: () => Promise.resolve(ScanditBarcode) }
+            { 
+              // Scandit requires the main "core" module to be loaded first
+              name: "core", 
+              load: () => Promise.resolve(ScanditCore)
+            },
+            { 
+              // The barcode module must be loaded AFTER core
+              name: "barcode", 
+              load: () => Promise.resolve(ScanditBarcode)
+            }
           ]
         });
         console.log("[SCANDIT DEBUG] Scandit configured successfully");
@@ -76,7 +95,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Create DataCaptureContext if not already created
       if (!contextRef.current) {
         console.log("[SCANDIT DEBUG] Creating new DataCaptureContext");
-        contextRef.current = new ScanditCore.DataCaptureContext();
+        contextRef.current = new DataCaptureContext();
       }
       
       // Initialize camera
@@ -84,7 +103,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       if (!cameraRef.current) {
         try {
           console.log("[SCANDIT DEBUG] Getting cameras");
-          const cameras = await ScanditCore.Camera.getCameras();
+          const cameras = await Camera.getCameras();
           console.log("[SCANDIT DEBUG] Available cameras:", cameras);
           
           if (cameras.length === 0) {
@@ -93,7 +112,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           }
           
           // Try to get the back camera first, fall back to first available
-          const backCamera = cameras.find(c => c.position === ScanditCore.CameraPosition.WorldFacing);
+          const backCamera = cameras.find(c => c.position === CameraPosition.WorldFacing);
           cameraRef.current = backCamera || cameras[0];
           console.log("[SCANDIT DEBUG] Selected camera:", cameraRef.current);
           
@@ -112,16 +131,16 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         try {
           // Create barcode tracking settings
           console.log("[SCANDIT DEBUG] Creating barcode tracking settings");
-          const settings = new ScanditBarcode.BarcodeTrackingSettings();
-          settings.scenario = ScanditBarcode.BarcodeTrackingScenario.A;
+          const settings = new BarcodeTrackingSettings();
+          settings.scenario = BarcodeTrackingScenario.A;
           
           // Enable only QR codes for performance
           console.log("[SCANDIT DEBUG] Enabling QR code symbology");
-          settings.enableSymbologies([ScanditBarcode.Barcode.Symbology.QR]);
+          settings.enableSymbologies([Barcode.Symbology.QR]);
           
           // Create and attach barcode tracking to context
           console.log("[SCANDIT DEBUG] Creating barcode tracking for context");
-          barcodeTrackingRef.current = ScanditBarcode.BarcodeTracking.forContext(contextRef.current, settings);
+          barcodeTrackingRef.current = BarcodeTracking.forContext(contextRef.current, settings);
           
           // Add a listener for tracking results
           console.log("[SCANDIT DEBUG] Adding listener for barcode tracking");
@@ -419,25 +438,30 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         .catch(err => console.error("[SCANDIT VALIDATION] Error refreshing user data:", err));
       
       // Aggressively invalidate and immediately refetch all relevant queries
+      console.log("[SCANDIT VALIDATION] Invalidating queries to refresh data");
       queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
       
       // Force instant refetch of all invalidated queries
+      console.log("[SCANDIT VALIDATION] Forcing immediate refetch of transactions");
       queryClient.refetchQueries({ 
         queryKey: [`/api/transactions?userId=${user?.id}`],
         exact: true 
       });
+      console.log("[SCANDIT VALIDATION] Forcing immediate refetch of badges");
       queryClient.refetchQueries({ 
         queryKey: ['/api/badges', user?.id],
         exact: true 
       });
+      console.log("[SCANDIT VALIDATION] Forcing immediate refetch of user data");
       queryClient.refetchQueries({ 
         queryKey: ['/api/users/me'],
         exact: true 
       });
       
       // Show success toast
+      console.log("[SCANDIT VALIDATION] Showing success toast");
       toast({
         title: "تم التحقق من المنتج بنجاح ✓",
         description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
@@ -445,11 +469,22 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       });
       
       if (onScanSuccess) {
+        console.log("[SCANDIT VALIDATION] Calling onScanSuccess callback");
         onScanSuccess(result.productName);
       }
       
+      console.log("[SCANDIT VALIDATION] QR validation process completed successfully");
+      
     } catch (err: any) {
-      console.error("Validation error:", err);
+      console.error("[SCANDIT VALIDATION] Error during validation:", err);
+      if (err && typeof err === 'object') {
+        console.error("[SCANDIT VALIDATION] Error properties:", Object.keys(err));
+        console.error("[SCANDIT VALIDATION] Error message:", err.message);
+        console.error("[SCANDIT VALIDATION] Error stack:", err.stack);
+      } else {
+        console.error("[SCANDIT VALIDATION] Error is not an object:", typeof err);
+      }
+      
       setError(`خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى. (رمز الخطأ: VALIDATION_ERROR)\n\nتفاصيل: ${err.message || "خطأ غير معروف"}`);
       setIsValidating(false);
     }
@@ -457,18 +492,27 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
   const handleOpenChange = (open: boolean) => {
     console.log("[SCANDIT DEBUG] Dialog state changing to:", open ? "open" : "closed");
+    console.log("[SCANDIT DEBUG] Previous dialog state was:", isOpen ? "open" : "closed");
     setIsOpen(open);
     
     if (!open) {
       console.log("[SCANDIT DEBUG] Dialog closing, stopping scanner");
+      console.log("[SCANDIT DEBUG] Current scanner state - isScanning:", isScanning, "isValidating:", isValidating);
       stopScanner();
     } else {
       console.log("[SCANDIT DEBUG] Dialog opening");
+      console.log("[SCANDIT DEBUG] Device info:", {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        vendor: navigator.vendor,
+        language: navigator.language
+      });
     }
     
     // Reset states when dialog is closed
     if (!open) {
       console.log("[SCANDIT DEBUG] Resetting scanner state");
+      console.log("[SCANDIT DEBUG] Current error state:", error || 'no error');
       setError(null);
       setIsScanning(false);
       setIsValidating(false);
@@ -526,7 +570,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                     <Button 
                       variant="default" 
                       className="flex-1 bg-primary text-white hover:bg-primary/90" 
-                      onClick={() => setError(null)}
+                      onClick={() => {
+                        console.log("[SCANDIT DEBUG] Retry button clicked, clearing error state");
+                        setError(null);
+                      }}
                     >
                       <span className="flex items-center gap-1">
                         <CameraIcon className="h-4 w-4" />
@@ -536,7 +583,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                     <Button 
                       variant="outline"
                       className="flex-1 bg-transparent border-white/30 text-white hover:bg-white/10"
-                      onClick={() => handleOpenChange(false)}
+                      onClick={() => {
+                        console.log("[SCANDIT DEBUG] Go back button clicked from error state");
+                        handleOpenChange(false);
+                      }}
                     >
                       <span className="flex items-center gap-1">
                         <X className="h-4 w-4" />
