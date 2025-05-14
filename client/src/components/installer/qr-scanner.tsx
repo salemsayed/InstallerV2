@@ -53,8 +53,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     };
   }, []);
 
-  // Initialize Scandit when needed
+  // Completely separate initializing Scandit from connecting it to the DOM
   const initializeScandit = async () => {
+    // If already initialized, use the existing instance
     if (scanditRef.current.isInitialized) {
       console.log("Scandit already initialized, reusing instance");
       return true;
@@ -68,85 +69,123 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       console.log("Starting Scandit initialization");
       
+      // First step: Load the Scandit library modules if not already loaded
       if (!scanditLibraryLoadedRef.current) {
         console.log("Loading Scandit library modules");
-        // Dynamic import of Scandit modules - this loads the library on demand
-        const ScanditSDK = await import('scandit-web-datacapture-barcode');
-        const ScanditCore = await import('scandit-web-datacapture-core');
-        
-        // Store these for later use
-        window.ScanditSDK = ScanditSDK;
-        window.ScanditCore = ScanditCore;
-        scanditLibraryLoadedRef.current = true;
-        console.log("Scandit library modules loaded successfully");
+        try {
+          // Dynamic import of Scandit modules - this loads the library on demand
+          const ScanditSDK = await import('scandit-web-datacapture-barcode');
+          const ScanditCore = await import('scandit-web-datacapture-core');
+          
+          // Store these for later use
+          window.ScanditSDK = ScanditSDK;
+          window.ScanditCore = ScanditCore;
+          scanditLibraryLoadedRef.current = true;
+          console.log("Scandit library modules loaded successfully");
+        } catch (moduleError) {
+          console.error("Failed to load Scandit library modules:", moduleError);
+          throw new Error(`Failed to load Scandit: ${moduleError.message}`);
+        }
       }
       
       // Get the library modules from window object
       const { ScanditSDK, ScanditCore } = window as any;
       
-      // Fetch the license key from our API endpoint
+      // Second step: Fetch the license key from our API endpoint
       console.log("Fetching Scandit license key for user:", user.id);
-      const licenseResponse = await fetch(`/api/scandit-license?userId=${user.id}`);
-      if (!licenseResponse.ok) {
-        throw new Error("Failed to get Scandit license key from server");
+      let licenseKey = "";
+      
+      try {
+        const licenseResponse = await fetch(`/api/scandit-license?userId=${user.id}`);
+        if (!licenseResponse.ok) {
+          throw new Error(`Server returned ${licenseResponse.status}: ${licenseResponse.statusText}`);
+        }
+        
+        const licenseData = await licenseResponse.json();
+        licenseKey = licenseData.licenseKey;
+        
+        console.log("Using Scandit license key from API:", licenseKey ? "Available ✓" : "Not found ✗");
+        
+        if (!licenseKey) {
+          throw new Error("License key was empty or null");
+        }
+      } catch (licenseError) {
+        console.error("Failed to get Scandit license key from server:", licenseError);
+        throw new Error(`Failed to get Scandit license key: ${licenseError.message}`);
       }
       
-      const licenseData = await licenseResponse.json();
-      const licenseKey = licenseData.licenseKey;
+      // Third step: Create and configure the Scandit components
+      console.log("Creating Scandit components");
       
-      console.log("Using Scandit license key from API:", licenseKey ? "Available ✓" : "Not found ✗");
-      
-      if (!licenseKey) {
-        throw new Error("No Scandit license key provided from server");
+      try {
+        // Create and configure the data capture context
+        const context = await ScanditCore.DataCaptureContext.create(licenseKey);
+        console.log("Created Scandit context");
+        
+        // Configure the camera
+        const camera = ScanditCore.Camera.default;
+        await context.setFrameSource(camera);
+        console.log("Configured camera");
+        
+        // Configure barcode settings to scan only QR codes
+        const settings = new ScanditSDK.BarcodeCaptureSettings();
+        // Disable all symbologies by default
+        settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
+        console.log("Configured barcode settings");
+        
+        // Configure viewfinder
+        const barcodeCapture = ScanditSDK.BarcodeCapture.forContext(context, settings);
+        console.log("Created barcode capture");
+        
+        // Create UI components
+        const view = ScanditCore.DataCaptureView.forContext(context);
+        console.log("Created data capture view");
+        
+        // Add visual feedback when scanning occurs
+        const overlay = ScanditSDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+        overlay.viewfinder = new ScanditCore.RectangularViewfinder(
+          ScanditCore.RectangularViewfinderStyle.Square,
+          ScanditCore.RectangularViewfinderLineStyle.Light
+        );
+        console.log("Configured overlay and viewfinder");
+        
+        // Save references
+        scanditRef.current = {
+          context,
+          camera,
+          barcodeCapture,
+          view,
+          isInitialized: true
+        };
+        
+        console.log("Scandit components created and saved successfully");
+      } catch (componentError) {
+        console.error("Failed to create Scandit components:", componentError);
+        throw new Error(`Failed to create Scandit components: ${componentError.message}`);
       }
       
-      // Create and configure the data capture context
-      const context = await ScanditCore.DataCaptureContext.create(licenseKey);
-      
-      // Configure the camera
-      const camera = ScanditCore.Camera.default;
-      await context.setFrameSource(camera);
-      
-      // Configure barcode settings to scan only QR codes
-      const settings = new ScanditSDK.BarcodeCaptureSettings();
-      // Disable all symbologies by default
-      settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
-      
-      // Configure viewfinder
-      const barcodeCapture = ScanditSDK.BarcodeCapture.forContext(context, settings);
-      
-      // Create UI components
-      const view = ScanditCore.DataCaptureView.forContext(context);
-      
-      // Add visual feedback when scanning occurs
-      const overlay = ScanditSDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
-      overlay.viewfinder = new ScanditCore.RectangularViewfinder(
-        ScanditCore.RectangularViewfinderStyle.Square,
-        ScanditCore.RectangularViewfinderLineStyle.Light
-      );
-      
-      // Save references
-      scanditRef.current = {
-        context,
-        camera,
-        barcodeCapture,
-        view,
-        isInitialized: true
-      };
-      
-      // Set up scan listener
-      barcodeCapture.addListener({
-        didScan: (_, session) => {
-          if (session.newlyRecognizedBarcodes.length > 0) {
-            const barcode = session.newlyRecognizedBarcodes[0];
-            if (barcode.data) {
-              handleScanSuccess(barcode.data);
+      try {
+        // Fourth step: Set up scan listener
+        console.log("Setting up barcode scan listener");
+        scanditRef.current.barcodeCapture.addListener({
+          didScan: (_, session) => {
+            if (session.newlyRecognizedBarcodes.length > 0) {
+              const barcode = session.newlyRecognizedBarcodes[0];
+              if (barcode.data) {
+                console.log("Barcode detected:", barcode.data);
+                handleScanSuccess(barcode.data);
+              }
             }
           }
-        }
-      });
-      
-      return true;
+        });
+        console.log("Scan listener set up successfully");
+        
+        console.log("Scandit initialization completed successfully");
+        return true;
+      } catch (listenerError) {
+        console.error("Failed to set up scan listener:", listenerError);
+        throw new Error(`Failed to set up scan listener: ${listenerError.message}`);
+      }
     } catch (error) {
       console.error("Failed to initialize Scandit:", error);
       setError(`فشل في تهيئة الماسح الضوئي. (رمز الخطأ: SCANDIT_INIT_ERROR)\n\nتفاصيل: ${error.message}`);
@@ -158,62 +197,53 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     setIsScanning(true);
     setError(null);
     
+    console.log("Starting scanner process");
+    
     // Make sure user is logged in before starting scanner
     if (!user) {
+      console.error("No user logged in");
       setError("يجب تسجيل الدخول لاستخدام الماسح. (رمز الخطأ: USER_NOT_LOGGED_IN)");
       setIsScanning(false);
       return;
     }
     
-    if (!scannerContainerRef.current) {
-      setError("عنصر الماسح الضوئي غير موجود. (رمز الخطأ: ELEMENT_NOT_FOUND)");
-      setIsScanning(false);
-      return;
-    }
-    
     try {
-      // Initialize Scandit components
+      // Step 1: Initialize Scandit components (but don't connect to DOM yet)
+      console.log("Initializing Scandit components");
       const initialized = await initializeScandit();
       if (!initialized) {
+        console.error("Failed to initialize Scandit");
         setError("فشل في تهيئة الماسح الضوئي. (رمز الخطأ: SCANDIT_INIT_ERROR)");
         setIsScanning(false);
         return;
       }
       
+      // Step 2: Ensure scanner container element is available
+      // We need to wait for the next render cycle to ensure the DOM is updated
+      console.log("Waiting for scanner container element to be ready");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (!scannerContainerRef.current) {
+        console.error("Scanner container element not found in DOM after delay");
+        setError("عنصر الماسح الضوئي غير موجود. (رمز الخطأ: ELEMENT_NOT_FOUND)");
+        setIsScanning(false);
+        return;
+      }
+      
+      // Step 3: Connect view to DOM element and start camera
       try {
-        // Add more debug information
-        console.log("Connecting Scandit view to DOM element");
+        // Get container dimensions to verify it's properly rendered
+        const rect = scannerContainerRef.current.getBoundingClientRect();
+        console.log(`Scanner container dimensions: ${rect.width}x${rect.height}`);
         
-        // Make sure the scanner container element exists in the DOM
-        if (!scannerContainerRef.current) {
-          throw new Error("Scanner container DOM element is null");
+        if (rect.width === 0 || rect.height === 0) {
+          throw new Error("Scanner container has zero dimensions");
         }
-        
-        // Add a small delay to ensure the DOM element is fully rendered and stable
-        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Connect view to DOM element
-        try {
-          // Ensure the element is still available after the delay
-          if (!scannerContainerRef.current) {
-            throw new Error("Scanner container DOM element became null after delay");
-          }
-          
-          // Get the dimensions of the container to verify it's properly rendered
-          const rect = scannerContainerRef.current.getBoundingClientRect();
-          console.log(`Scanner container dimensions: ${rect.width}x${rect.height}`);
-          
-          if (rect.width === 0 || rect.height === 0) {
-            throw new Error("Scanner container has zero dimensions");
-          }
-          
-          // Connect view to DOM element
-          await scanditRef.current.view.connectToElement(scannerContainerRef.current);
-          console.log("Successfully connected Scandit view to DOM element");
-        } catch (connectionError) {
-          console.error("Error connecting view to DOM element:", connectionError);
-          throw connectionError;
-        }
+        console.log("Connecting Scandit view to DOM element");
+        await scanditRef.current.view.connectToElement(scannerContainerRef.current);
+        console.log("Successfully connected Scandit view to DOM element");
         
         // Start camera
         const { ScanditCore } = window as any;
@@ -225,13 +255,26 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         console.log("Enabling barcode capture");
         scanditRef.current.barcodeCapture.isEnabled = true;
         console.log("Barcode capture enabled successfully");
-      } catch (innerError) {
-        console.error("Error in scanner setup steps:", innerError);
-        throw innerError;
+        
+        console.log("Scanner started successfully");
+      } catch (error) {
+        console.error("Error connecting scanner to DOM or starting camera:", error);
+        setError(`فشل تشغيل الماسح الضوئي. (رمز الخطأ: SCANNER_CONNECT_ERROR)\n\nتفاصيل: ${error.message}`);
+        setIsScanning(false);
+        
+        // Attempt to clean up
+        try {
+          if (scanditRef.current.camera) {
+            console.log("Attempting to clean up camera resources");
+            await scanditRef.current.camera.switchToDesiredState((window as any).ScanditCore.FrameSourceState.Off);
+          }
+        } catch (cleanupError) {
+          console.error("Failed to clean up camera resources:", cleanupError);
+        }
       }
     } catch (err) {
-      console.error("Error starting scanner:", err);
-      setError(`فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)\n\nتفاصيل: ${err.message}`);
+      console.error("Unexpected error starting scanner:", err);
+      setError(`فشل غير متوقع. يرجى المحاولة مرة أخرى. (رمز الخطأ: UNEXPECTED_ERROR)\n\nتفاصيل: ${err.message}`);
       setIsScanning(false);
     }
   };
@@ -484,13 +527,21 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               </div>
             ) : (
               <>
-                {/* Scandit Scanner View - only rendered when scanning */}
-                {isScanning && (
-                  <div 
-                    ref={scannerContainerRef}
-                    className="w-full h-full"
-                  />
-                )}
+                {/* Scandit Scanner View - always rendered but only visible when scanning */}
+                <div 
+                  id="scandit-barcode-picker"
+                  ref={scannerContainerRef}
+                  className={`w-full h-full ${isScanning ? 'block' : 'hidden'}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#000',
+                    zIndex: 5
+                  }}
+                />
 
                 {/* Scanner guidance overlay */}
                 {isScanning && (
