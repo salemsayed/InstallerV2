@@ -1023,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
         ).length;
         
-        console.log(`[DEBUG] After QR scan, user ${user.id} has ${installationCount} installations and ${updatedUser?.points} points`);
+        // After QR scan, update badges based on current point and installation counts
         
         // Initialize badgeIds array if it doesn't exist
         if (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds)) {
@@ -1052,7 +1052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (qualifies) {
             // If user qualifies for badge but doesn't have it yet, add it
             if (!alreadyHasBadge) {
-              console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
+              // User qualifies for new badge - adding to user badges
               updatedBadgeIds.push(badge.id);
               newBadges.push(badge);
               userBadgesUpdated = true;
@@ -1070,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update user's badges in database if changes were made
         if (userBadgesUpdated && updatedUser) {
-          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedBadgeIds);
+          // Update user badges in database
           updatedUser.badgeIds = updatedBadgeIds;
           await storage.updateUser(user.id, { badgeIds: updatedBadgeIds });
         }
