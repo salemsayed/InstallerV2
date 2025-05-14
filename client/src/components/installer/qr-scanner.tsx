@@ -38,8 +38,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     // Configure Scandit with the license key
     const initializeScandit = async () => {
       try {
+        // Try to get the license key - we need to make this available to the client
+        // For security, in a real production environment, this would typically be
+        // handled via a secure proxy endpoint that doesn't expose the key client-side
         await ScanditCore.configure({
-          licenseKey: process.env.SCANDIT_LICENSE_KEY || '',
+          licenseKey: 'AbZxY0U3Mi8SLDovMkJ3MVpkMy9QeEo2V1RqUy8vNUQxaHpvdHpibFh0ZWFBWnBhRHF2VE9JQXpodFdLdFZ5S0R5SGJOb3dWd0YxQlQySW55MnNwU3FiZWt4dFRrcWhNTVdWckJwVmRGbmlzT1YxZXJxbENtcU1jMTI3UXVYVmd0YlBDQkVJaGxleGVsVjBOYkdVaWg3ZElpMEV4cDJFdEpLMTBKZ2o3T3E0M0pjMUxkU0MwcVBDTy8xQzh3dEM3ekordVhVeCtoQVpxSUNUZ0hXZytpbGY2ZnJSMklZbmRwZnJRTlNjZUQwS2lTNXdVa0JVbTZkUFZrMkxwYzZsOUp4SUhMVElFUS9YbWhXTW5CbThNbTFHczJvY0lEVWJTL0hXaVRBd0JvVnVFVmlOSENFdldoZEJxdlFvQTNBRVlPbnZ0REg4U010cnVGSWFqWjNWOXBkUXRKam5vOHplVldJNGphVHF5MHpwQ3ZpaW1rTmZqTEF3QitUd0dJbnYxSmVKRGdPVmRmbXRjNGlxTG9pTXhTcXRPdEF2K3ArcnU2YkdUMy9GdXJuMzNlVFlzdmIvTEhQb01EYlloVXZmT3dIMW5XS3JBYWM3b0psd0I5WXZQR2RoY2tPWlVXZytoUzV1MzJ0N1BsbGdyTC9PZEg1U0l0TjFjcE85dzN6R1hHNXR1ZnlGLy83S3haWGZVdzdFVTA2VWE1Rk9ZUkp5RGZQVEtZZkczV3JhWkpURStobUdlQVZMVjZ2Y0pVS3RwM2YzT3hxeE14WXljPXJKMFFTblA0T2RlNg==',
           libraryLocation: '/node_modules/@scandit',
           moduleLoaders: []
         });
