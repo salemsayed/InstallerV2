@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import * as ScanditSDK from 'scandit-web-datacapture-barcode';
-import * as ScanditCore from 'scandit-web-datacapture-core';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -9,6 +7,8 @@ import { Loader2, QrCode, X, Scan } from "lucide-react";
 import { Camera as CameraIcon } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
+// Import necessary Scandit modules - using import type for better bundling
+import { Barcode, BarcodeCapture, BarcodeCaptureListener, BarcodeCaptureSession, BarcodeCaptureSettings, SymbologySettings } from 'scandit-web-datacapture-barcode';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -19,44 +19,6 @@ interface QrScannerProps {
   onScanSuccess?: (productName: string) => void;
 }
 
-// Initialize and configure the library
-const scanditConfig = async (licenseKey: string) => {
-  // Create data capture context using your license key
-  const context = await ScanditCore.DataCaptureContext.create(licenseKey);
-  
-  // Use the device's default camera as frame source
-  const camera = ScanditCore.Camera.default;
-  context.setFrameSource(camera);
-  
-  // Configure the barcode capture settings
-  const settings = new ScanditSDK.BarcodeCaptureSettings();
-  
-  // Enable QR code scanning
-  settings.enableSymbology(ScanditSDK.Symbology.QR, true);
-  
-  // Create new barcode capture mode with configured settings
-  const barcodeCapture = ScanditSDK.BarcodeCapture.forContext(context, settings);
-  
-  // Create data capture view and add overlay
-  const view = ScanditCore.DataCaptureView.forContext(context);
-  
-  // Add a rectangular viewfinder
-  const overlay = ScanditSDK.BarcodeCaptureOverlay.withBarcodeCaptureForViewWithStyle(
-    barcodeCapture,
-    view,
-    ScanditSDK.BarcodeCaptureOverlayStyle.Frame
-  );
-  
-  // Customize the viewfinder
-  const viewfinder = new ScanditCore.RectangularViewfinder(
-    ScanditCore.RectangularViewfinderStyle.Square,
-    ScanditCore.RectangularViewfinderLineStyle.Light
-  );
-  overlay.viewfinder = viewfinder;
-  
-  return { context, camera, barcodeCapture, view };
-};
-
 export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -65,85 +27,162 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   
-  // References to Scandit objects
-  const scanditContextRef = useRef<{
-    context?: typeof ScanditCore.DataCaptureContext.prototype;
-    camera?: typeof ScanditCore.Camera.prototype;
-    barcodeCapture?: typeof ScanditSDK.BarcodeCapture.prototype;
-    view?: typeof ScanditCore.DataCaptureView.prototype;
-  }>({});
+  // References for Scandit SDK elements
+  const scanditRef = useRef<{
+    context: any;
+    camera: any;
+    barcodeCapture: any;
+    view: any;
+    isInitialized: boolean;
+  }>({
+    context: null,
+    camera: null,
+    barcodeCapture: null,
+    view: null,
+    isInitialized: false
+  });
   
   const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const scanditLibraryLoadedRef = useRef(false);
 
+  // Load Scandit library and engine only once
   useEffect(() => {
+    // Clean up on component unmount
     return () => {
       stopScanner();
     };
   }, []);
+
+  // Initialize Scandit when needed
+  const initializeScandit = async () => {
+    if (scanditRef.current.isInitialized) return true;
+    
+    try {
+      if (!scanditLibraryLoadedRef.current) {
+        // Dynamic import of Scandit modules - this loads the library on demand
+        const ScanditSDK = await import('scandit-web-datacapture-barcode');
+        const ScanditCore = await import('scandit-web-datacapture-core');
+        
+        // Store these for later use
+        window.ScanditSDK = ScanditSDK;
+        window.ScanditCore = ScanditCore;
+        scanditLibraryLoadedRef.current = true;
+      }
+      
+      // Get the library modules from window object
+      const { ScanditSDK, ScanditCore } = window as any;
+      
+      // License key from environment variables
+      const licenseKey = import.meta.env.SCANDIT_LICENSE_KEY;
+      if (!licenseKey) {
+        throw new Error("No Scandit license key provided");
+      }
+      
+      // Create and configure the data capture context
+      const context = await ScanditCore.DataCaptureContext.create(licenseKey);
+      
+      // Configure the camera
+      const camera = ScanditCore.Camera.default;
+      await context.setFrameSource(camera);
+      
+      // Configure barcode settings to scan only QR codes
+      const settings = new ScanditSDK.BarcodeCaptureSettings();
+      // Disable all symbologies by default
+      settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
+      
+      // Configure viewfinder
+      const barcodeCapture = ScanditSDK.BarcodeCapture.forContext(context, settings);
+      
+      // Create UI components
+      const view = ScanditCore.DataCaptureView.forContext(context);
+      
+      // Add visual feedback when scanning occurs
+      const overlay = ScanditSDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+      overlay.viewfinder = new ScanditCore.RectangularViewfinder(
+        ScanditCore.RectangularViewfinderStyle.Square,
+        ScanditCore.RectangularViewfinderLineStyle.Light
+      );
+      
+      // Save references
+      scanditRef.current = {
+        context,
+        camera,
+        barcodeCapture,
+        view,
+        isInitialized: true
+      };
+      
+      // Set up scan listener
+      barcodeCapture.addListener({
+        didScan: (_, session) => {
+          if (session.newlyRecognizedBarcodes.length > 0) {
+            const barcode = session.newlyRecognizedBarcodes[0];
+            if (barcode.data) {
+              handleScanSuccess(barcode.data);
+            }
+          }
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Failed to initialize Scandit:", error);
+      setError(`فشل في تهيئة الماسح الضوئي. (رمز الخطأ: SCANDIT_INIT_ERROR)\n\nتفاصيل: ${error.message}`);
+      return false;
+    }
+  };
 
   const startScanner = async () => {
     setIsScanning(true);
     setError(null);
     
     if (!scannerContainerRef.current) {
-      setError("عنصر الماسح الضوئي غير موجود (رمز الخطأ: ELEMENT_NOT_FOUND)");
+      setError("عنصر الماسح الضوئي غير موجود. (رمز الخطأ: ELEMENT_NOT_FOUND)");
       setIsScanning(false);
       return;
     }
     
     try {
-      // Initialize scanner if not already initialized
-      if (!scanditContextRef.current.context) {
-        const licenseKey = process.env.SCANDIT_LICENSE_KEY || '';
-        const scanditComponents = await scanditConfig(licenseKey);
-        scanditContextRef.current = scanditComponents;
-        
-        // Setup barcode listener
-        scanditComponents.barcodeCapture.addListener({
-          didScan: (barcodeCapture, session) => {
-            const barcode = session.newlyRecognizedBarcodes[0];
-            if (barcode) {
-              const data = barcode.data;
-              if (data) {
-                handleScanSuccess(data);
-              }
-            }
-          }
-        });
+      // Initialize Scandit components
+      const initialized = await initializeScandit();
+      if (!initialized) {
+        setError("فشل في تهيئة الماسح الضوئي. (رمز الخطأ: SCANDIT_INIT_ERROR)");
+        setIsScanning(false);
+        return;
       }
       
-      // Mount the view to the DOM
-      if (scanditContextRef.current.view && scannerContainerRef.current) {
-        scanditContextRef.current.view.connectToElement(scannerContainerRef.current);
-      }
+      // Connect view to DOM element
+      scanditRef.current.view.connectToElement(scannerContainerRef.current);
       
       // Start camera
-      if (scanditContextRef.current.camera) {
-        await scanditContextRef.current.camera.switchToDesiredState(FrameSourceState.On);
-      }
+      const { ScanditCore } = window as any;
+      await scanditRef.current.camera.switchToDesiredState(ScanditCore.FrameSourceState.On);
       
       // Enable barcode capture
-      if (scanditContextRef.current.barcodeCapture) {
-        scanditContextRef.current.barcodeCapture.isEnabled = true;
-      }
+      scanditRef.current.barcodeCapture.isEnabled = true;
     } catch (err) {
       console.error("Error starting scanner:", err);
-      setError("فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)");
+      setError(`فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)\n\nتفاصيل: ${err.message}`);
       setIsScanning(false);
     }
   };
 
   const stopScanner = async () => {
-    if (scanditContextRef.current.barcodeCapture) {
-      scanditContextRef.current.barcodeCapture.isEnabled = false;
-    }
+    if (!scanditRef.current.isInitialized) return;
     
-    if (scanditContextRef.current.camera) {
-      try {
-        await scanditContextRef.current.camera.switchToDesiredState(FrameSourceState.Off);
-      } catch (err) {
-        console.error("Error stopping camera:", err);
+    try {
+      if (scanditRef.current.barcodeCapture) {
+        scanditRef.current.barcodeCapture.isEnabled = false;
       }
+      
+      if (scanditRef.current.camera) {
+        const { ScanditCore } = window as any;
+        if (ScanditCore) {
+          await scanditRef.current.camera.switchToDesiredState(ScanditCore.FrameSourceState.Off);
+        }
+      }
+    } catch (err) {
+      console.error("Error stopping scanner:", err);
     }
     
     setIsScanning(false);
@@ -158,6 +197,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const validateQrCode = async (url: string) => {
     setIsValidating(true);
     setError(null);
+
+    console.log("Validating QR code:", url);
 
     // Step 1: URL shape validation
     // Support two formats: warranty.bareeq.lighting and w.bareeq.lighting
@@ -281,6 +322,13 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
   };
 
+  // Check if Scandit license key is available
+  useEffect(() => {
+    if (!import.meta.env.SCANDIT_LICENSE_KEY) {
+      console.error("Warning: No Scandit license key found in environment variables.");
+    }
+  }, []);
+
   return (
     <>
       <Button
@@ -351,17 +399,32 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               </div>
             ) : (
               <>
-                {/* Scandit Scanner */}
-                {isScanning ? (
+                {/* Scandit Scanner View - only rendered when scanning */}
+                {isScanning && (
                   <div 
                     ref={scannerContainerRef}
                     className="w-full h-full"
                   />
-                ) : null}
+                )}
 
-                {/* Scanner overlay - corners to guide scanning */}
+                {/* Scanner guidance overlay */}
                 {isScanning && (
-                  <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 pointer-events-none z-10">
+                    {/* Scanning area visualization - shows a square outline */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="relative w-[70vmin] h-[70vmin] max-w-md max-h-md">
+                        {/* Scan animation - moving horizontal line */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-primary animate-scanline"></div>
+                        
+                        {/* Corner markers */}
+                        <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-primary"></div>
+                        <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-primary"></div>
+                        <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-primary"></div>
+                        <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-primary"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Instruction label */}
                     <div className="absolute bottom-24 left-0 right-0 flex justify-center">
                       <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
                         وجه الكاميرا نحو رمز QR الخاص بالمنتج
