@@ -929,24 +929,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the code exists in the manufacturing database
-      console.log(`[DEBUG] About to check UUID in manufacturing database: "${uuid}"`);
       
       // Try different formats - sometimes UUIDs might be stored differently
       const uuidNoHyphens = uuid.replace(/-/g, '');
-      console.log(`[DEBUG] UUID without hyphens: "${uuidNoHyphens}"`);
       
       // First try with normal UUID format
-      console.log(`[DEBUG] Checking with original UUID format`);
       let isValid = await checkSerialNumber(uuid);
       
       // If not found, try without hyphens
       if (!isValid) {
-        console.log(`[DEBUG] Original UUID not found, trying without hyphens`);
         isValid = await checkSerialNumber(uuidNoHyphens);
       }
       
       if (!isValid) {
-        console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مسجل في قاعدة بيانات التصنيع لدينا",
@@ -955,11 +950,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
+      // UUID verified as valid in manufacturing database
       
       // Get product details from manufacturing database
       const productName = await getProductNameBySerialNumber(uuid);
-      console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
       
       // Find matching product in our local database to determine reward points
       let pointsAwarded = 0;
@@ -968,14 +962,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (productName) {
         // Look up the product name in our local database
         localProduct = await storage.getLocalProductByName(productName);
-        console.log(`[DEBUG] Local product match:`, localProduct);
         
         if (localProduct && localProduct.isActive === 1) {
           // Use the reward points defined in our local database
           pointsAwarded = localProduct.rewardPoints;
-          console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
         } else {
-          console.log(`[DEBUG] No active local product match found for: "${productName}". Returning error.`);
           return res.status(400).json({ 
             success: false, 
             message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -987,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else {
-        console.log(`[DEBUG] No product name found. Returning error.`);
+        // No product name found - return error
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -1046,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         for (const badge of allBadges) {
           if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
-            console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
+            // Skip badge checks if user data is invalid
             break;
           }
           
@@ -1071,7 +1062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else if (alreadyHasBadge) {
             // User has badge but no longer qualifies - remove it
-            console.log(`[DEBUG] User ${user.id} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
+            // User no longer qualifies for badge - removing from user badges
             userBadgesUpdated = true;
             // Badge is not added to updatedBadgeIds, effectively removing it
           }
