@@ -35,34 +35,9 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   
   // Initialize Scandit only once when component is mounted
   useEffect(() => {
-    // Configure Scandit with the license key
-    const initializeScandit = async () => {
-      try {
-        console.log("[SCANDIT DEBUG] Attempting to configure Scandit...");
-        
-        // Use the shorter test key format which should be more compatible
-        await ScanditCore.configure({
-          licenseKey: "AcQXJW5qOZMFbF8g+qfXS0TOxq1kkC0TxSFohuxDZ/gCYS6FWoYQQ80WAK61zPU59flE7GfkdM5IWVTZajB06T+2zBHh5jop9jKwLUVLJnZ71eD1fKO0NA==",
-          libraryLocation: "/node_modules/@scandit",
-          moduleLoaders: []
-        });
-        
-        console.log("[SCANDIT DEBUG] Scandit configured successfully");
-      } catch (error) {
-        console.error("[SCANDIT DEBUG] Error configuring Scandit:", error);
-        
-        // Log more details about the error
-        if (error && typeof error === 'object') {
-          console.error("[SCANDIT DEBUG] Error details:", {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          });
-        }
-      }
-    };
-    
-    initializeScandit();
+    // A simpler approach for now - in a future iteration we can improve this
+    // but for now let's focus on getting basic version working
+    console.log("[SCANDIT DEBUG] Component mounted, configuring will happen when scan is requested");
     
     // Cleanup when component unmounts
     return () => {
@@ -77,6 +52,29 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     setError(null);
     
     try {
+      // First configure Scandit with the license key
+      console.log("[SCANDIT DEBUG] Attempting to configure Scandit...");
+      
+      try {
+        await ScanditCore.configure({
+          licenseKey: "AcQXJW5qOZMFbF8g+qfXS0TOxq1kkC0TxSFohuxDZ/gCYS6FWoYQQ80WAK61zPU59flE7GfkdM5IWVTZajB06T+2zBHh5jop9jKwLUVLJnZ71eD1fKO0NA==",
+          libraryLocation: "/node_modules/@scandit",
+          moduleLoaders: [
+            { name: "barcode", load: () => Promise.resolve(ScanditBarcode) }
+          ]
+        });
+        console.log("[SCANDIT DEBUG] Scandit configured successfully");
+      } catch (configError) {
+        console.error("[SCANDIT DEBUG] Error configuring Scandit:", configError);
+        if (configError && typeof configError === 'object') {
+          console.error("[SCANDIT DEBUG] Config error details:", {
+            name: configError.name, 
+            message: configError.message,
+            stack: configError.stack
+          });
+        }
+      }
+      
       // Create DataCaptureContext if not already created
       if (!contextRef.current) {
         console.log("[SCANDIT DEBUG] Creating new DataCaptureContext");
@@ -252,20 +250,74 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const stopScanner = async () => {
+    console.log("[SCANDIT DEBUG] Stopping scanner...");
+    
     try {
       // Disable barcode tracking
       if (barcodeTrackingRef.current) {
-        await barcodeTrackingRef.current.setEnabled(false);
+        console.log("[SCANDIT DEBUG] Disabling barcode tracking");
+        try {
+          await barcodeTrackingRef.current.setEnabled(false);
+          console.log("[SCANDIT DEBUG] Barcode tracking disabled successfully");
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Error disabling barcode tracking:", err);
+        }
+        barcodeTrackingRef.current = null;
+        console.log("[SCANDIT DEBUG] Barcode tracking reference cleared");
+      } else {
+        console.log("[SCANDIT DEBUG] No barcode tracking to disable");
       }
       
       // Turn off camera
-      if (cameraRef.current && cameraRef.current.desiredState !== ScanditCore.FrameSourceState.Off) {
-        await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.Off);
+      if (cameraRef.current) {
+        if (cameraRef.current.desiredState !== ScanditCore.FrameSourceState.Off) {
+          console.log("[SCANDIT DEBUG] Turning off camera");
+          try {
+            await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.Off);
+            console.log("[SCANDIT DEBUG] Camera turned off successfully");
+          } catch (err) {
+            console.error("[SCANDIT DEBUG] Error turning off camera:", err);
+          }
+        } else {
+          console.log("[SCANDIT DEBUG] Camera is already off");
+        }
+        cameraRef.current = null;
+        console.log("[SCANDIT DEBUG] Camera reference cleared");
+      } else {
+        console.log("[SCANDIT DEBUG] No camera to turn off");
       }
       
+      // Clear the view reference
+      if (viewRef.current && containerRef.current) {
+        console.log("[SCANDIT DEBUG] Disconnecting view from container");
+        try {
+          containerRef.current.innerHTML = '';
+          console.log("[SCANDIT DEBUG] Container cleared");
+          viewRef.current = null;
+          console.log("[SCANDIT DEBUG] View reference cleared");
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Error clearing view:", err);
+        }
+      } else {
+        console.log("[SCANDIT DEBUG] No view/container to clear");
+      }
+      
+      // Clear the context reference
+      if (contextRef.current) {
+        console.log("[SCANDIT DEBUG] Clearing context reference");
+        try {
+          contextRef.current = null;
+          console.log("[SCANDIT DEBUG] Context reference cleared");
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Error clearing context:", err);
+        }
+      }
+      
+      console.log("[SCANDIT DEBUG] Scanner stopped successfully");
       setIsScanning(false);
     } catch (error) {
-      console.error("Error stopping scanner:", error);
+      console.error("[SCANDIT DEBUG] Global error in stopScanner:", error);
+      setIsScanning(false);
     }
   };
 
@@ -381,14 +433,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   };
 
   const handleOpenChange = (open: boolean) => {
+    console.log("[SCANDIT DEBUG] Dialog state changing to:", open ? "open" : "closed");
     setIsOpen(open);
     
     if (!open) {
+      console.log("[SCANDIT DEBUG] Dialog closing, stopping scanner");
       stopScanner();
+    } else {
+      console.log("[SCANDIT DEBUG] Dialog opening");
     }
     
     // Reset states when dialog is closed
     if (!open) {
+      console.log("[SCANDIT DEBUG] Resetting scanner state");
       setError(null);
       setIsScanning(false);
       setIsValidating(false);
@@ -398,7 +455,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   return (
     <>
       <Button
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          console.log("[SCANDIT DEBUG] QR scan button clicked");
+          setIsOpen(true);
+        }}
         className="fixed bottom-14 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full shadow-xl bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/50 z-10 flex flex-col items-center justify-center border-4 border-white"
         aria-label="فتح الماسح الضوئي"
       >
