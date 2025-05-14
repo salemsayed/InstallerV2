@@ -105,8 +105,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             console.log("Dynamically importing Scandit modules");
             
             try {
-              const ScanditSDK = await import('scandit-web-datacapture-barcode');
-              const ScanditCore = await import('scandit-web-datacapture-core');
+              const ScanditSDK = await import('@scandit/web-datacapture-barcode');
+              const ScanditCore = await import('@scandit/web-datacapture-core');
               
               // Store these for later use
               window.ScanditSDK = ScanditSDK;
