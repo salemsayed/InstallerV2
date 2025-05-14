@@ -47,23 +47,23 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
   // Load Scandit library and engine only once
   useEffect(() => {
-    // Check for Scandit license key warning in console
-    const checkLicenseKeyWarning = () => {
-      const warnings = (window as any).__console_messages?.filter(
-        (msg: any) => typeof msg === 'string' && msg.includes('No Scandit license key found')
-      );
-      
-      if (warnings && warnings.length > 0) {
-        console.error("Missing Scandit license key detected");
-        setError("مفتاح ترخيص Scandit غير متوفر. يرجى الاتصال بالمسؤول. (رمز الخطأ: SCANDIT_LICENSE_MISSING)");
-      }
-    };
+    // To avoid checking for license key warnings in the console,
+    // we'll rely on our explicit license key fetch from the server API
     
-    // Check for license key warning
-    checkLicenseKeyWarning();
+    // Add an override to suppress console warnings about Scandit license
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+      // Suppress only Scandit license warnings but pass through all other errors
+      if (typeof args[0] === 'string' && args[0].includes('No Scandit license key found')) {
+        // Ignore this specific warning as we'll get the key from the server
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
     
     // Clean up on component unmount
     return () => {
+      console.error = originalConsoleError;
       stopScanner();
     };
   }, []);
