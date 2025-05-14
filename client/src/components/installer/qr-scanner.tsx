@@ -550,7 +550,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                       <h3 className="text-white text-xl font-bold">مسح رمز QR للمنتج</h3>
                       <p className="text-white/70 text-center mb-6">قم بمسح رمز QR الموجود على المنتج للتحقق من أصالته وإضافة النقاط لحسابك</p>
                       <Button 
-                        onClick={startScanner} 
+                        onClick={() => {
+                          console.log("[SCANDIT DEBUG] Open camera button clicked");
+                          startScanner();
+                        }} 
                         className="w-full gap-2"
                         size="lg"
                       >
@@ -560,7 +563,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                     </div>
                   ) : (
                     <Button 
-                      onClick={stopScanner} 
+                      onClick={() => {
+                        console.log("[SCANDIT DEBUG] Stop scanner button clicked");
+                        stopScanner();
+                      }} 
                       variant="default" 
                       className="w-full bg-primary text-white border-none hover:bg-primary/90"
                     >
