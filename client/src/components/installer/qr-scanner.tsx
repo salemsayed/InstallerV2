@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import * as ScanditBarcode from "@scandit/web-datacapture-barcode";
 import * as ScanditCore from "@scandit/web-datacapture-core";
-import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, QrCode, X, Camera as CameraIcon, Scan, ZapIcon } from "lucide-react";
+import { Loader2, QrCode, X, Camera as CameraIcon, Scan } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 
@@ -24,12 +23,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usingScandit, setUsingScandit] = useState(true);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
-  
-  // Html5QrCode ref
-  const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   
   // Scandit refs
   const contextRef = useRef<ScanditCore.DataCaptureContext | null>(null);
@@ -37,7 +32,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const barcodeTrackingRef = useRef<ScanditBarcode.BarcodeTracking | null>(null);
   const cameraRef = useRef<ScanditCore.Camera | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const qrContainerRef = useRef<HTMLDivElement>(null);
   
   // Initialize Scandit only once when component is mounted
   useEffect(() => {
@@ -45,15 +39,13 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     const initializeScandit = async () => {
       try {
         await ScanditCore.configure({
-          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || '',
+          licenseKey: process.env.SCANDIT_LICENSE_KEY || '',
           libraryLocation: '/node_modules/@scandit',
           moduleLoaders: []
         });
         console.log("Scandit configured successfully");
-        setUsingScandit(true);
       } catch (error) {
         console.error("Error configuring Scandit:", error);
-        setUsingScandit(false);
       }
     };
     
@@ -69,14 +61,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     setIsScanning(true);
     setError(null);
     
-    if (usingScandit) {
-      await startScanditScanner();
-    } else {
-      await startHtml5QrScanner();
-    }
-  };
-
-  const startScanditScanner = async () => {
     try {
       // Create DataCaptureContext if not already created
       if (!contextRef.current) {
@@ -116,7 +100,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
               if (barcode && barcode.data) {
                 // We found a barcode, process it
                 const decodedText = barcode.data;
-                console.log("QR code detected (Scandit):", decodedText);
+                console.log("QR code detected:", decodedText);
                 
                 // Stop scanning and validate the code
                 stopScanner();
@@ -159,90 +143,23 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       if (err instanceof ScanditCore.ScanditError) {
         if (err.code === ScanditCore.ScanditEngineErrorCode.CAMERA_NOT_AVAILABLE) {
-          console.log("Falling back to HTML5-QRCode due to camera issue");
-          setUsingScandit(false);
-          await startHtml5QrScanner();
+          setError("الكاميرا غير متوفرة. (رمز الخطأ: CAMERA_NOT_AVAILABLE)");
         } else if (err.code === ScanditCore.ScanditEngineErrorCode.CAMERA_ACCESS_DENIED) {
           setError("تم رفض الوصول إلى الكاميرا. يرجى منح الإذن. (رمز الخطأ: CAMERA_ACCESS_DENIED)");
-          setIsScanning(false);
+        } else if (err.code === ScanditCore.ScanditEngineErrorCode.LICENSE_KEY_MISSING) {
+          setError("مفتاح الترخيص لمسح الباركود مفقود. (رمز الخطأ: LICENSE_KEY_MISSING)");
         } else {
-          console.log("Falling back to HTML5-QRCode due to Scandit error:", err.code);
-          setUsingScandit(false);
-          await startHtml5QrScanner();
+          setError(`خطأ في تشغيل الماسح: ${err.message} (رمز الخطأ: ${err.code})`);
         }
       } else {
-        console.log("Falling back to HTML5-QRCode due to error");
-        setUsingScandit(false);
-        await startHtml5QrScanner();
-      }
-    }
-  };
-
-  const startHtml5QrScanner = async () => {
-    try {
-      // If we're using HTML5-QRCode, we need a different container
-      if (!qrContainerRef.current) {
-        console.error("QR container ref not available");
-        setError("عنصر الماسح الضوئي غير موجود (رمز الخطأ: ELEMENT_NOT_FOUND)");
-        setIsScanning(false);
-        return;
+        setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err.message || "UNKNOWN_ERROR"})`);
       }
       
-      const qrCodeId = "qr-reader";
-      
-      // Create the element if it doesn't exist yet
-      if (!document.getElementById(qrCodeId)) {
-        const qrElement = document.createElement('div');
-        qrElement.id = qrCodeId;
-        qrElement.style.width = '100%';
-        qrElement.style.height = '100%';
-        qrContainerRef.current.innerHTML = '';
-        qrContainerRef.current.appendChild(qrElement);
-      }
-      
-      // Create a new Html5Qrcode instance
-      html5QrcodeRef.current = new Html5Qrcode(qrCodeId);
-      
-      await html5QrcodeRef.current.start(
-        { facingMode: "environment" },
-        {
-          fps: 15,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Make QR box responsive - use 70% of the smaller dimension
-            const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
-            const boxSize = Math.floor(minDimension * 0.7);
-            return { width: boxSize, height: boxSize };
-          },
-          aspectRatio: window.innerHeight > window.innerWidth ? window.innerHeight / window.innerWidth : 1.0,
-        },
-        (decodedText) => {
-          console.log("QR code detected (Html5Qrcode):", decodedText);
-          stopHtml5QrScanner();
-          validateQrCode(decodedText);
-        },
-        (errorMessage) => {
-          // Don't show QR scanning errors to users
-          console.log("QR scan error (Html5Qrcode):", errorMessage);
-        }
-      );
-    } catch (err: any) {
-      console.error("Error starting HTML5 QR Scanner:", err);
-      setError(`فشل بدء تشغيل الماسح الضوئي. (رمز الخطأ: ${err.message || "HTML5_QR_ERROR"})`);
       setIsScanning(false);
     }
   };
 
   const stopScanner = async () => {
-    if (usingScandit) {
-      await stopScanditScanner();
-    } else {
-      await stopHtml5QrScanner();
-    }
-    
-    setIsScanning(false);
-  };
-
-  const stopScanditScanner = async () => {
     try {
       // Disable barcode tracking
       if (barcodeTrackingRef.current) {
@@ -253,18 +170,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       if (cameraRef.current && cameraRef.current.desiredState !== ScanditCore.FrameSourceState.Off) {
         await cameraRef.current.switchToDesiredState(ScanditCore.FrameSourceState.Off);
       }
+      
+      setIsScanning(false);
     } catch (error) {
-      console.error("Error stopping Scandit scanner:", error);
-    }
-  };
-  
-  const stopHtml5QrScanner = async () => {
-    try {
-      if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-        await html5QrcodeRef.current.stop();
-      }
-    } catch (error) {
-      console.error("Error stopping HTML5 QR scanner:", error);
+      console.error("Error stopping scanner:", error);
     }
   };
 
@@ -467,40 +376,17 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                 {/* Scandit Scanner container */}
                 <div
                   ref={containerRef}
-                  className={`w-full h-full ${!isScanning || !usingScandit ? 'hidden' : ''}`}
-                ></div>
-                
-                {/* HTML5-QRCode Scanner container */}
-                <div
-                  ref={qrContainerRef}
-                  className={`w-full h-full ${!isScanning || usingScandit ? 'hidden' : ''}`}
+                  className="w-full h-full"
                 ></div>
 
-                {/* Scanner overlay - corners to guide scanning */}
+                {/* Scanner overlay - guidance text */}
                 {isScanning && (
                   <div className="absolute inset-0 pointer-events-none z-20">
-                    {/* Add custom guidance elements for either scanner */}
                     <div className="absolute bottom-24 left-0 right-0 flex justify-center">
                       <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
                         وجه الكاميرا نحو رمز QR الخاص بالمنتج
                       </div>
                     </div>
-                    
-                    {/* Custom scanning animation overlay for HTML5-QRCode */}
-                    {!usingScandit && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative w-[80vmin] h-[80vmin] max-w-sm max-h-sm">
-                          {/* Scan animation */}
-                          <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
-                          
-                          {/* Corners */}
-                          <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
-                          <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
-                          <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
-                          <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -511,11 +397,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                       <Scan className="h-20 w-20 text-primary mb-4" />
                       <h3 className="text-white text-xl font-bold">مسح رمز QR للمنتج</h3>
                       <p className="text-white/70 text-center mb-6">قم بمسح رمز QR الموجود على المنتج للتحقق من أصالته وإضافة النقاط لحسابك</p>
-                      {!usingScandit && (
-                        <p className="text-amber-400/90 text-center text-sm mb-2">
-                          <span className="inline-block px-2 py-1 bg-amber-400/20 rounded-md mb-1">ملاحظة:</span> يتم استخدام ماسح QR الاحتياطي
-                        </p>
-                      )}
                       <Button 
                         onClick={startScanner} 
                         className="w-full gap-2"
