@@ -96,18 +96,28 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       let licenseKey = "";
       
       try {
+        console.log(`Requesting Scandit license key from server for user ID: ${user.id}`);
+        
         const licenseResponse = await fetch(`/api/scandit-license?userId=${user.id}`);
+        const licenseData = await licenseResponse.json();
+        
         if (!licenseResponse.ok) {
-          throw new Error(`Server returned ${licenseResponse.status}: ${licenseResponse.statusText}`);
+          throw new Error(
+            `Server returned ${licenseResponse.status}: ${licenseResponse.statusText}. ` +
+            `Details: ${licenseData.message || 'Unknown error'} (${licenseData.error_code || 'NO_CODE'})`
+          );
         }
         
-        const licenseData = await licenseResponse.json();
+        if (!licenseData.success) {
+          throw new Error(`Server response indicated failure: ${licenseData.message || 'Unknown error'}`);
+        }
+        
         licenseKey = licenseData.licenseKey;
         
         console.log("Using Scandit license key from API:", licenseKey ? "Available ✓" : "Not found ✗");
         
         if (!licenseKey) {
-          throw new Error("License key was empty or null");
+          throw new Error("License key was empty or null in the server response");
         }
       } catch (licenseError) {
         console.error("Failed to get Scandit license key from server:", licenseError);
