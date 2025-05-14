@@ -500,8 +500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get all transactions - need to add this method to storage
-      // Fetch all transactions for admin dashboard (silently)
+      console.log("[DEBUG] Fetching all transactions for admin dashboard");
       const transactions = await storage.getAllTransactions();
+      console.log(`[DEBUG] Found ${transactions.length} total transactions`);
       
       return res.status(200).json({ transactions });
       
@@ -547,6 +548,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentYear = now.getFullYear();
       
       // Log for debugging
+      if (installationTransactions.length > 0) {
+        console.log("[DEBUG] First transaction sample:", JSON.stringify(installationTransactions[0]));
+        console.log("[DEBUG] First transaction type:", installationTransactions[0].type);
+        console.log("[DEBUG] First transaction date:", installationTransactions[0].createdAt);
+      }
+      
       // Count only current month installations for badge qualification
       const currentMonthInstallations = installationTransactions.filter(t => {
         const transactionDate = new Date(t.createdAt);
@@ -554,11 +561,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const transactionMonth = transactionDate.getMonth(); // May = 4 in JavaScript's Date API
         const transactionYear = transactionDate.getFullYear();
         
+        console.log(`[DEBUG] Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
+        console.log(`[DEBUG] Transaction ${t.id} date parsed as:`, t.createdAt, `Month: ${transactionMonth}, Year: ${transactionYear}`);
+        
         const isCurrentMonth = (transactionMonth === currentMonth && transactionYear === currentYear);
+        console.log(`[DEBUG] Transaction ${t.id} current month check:`, isCurrentMonth, `(${transactionMonth} === ${currentMonth} && ${transactionYear} === ${currentYear})`);
+        
         return isCurrentMonth;
       });
       
+      console.log(`[DEBUG] Current month/year:`, currentMonth, currentYear);
+      console.log(`[DEBUG] Filtered installation transactions:`, currentMonthInstallations.length);
+      console.log(`[DEBUG] Installation transactions:`, JSON.stringify(installationTransactions.slice(0, 6)));
+      
       const installationCount = currentMonthInstallations.length;
+      
+      console.log(`[DEBUG] User ${userId} has ${installationCount} installations and ${user.points} points`);
       
       // Initialize badgeIds array if it doesn't exist
       if (!user.badgeIds) {
@@ -583,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (qualifies) {
           // If user qualifies for badge but doesn't have it yet, add it
           if (!alreadyHasBadge) {
-            // User qualifies for badge - adding to user badges
+            console.log(`[DEBUG] User ${userId} qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
             updatedBadgeIds.push(badge.id);
             userBadgesUpdated = true;
           } else {
@@ -592,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else if (alreadyHasBadge) {
           // User has badge but no longer qualifies - remove it
-          // User no longer qualifies for badge - removing from user badges
+          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
           userBadgesUpdated = true;
           // Badge is not added to updatedBadgeIds, effectively removing it
         }
@@ -605,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update user's badges in database if changes were made
       if (userBadgesUpdated) {
-        // Updating user badges in database
+        console.log(`[DEBUG] Updating user ${userId} badges in database:`, user.badgeIds);
         await storage.updateUser(userId, { badgeIds: user.badgeIds });
       }
       
@@ -900,7 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // QR code scanning endpoint
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
-    // Process QR scan request
+    console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);
     try {
       const { uuid, userId } = req.body;
       
@@ -929,19 +947,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the code exists in the manufacturing database
+      console.log(`[DEBUG] About to check UUID in manufacturing database: "${uuid}"`);
       
       // Try different formats - sometimes UUIDs might be stored differently
       const uuidNoHyphens = uuid.replace(/-/g, '');
+      console.log(`[DEBUG] UUID without hyphens: "${uuidNoHyphens}"`);
       
       // First try with normal UUID format
+      console.log(`[DEBUG] Checking with original UUID format`);
       let isValid = await checkSerialNumber(uuid);
       
       // If not found, try without hyphens
       if (!isValid) {
+        console.log(`[DEBUG] Original UUID not found, trying without hyphens`);
         isValid = await checkSerialNumber(uuidNoHyphens);
       }
       
       if (!isValid) {
+        console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مسجل في قاعدة بيانات التصنيع لدينا",
@@ -950,10 +973,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // UUID verified as valid in manufacturing database
+      console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
       
       // Get product details from manufacturing database
       const productName = await getProductNameBySerialNumber(uuid);
+      console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
       
       // Find matching product in our local database to determine reward points
       let pointsAwarded = 0;
@@ -962,11 +986,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (productName) {
         // Look up the product name in our local database
         localProduct = await storage.getLocalProductByName(productName);
+        console.log(`[DEBUG] Local product match:`, localProduct);
         
         if (localProduct && localProduct.isActive === 1) {
           // Use the reward points defined in our local database
           pointsAwarded = localProduct.rewardPoints;
+          console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
         } else {
+          console.log(`[DEBUG] No active local product match found for: "${productName}". Returning error.`);
           return res.status(400).json({ 
             success: false, 
             message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -978,7 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else {
-        // No product name found - return error
+        console.log(`[DEBUG] No product name found. Returning error.`);
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -1023,7 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
         ).length;
         
-        // After QR scan, update badges based on current point and installation counts
+        console.log(`[DEBUG] After QR scan, user ${user.id} has ${installationCount} installations and ${updatedUser?.points} points`);
         
         // Initialize badgeIds array if it doesn't exist
         if (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds)) {
@@ -1037,7 +1064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         for (const badge of allBadges) {
           if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
-            // Skip badge checks if user data is invalid
+            console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
             break;
           }
           
@@ -1052,7 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (qualifies) {
             // If user qualifies for badge but doesn't have it yet, add it
             if (!alreadyHasBadge) {
-              // User qualifies for new badge - adding to user badges
+              console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
               updatedBadgeIds.push(badge.id);
               newBadges.push(badge);
               userBadgesUpdated = true;
@@ -1062,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else if (alreadyHasBadge) {
             // User has badge but no longer qualifies - remove it
-            // User no longer qualifies for badge - removing from user badges
+            console.log(`[DEBUG] User ${user.id} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
             userBadgesUpdated = true;
             // Badge is not added to updatedBadgeIds, effectively removing it
           }
@@ -1070,7 +1097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update user's badges in database if changes were made
         if (userBadgesUpdated && updatedUser) {
-          // Update user badges in database
+          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedBadgeIds);
           updatedUser.badgeIds = updatedBadgeIds;
           await storage.updateUser(user.id, { badgeIds: updatedBadgeIds });
         }

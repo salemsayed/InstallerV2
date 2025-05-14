@@ -5,7 +5,7 @@ import InstallerLayout from "@/components/layouts/installer-layout";
 import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
 import TransactionsList from "@/components/installer/transactions-list";
-import QrScanner from "@/components/installer/qr-scanner-simple";
+import QrScanner from "@/components/installer/qr-scanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";

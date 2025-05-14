@@ -1,3 +1,4 @@
+import { log } from './vite';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 
@@ -7,7 +8,7 @@ export class MockSmsService {
   // We'll store OTPs in the database for persistence across instances
   
   constructor() {
-    // Initialize OTP table and set up cleanup
+    log('Mock SMS Service initialized', 'sms');
     this.initializeOtpTable();
     
     // Cleanup expired OTPs every minute
@@ -27,9 +28,9 @@ export class MockSmsService {
           expires BIGINT NOT NULL
         )
       `);
-      // OTP table initialized 
+      log('OTP table initialized', 'sms');
     } catch (error) {
-      console.error(`Error initializing OTP table: ${error}`);
+      log(`Error initializing OTP table: ${error}`, 'sms');
     }
   }
   
@@ -39,7 +40,7 @@ export class MockSmsService {
       const now = Date.now();
       await db.execute(sql`DELETE FROM otps WHERE expires < ${now}`);
     } catch (error) {
-      console.error(`Error cleaning up OTPs: ${error}`);
+      log(`Error cleaning up OTPs: ${error}`, 'sms');
     }
   }
   
@@ -68,7 +69,7 @@ export class MockSmsService {
         DO UPDATE SET otp = ${otp}, expires = ${expires}
       `);
     } catch (error) {
-      console.error(`Error storing OTP: ${error}`);
+      log(`Error storing OTP: ${error}`, 'sms');
     }
   }
   
@@ -108,7 +109,7 @@ export class MockSmsService {
       await db.execute(sql`DELETE FROM otps WHERE phone_number = ${formattedPhone}`);
       return true;
     } catch (error) {
-      console.error(`Error verifying OTP: ${error}`);
+      log(`Error verifying OTP: ${error}`, 'sms');
       return false;
     }
   }
@@ -120,7 +121,7 @@ export class MockSmsService {
     const egyptPhoneRegex = /^(\+20|0)1[0-2,5]{1}[0-9]{8}$/;
     
     if (!egyptPhoneRegex.test(phoneNumber)) {
-      // Invalid Egyptian phone number format
+      log(`Invalid Egyptian phone number format: ${phoneNumber}`, 'sms');
       return false;
     }
     
@@ -129,7 +130,7 @@ export class MockSmsService {
       phoneNumber = '+2' + phoneNumber;
     }
     
-    // Mock SMS would be sent here in production
+    log(`📱 SMS to ${phoneNumber}: ${message}`, 'sms');
     return true;
   }
   
@@ -149,14 +150,14 @@ export class MockSmsService {
       const sent = await this.sendSms(formattedPhone, message);
       
       if (sent) {
-        // OTP sent successfully
+        log(`OTP sent to ${formattedPhone}: ${otp}`, 'sms');
         // Return OTP in development for easy testing
         return { success: true, otp };
       } else {
         return { success: false };
       }
     } catch (error) {
-      console.error(`Error sending OTP: ${error}`);
+      log(`Error sending OTP: ${error}`, 'sms');
       return { success: false };
     }
   }
