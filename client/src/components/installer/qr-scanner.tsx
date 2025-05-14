@@ -69,19 +69,47 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       
       console.log("Starting Scandit initialization");
       
+      // Wait a moment to ensure everything is loaded
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Verify window is available (this should always be true in a browser)
+      if (typeof window === 'undefined') {
+        throw new Error("Window object is undefined - running in non-browser environment");
+      }
+      
       // First step: Load the Scandit library modules if not already loaded
       if (!scanditLibraryLoadedRef.current) {
         console.log("Loading Scandit library modules");
         try {
-          // Dynamic import of Scandit modules - this loads the library on demand
-          const ScanditSDK = await import('scandit-web-datacapture-barcode');
-          const ScanditCore = await import('scandit-web-datacapture-core');
+          // Verify if modules are already available on window
+          if (window.ScanditSDK && window.ScanditCore) {
+            console.log("Scandit modules already available on window object");
+            scanditLibraryLoadedRef.current = true;
+          } else {
+            // Dynamic import of Scandit modules - this loads the library on demand
+            console.log("Dynamically importing Scandit modules");
+            
+            try {
+              const ScanditSDK = await import('scandit-web-datacapture-barcode');
+              const ScanditCore = await import('scandit-web-datacapture-core');
+              
+              // Store these for later use
+              window.ScanditSDK = ScanditSDK;
+              window.ScanditCore = ScanditCore;
+              scanditLibraryLoadedRef.current = true;
+              console.log("Scandit library modules imported successfully");
+            } catch (importError) {
+              console.error("Dynamic import of Scandit modules failed:", importError);
+              throw new Error(`Dynamic import failed: ${importError.message}`);
+            }
+          }
           
-          // Store these for later use
-          window.ScanditSDK = ScanditSDK;
-          window.ScanditCore = ScanditCore;
-          scanditLibraryLoadedRef.current = true;
-          console.log("Scandit library modules loaded successfully");
+          // Double-check the modules are available after loading
+          if (!window.ScanditSDK || !window.ScanditCore) {
+            throw new Error("Scandit modules not available after loading attempt");
+          }
+          
+          console.log("Scandit library modules loaded and verified successfully");
         } catch (moduleError) {
           console.error("Failed to load Scandit library modules:", moduleError);
           throw new Error(`Failed to load Scandit: ${moduleError.message}`);
@@ -89,7 +117,13 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       }
       
       // Get the library modules from window object
-      const { ScanditSDK, ScanditCore } = window as any;
+      const ScanditSDK = window.ScanditSDK;
+      const ScanditCore = window.ScanditCore;
+      
+      // Double check the modules are available
+      if (!ScanditSDK || !ScanditCore) {
+        throw new Error("Scandit modules not available on window object");
+      }
       
       // Second step: Fetch the license key from our API endpoint
       console.log("Fetching Scandit license key for user:", user.id);
@@ -543,14 +577,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
                   ref={scannerContainerRef}
                   className={`w-full h-full ${isScanning ? 'block' : 'hidden'}`}
                   style={{
-                    position: 'absolute',
+                    position: 'fixed',
                     top: 0,
                     left: 0,
                     right: 0,
                     bottom: 0,
                     backgroundColor: '#000',
-                    zIndex: 5
+                    zIndex: 20,
+                    width: '100%',
+                    height: '100%',
+                    display: isScanning ? 'block' : 'none',
+                    overflow: 'hidden'
                   }}
+                  data-scandit-container="true"
                 />
 
                 {/* Scanner guidance overlay */}
