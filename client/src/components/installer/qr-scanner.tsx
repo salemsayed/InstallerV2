@@ -105,8 +105,11 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
             console.log("Dynamically importing Scandit modules");
             
             try {
+              // Import the Scandit libraries with latest version 7.0.0
               const ScanditSDK = await import('@scandit/web-datacapture-barcode');
               const ScanditCore = await import('@scandit/web-datacapture-core');
+              
+              console.log("Successfully imported Scandit libraries");
               
               // Store these for later use
               window.ScanditSDK = ScanditSDK;
@@ -187,23 +190,23 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         await context.setFrameSource(camera);
         console.log("Configured camera");
         
-        // Configure barcode capture settings
+        // --- barcode settings ------------------------------------------------
         const settings = new ScanditSDK.BarcodeCaptureSettings();
+
+        // Enable only QR code scanning
+        settings.enableSymbology(ScanditSDK.Symbology.QR, true);
+
+        // Optional: enable scanning of color-inverted QR codes (white on black)
+        settings.settingsForSymbology(ScanditSDK.Symbology.QR)
+               .setColorInvertedEnabled(true);
+               
+        // Set duplicate filter to prevent multiple scans of the same code
+        settings.codeDuplicateFilter = 1000; // milliseconds
         
-        // Enable QR code scanning
-        settings.enableSymbologies([ScanditSDK.Symbology.QR]);
-        
-        // Configure QR code specific settings
-        const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
-        if (qrSettings) {
-          // Enable color inverted QR code scanning
-          qrSettings.setColorInvertedEnabled(true);
-        }
-        
-        // Optimize scanning performance
-        settings.setProperty("rec-min-sharpness", 30);
-        settings.setProperty("rec-max-sharpness", 100);
-        settings.codeDuplicateFilter = 1000; // 1 second between same code detection
+        // Log version information for debugging
+        console.log("ScanditCore version:", ScanditCore.libraryVersion);
+        console.log("ScanditBarcode version:", ScanditSDK.libraryVersion);
+        // ---------------------------------------------------------------------
         
         console.log("Configured barcode settings");
 
