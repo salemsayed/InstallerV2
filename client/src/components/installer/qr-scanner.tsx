@@ -147,7 +147,8 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       try {
         console.log(`Requesting Scandit license key from server for user ID: ${user.id}`);
         
-        const licenseResponse = await fetch(`/api/scandit-license?userId=${user.id}`);
+        // Use the apiRequest utility which handles auth correctly
+        const licenseResponse = await apiRequest("GET", `/api/scandit-license?userId=${user.id}`);
         const licenseData = await licenseResponse.json();
         
         if (!licenseResponse.ok) {
