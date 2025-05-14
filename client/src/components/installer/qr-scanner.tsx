@@ -55,7 +55,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
 
   // Initialize Scandit when needed
   const initializeScandit = async () => {
-    if (scanditRef.current.isInitialized) return true;
+    if (scanditRef.current.isInitialized) {
+      console.log("Scandit already initialized, reusing instance");
+      return true;
+    }
     
     try {
       // Make sure we have a logged in user
@@ -63,7 +66,10 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         throw new Error("User must be logged in to access the scanner");
       }
       
+      console.log("Starting Scandit initialization");
+      
       if (!scanditLibraryLoadedRef.current) {
+        console.log("Loading Scandit library modules");
         // Dynamic import of Scandit modules - this loads the library on demand
         const ScanditSDK = await import('scandit-web-datacapture-barcode');
         const ScanditCore = await import('scandit-web-datacapture-core');
@@ -72,6 +78,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         window.ScanditSDK = ScanditSDK;
         window.ScanditCore = ScanditCore;
         scanditLibraryLoadedRef.current = true;
+        console.log("Scandit library modules loaded successfully");
       }
       
       // Get the library modules from window object
@@ -173,15 +180,55 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         return;
       }
       
-      // Connect view to DOM element
-      scanditRef.current.view.connectToElement(scannerContainerRef.current);
-      
-      // Start camera
-      const { ScanditCore } = window as any;
-      await scanditRef.current.camera.switchToDesiredState(ScanditCore.FrameSourceState.On);
-      
-      // Enable barcode capture
-      scanditRef.current.barcodeCapture.isEnabled = true;
+      try {
+        // Add more debug information
+        console.log("Connecting Scandit view to DOM element");
+        
+        // Make sure the scanner container element exists in the DOM
+        if (!scannerContainerRef.current) {
+          throw new Error("Scanner container DOM element is null");
+        }
+        
+        // Add a small delay to ensure the DOM element is fully rendered and stable
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Connect view to DOM element
+        try {
+          // Ensure the element is still available after the delay
+          if (!scannerContainerRef.current) {
+            throw new Error("Scanner container DOM element became null after delay");
+          }
+          
+          // Get the dimensions of the container to verify it's properly rendered
+          const rect = scannerContainerRef.current.getBoundingClientRect();
+          console.log(`Scanner container dimensions: ${rect.width}x${rect.height}`);
+          
+          if (rect.width === 0 || rect.height === 0) {
+            throw new Error("Scanner container has zero dimensions");
+          }
+          
+          // Connect view to DOM element
+          await scanditRef.current.view.connectToElement(scannerContainerRef.current);
+          console.log("Successfully connected Scandit view to DOM element");
+        } catch (connectionError) {
+          console.error("Error connecting view to DOM element:", connectionError);
+          throw connectionError;
+        }
+        
+        // Start camera
+        const { ScanditCore } = window as any;
+        console.log("Starting camera");
+        await scanditRef.current.camera.switchToDesiredState(ScanditCore.FrameSourceState.On);
+        console.log("Camera started successfully");
+        
+        // Enable barcode capture
+        console.log("Enabling barcode capture");
+        scanditRef.current.barcodeCapture.isEnabled = true;
+        console.log("Barcode capture enabled successfully");
+      } catch (innerError) {
+        console.error("Error in scanner setup steps:", innerError);
+        throw innerError;
+      }
     } catch (err) {
       console.error("Error starting scanner:", err);
       setError(`فشل بدء تشغيل الكاميرا. يرجى منح إذن الكاميرا. (رمز الخطأ: CAMERA_PERMISSION)\n\nتفاصيل: ${err.message}`);
@@ -359,6 +406,13 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       console.error("Warning: No Scandit license key found in environment variables.");
     }
   }, []);
+
+  // Track when scanner container is mounted and ready
+  useEffect(() => {
+    if (isScanning && scannerContainerRef.current) {
+      console.log("Scanner container element is now available in the DOM");
+    }
+  }, [isScanning, scannerContainerRef.current]);
 
   return (
     <>
