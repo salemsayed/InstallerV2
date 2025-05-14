@@ -8,7 +8,7 @@ export class MockSmsService {
   // We'll store OTPs in the database for persistence across instances
   
   constructor() {
-    log('Mock SMS Service initialized', 'sms');
+    // Initialize OTP table and set up cleanup
     this.initializeOtpTable();
     
     // Cleanup expired OTPs every minute
@@ -28,9 +28,9 @@ export class MockSmsService {
           expires BIGINT NOT NULL
         )
       `);
-      log('OTP table initialized', 'sms');
+      // OTP table initialized 
     } catch (error) {
-      log(`Error initializing OTP table: ${error}`, 'sms');
+      console.error(`Error initializing OTP table: ${error}`);
     }
   }
   
@@ -40,7 +40,7 @@ export class MockSmsService {
       const now = Date.now();
       await db.execute(sql`DELETE FROM otps WHERE expires < ${now}`);
     } catch (error) {
-      log(`Error cleaning up OTPs: ${error}`, 'sms');
+      console.error(`Error cleaning up OTPs: ${error}`);
     }
   }
   
@@ -69,7 +69,7 @@ export class MockSmsService {
         DO UPDATE SET otp = ${otp}, expires = ${expires}
       `);
     } catch (error) {
-      log(`Error storing OTP: ${error}`, 'sms');
+      console.error(`Error storing OTP: ${error}`);
     }
   }
   
