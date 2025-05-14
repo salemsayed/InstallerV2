@@ -1,0 +1,33 @@
+You are a senior front-end engineer.
+
+**Goal**  
+Refactor an existing vanilla-JS webapp that currently uses the `html5-qrcode` library so it instead uses the Scandit Web SDK (barcode + QR code scanning).
+
+**My inputs**  
+• const LICENSE_KEY = "PASTE-MY-SCANDIT-KEY-HERE";  
+• The page already contains a `<div id="scanner"></div>` placeholder where the html5-qrcode widget was mounted.  
+• We want to keep the rest of the UI, CSS and build tooling untouched (plain `<script>` tags, no bundler).
+
+**Deliverables**  
+1. A complete HTML file (or the `<head>`/`<script>` snippets if shorter) that:  
+   - Removes every reference to `html5-qrcode`.  
+   - Adds Scandit via CDN (latest version) using `<script src="https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@latest"></script>` and the barcode package.  
+   - Calls `ScanditSDK.configure(LICENSE_KEY, { engineLocation: '/scandit-engine/' })` and waits for it to resolve.  
+2. JavaScript that:  
+   - Creates `const scanSettings = new ScanditSDK.ScanSettings({ enabledSymbologies: ['qr', 'ean13', 'code128'] });`  
+   - Instantiates `const barcodePicker = await ScanditSDK.BarcodePicker.create(document.getElementById('scanner'), { scanSettings, playSoundOnScan: true, vibrateOnScan: true });`  
+   - Subscribes to the `"scan"` event and exposes the scanned code as `event.barcodes[0].data`.  
+   - Provides helper functions `startScanner()`, `pauseScanner()`, and `destroyScanner()` mirroring the old html5-qrcode API so that existing UI buttons keep working.  
+3. Minimal CSS (if needed) so the scanner area fills its container (`#scanner { width: 100%; height: 100%; }`).  
+4. One short comment block at the top explaining:  
+   - How to replace `LICENSE_KEY`.  
+   - How to change the list of symbologies.  
+   - Where to host the `engineLocation` folder if using a custom path.
+
+**Style**  
+• Use modern ES modules or plain `<script type="module">` (whichever is simplest with CDN).  
+• Keep the code concise, readable, and self-contained—no external frameworks.  
+• Add explanatory comments only where they aid understanding; avoid verbose tutorial-style prose.
+
+**Output format**  
+Return a single code block containing the complete file/snippet, ready to drop into the project.
