@@ -193,18 +193,28 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         // Disable all symbologies by default and only enable QR codes
         settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
         
-        // Set up QR code scanning settings
-        const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
-        if (qrSettings) {
-          // Enable color inverted QR code scanning
-          qrSettings.setColorInvertedEnabled(true);
+        // Set basic barcode settings without advanced features
+        // In newer versions, highEndBlurryRecognition is removed and defaults are sufficient
+        // Just ensure we're safely setting properties to avoid TypeErrors
+        try {
+          // Get the settings for the QR code symbology if available
+          const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
+          
+          // If there are symbology-specific settings and they support blurry recognition
+          if (qrSettings && typeof qrSettings === 'object') {
+            // Only set properties that exist on the object
+            if ('blurryRecognition' in qrSettings) {
+              qrSettings.blurryRecognition = true;
+            }
+            
+            // Avoid attempting to access highEndBlurryRecognition which causes errors
+            console.log("QR settings configured safely");
+          }
+        } catch (e) {
+          // If there's any error in configuring QR settings, just log it
+          // but continue with default settings
+          console.log("Using default QR settings:", e);
         }
-        
-        // Configure scan settings
-        settings.setProperty("rec-min-sharpness", 30);
-        settings.setProperty("rec-max-sharpness", 100);
-        
-        console.log("QR settings configured");
         
         console.log("Configured barcode settings");
         
