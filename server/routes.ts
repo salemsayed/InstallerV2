@@ -1132,59 +1132,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get scanned products for a user
-  // Add endpoint to expose the Scandit license key to the client
-  app.get("/api/scandit-license", async (req: Request, res: Response) => {
-    try {
-      // Only return the license to authenticated users
-      const userId = parseInt(req.query.userId as string);
-      
-      if (!userId) {
-        console.warn("Scandit license request missing userId");
-        return res.status(401).json({ 
-          success: false,
-          message: "غير مصرح. يرجى تسجيل الدخول.",
-          error_code: "UNAUTHORIZED"
-        });
-      }
-      
-      // Verify user exists in the system
-      const user = await storage.getUser(userId);
-      if (!user) {
-        console.warn(`Scandit license request for non-existent user ID: ${userId}`);
-        return res.status(401).json({ 
-          success: false,
-          message: "المستخدم غير موجود",
-          error_code: "USER_NOT_FOUND"
-        });
-      }
-      
-      const licenseKey = process.env.SCANDIT_LICENSE_KEY;
-      if (!licenseKey) {
-        console.error("SCANDIT_LICENSE_KEY environment variable not set");
-        return res.status(500).json({ 
-          success: false,
-          message: "مفتاح ترخيص Scandit غير متوفر", 
-          error_code: "LICENSE_KEY_MISSING"
-        });
-      }
-      
-      console.log(`Providing Scandit license key to user ID: ${userId}`);
-      
-      // Return the license key to the client
-      res.json({ 
-        success: true,
-        licenseKey
-      });
-    } catch (error) {
-      console.error("Error fetching Scandit license:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "حدث خطأ أثناء جلب مفتاح ترخيص Scandit",
-        error_code: "SERVER_ERROR"
-      });
-    }
-  });
-  
   app.get("/api/scanned-products", async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.query.userId as string);
