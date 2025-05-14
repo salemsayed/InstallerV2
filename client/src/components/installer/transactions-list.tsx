@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Transaction, TransactionType } from "@shared/schema";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { useState } from "react";
@@ -11,6 +12,45 @@ interface TransactionsListProps {
   limit?: number;
   showTotal?: boolean;
   showPagination?: boolean;
+  isLoading?: boolean;
+}
+
+export function TransactionsListSkeleton({ limit = 5 }: { limit?: number }) {
+  return (
+    <Card className="rounded-2xl shadow-sm border-0">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <Skeleton className="h-6 w-28 mb-1" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <Skeleton className="h-8 w-20" />
+        </div>
+        
+        <div className="space-y-4">
+          {Array(limit).fill(0).map((_, index) => (
+            <div key={index} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div>
+                  <Skeleton className="h-4 w-32 mb-1" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <div className="text-end">
+                <Skeleton className="h-4 w-16 mb-1 mr-0 ml-auto" />
+                <Skeleton className="h-3 w-12 mr-0 ml-auto" />
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 flex justify-center">
+          <Skeleton className="h-8 w-24" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function TransactionsList({ 
@@ -18,8 +58,12 @@ export default function TransactionsList({
   onViewAll, 
   limit = 5, 
   showTotal = true,
-  showPagination = false
+  showPagination = false,
+  isLoading = false
 }: TransactionsListProps) {
+  if (isLoading) {
+    return <TransactionsListSkeleton limit={limit} />;
+  }
   // Add pagination state when pagination is enabled
   const [currentPage, setCurrentPage] = useState(0);
   

@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 
 interface AchievementCardProps {
@@ -13,9 +14,40 @@ interface AchievementCardProps {
     minInstallations: number;
     earned: boolean;
   }[];
+  isLoading?: boolean;
 }
 
-export default function AchievementCard({ points, badges }: AchievementCardProps) {
+export function AchievementCardSkeleton() {
+  return (
+    <Card className="rounded-2xl border border-border/50">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {[1, 2, 3, 4].map((_, index) => (
+            <div key={index} className="flex flex-col items-center">
+              <Skeleton className="h-16 w-16 rounded-full mb-2" />
+              <Skeleton className="h-4 w-20 mb-1" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex justify-center mt-4">
+          <Skeleton className="h-8 w-32" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AchievementCard({ points, badges, isLoading = false }: AchievementCardProps) {
+  if (isLoading) {
+    return <AchievementCardSkeleton />;
+  }
   const [showAll, setShowAll] = useState(false);
   
   // Filter out duplicates based on badge ID
