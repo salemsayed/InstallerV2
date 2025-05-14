@@ -8,7 +8,11 @@ import { Camera as CameraIcon } from "lucide-react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 // Import necessary Scandit modules - using import type for better bundling
-import { Barcode, BarcodeCapture, BarcodeCaptureListener, BarcodeCaptureSession, BarcodeCaptureSettings, SymbologySettings } from 'scandit-web-datacapture-barcode';
+// ✅ purely for TypeScript, disappears after compilation
+import type {
+  Barcode, BarcodeCapture, BarcodeCaptureListener,
+  BarcodeCaptureSession, BarcodeCaptureSettings, SymbologySettings
+} from '@scandit/web-datacapture-barcode';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
