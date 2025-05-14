@@ -306,6 +306,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       return;
     }
     
+    // Check if window gives us the "Warning: No Scandit license key found" warning
+    // and short-circuit to the fallback scanner
+    const warnings = (window as any).__console_messages?.filter(
+      (msg: any) => typeof msg === 'string' && msg.includes('No Scandit license key found')
+    );
+    
+    if (warnings && warnings.length > 0) {
+      console.warn("No Scandit license key found in environment, using fallback scanner immediately");
+      setUseFallbackScanner(true);
+      await startFallbackScanner();
+      return;
+    }
+    
     try {
       // Step 1: Initialize Scandit components (but don't connect to DOM yet)
       console.log("Initializing Scandit components");
