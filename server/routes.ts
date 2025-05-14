@@ -583,7 +583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (qualifies) {
           // If user qualifies for badge but doesn't have it yet, add it
           if (!alreadyHasBadge) {
-            console.log(`[DEBUG] User ${userId} qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
+            // User qualifies for badge - adding to user badges
             updatedBadgeIds.push(badge.id);
             userBadgesUpdated = true;
           } else {
@@ -592,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else if (alreadyHasBadge) {
           // User has badge but no longer qualifies - remove it
-          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
+          // User no longer qualifies for badge - removing from user badges
           userBadgesUpdated = true;
           // Badge is not added to updatedBadgeIds, effectively removing it
         }
@@ -605,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update user's badges in database if changes were made
       if (userBadgesUpdated) {
-        console.log(`[DEBUG] Updating user ${userId} badges in database:`, user.badgeIds);
+        // Updating user badges in database
         await storage.updateUser(userId, { badgeIds: user.badgeIds });
       }
       
@@ -900,7 +900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // QR code scanning endpoint
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
-    console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);
+    // Process QR scan request
     try {
       const { uuid, userId } = req.body;
       
