@@ -187,18 +187,23 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         await context.setFrameSource(camera);
         console.log("Configured camera");
         
-        // --- barcode settings ------------------------------------------------
+        // Configure barcode capture settings
         const settings = new ScanditSDK.BarcodeCaptureSettings();
-
-        // 1️⃣  Enable the symbology you need.
-        //     (single code → enableSymbology; list → enableSymbologies)
-        settings.enableSymbology(ScanditSDK.Symbology.QR, true);
-
-        // 2️⃣  OPTIONAL: tweak per-symbology options
-        //     (the object is always defined now, no need for defensive checks)
-        const qr = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
-        qr.setExtensionEnabled?.('strict', true);   // example – remove if undesired
-        // ---------------------------------------------------------------------
+        
+        // Enable QR code scanning
+        settings.enableSymbologies([ScanditSDK.Symbology.QR]);
+        
+        // Configure QR code specific settings
+        const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
+        if (qrSettings) {
+          // Enable color inverted QR code scanning
+          qrSettings.setColorInvertedEnabled(true);
+        }
+        
+        // Optimize scanning performance
+        settings.setProperty("rec-min-sharpness", 30);
+        settings.setProperty("rec-max-sharpness", 100);
+        settings.codeDuplicateFilter = 1000; // 1 second between same code detection
         
         console.log("Configured barcode settings");
 
