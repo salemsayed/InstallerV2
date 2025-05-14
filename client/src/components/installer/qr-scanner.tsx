@@ -9,8 +9,6 @@ import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { useAuth } from "@/hooks/auth-provider";
 // Import necessary Scandit modules - using import type for better bundling
 import { Barcode, BarcodeCapture, BarcodeCaptureListener, BarcodeCaptureSession, BarcodeCaptureSettings, SymbologySettings } from 'scandit-web-datacapture-barcode';
-// Import HTML5QrCode as a fallback scanner
-import { Html5Qrcode } from 'html5-qrcode';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -26,7 +24,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useFallbackScanner, setUseFallbackScanner] = useState(false);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   
@@ -45,11 +42,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     isInitialized: false
   });
   
-  // Reference for HTML5QrCode fallback scanner
-  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  
   const scannerContainerRef = useRef<HTMLDivElement>(null);
-  const fallbackScannerContainerRef = useRef<HTMLDivElement>(null);
   const scanditLibraryLoadedRef = useRef(false);
 
   // Load Scandit library and engine only once
@@ -244,47 +237,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
   };
 
-  // Start fallback HTML5QrCode scanner
-  const startFallbackScanner = async () => {
-    console.log("Starting fallback HTML5QrCode scanner");
-    
-    try {
-      if (!fallbackScannerContainerRef.current) {
-        throw new Error("Fallback scanner container element not found");
-      }
-      
-      // Create a new instance of Html5Qrcode
-      const html5QrCode = new Html5Qrcode("fallback-scanner-container");
-      html5QrCodeRef.current = html5QrCode;
-      
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        formatsToSupport: [0], // Only QR Code: 0
-      };
-      
-      await html5QrCode.start(
-        { facingMode: "environment" }, // Use the back camera
-        config,
-        (decodedText) => {
-          console.log("QR code detected with HTML5QrCode:", decodedText);
-          handleScanSuccess(decodedText);
-        },
-        (errorMessage) => {
-          // No need to show errors during scanning
-          // console.log("QR Code scanning error:", errorMessage);
-        }
-      );
-      
-      console.log("HTML5QrCode fallback scanner started successfully");
-    } catch (error) {
-      console.error("Failed to start HTML5QrCode fallback scanner:", error);
-      setError(`فشل في تشغيل الماسح البديل. يرجى المحاولة مرة أخرى. (رمز الخطأ: HTML5QR_ERROR)\n\nتفاصيل: ${error.message}`);
-      setIsScanning(false);
-    }
-  };
-
   const startScanner = async () => {
     setIsScanning(true);
     setError(null);
@@ -299,34 +251,14 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       return;
     }
     
-    // If user explicitly wants to use the fallback scanner or Scandit failed before
-    if (useFallbackScanner) {
-      console.log("Using fallback scanner based on user preference");
-      await startFallbackScanner();
-      return;
-    }
-    
-    // Check if window gives us the "Warning: No Scandit license key found" warning
-    // and short-circuit to the fallback scanner
-    const warnings = (window as any).__console_messages?.filter(
-      (msg: any) => typeof msg === 'string' && msg.includes('No Scandit license key found')
-    );
-    
-    if (warnings && warnings.length > 0) {
-      console.warn("No Scandit license key found in environment, using fallback scanner immediately");
-      setUseFallbackScanner(true);
-      await startFallbackScanner();
-      return;
-    }
-    
     try {
       // Step 1: Initialize Scandit components (but don't connect to DOM yet)
       console.log("Initializing Scandit components");
       const initialized = await initializeScandit();
       if (!initialized) {
-        console.error("Failed to initialize Scandit, switching to fallback scanner");
-        setUseFallbackScanner(true);
-        await startFallbackScanner();
+        console.error("Failed to initialize Scandit");
+        setError("فشل في تهيئة الماسح الضوئي. (رمز الخطأ: SCANDIT_INIT_ERROR)");
+        setIsScanning(false);
         return;
       }
       
@@ -371,7 +303,6 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         console.log("Scanner started successfully");
       } catch (error) {
         console.error("Error connecting scanner to DOM or starting camera:", error);
-        console.log("Switching to fallback scanner due to Scandit connection error");
         
         // Attempt to clean up
         try {
@@ -383,34 +314,19 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           console.error("Failed to clean up camera resources:", cleanupError);
         }
         
-        // Switch to fallback scanner
-        setUseFallbackScanner(true);
-        await startFallbackScanner();
+        // Display error to user
+        setError(`فشل تشغيل الماسح الضوئي. (رمز الخطأ: SCANNER_CONNECT_ERROR)\n\nتفاصيل: ${error.message}`);
+        setIsScanning(false);
       }
     } catch (err) {
       console.error("Unexpected error starting scanner:", err);
-      
-      // Try fallback scanner as a last resort
-      console.log("Attempting to use fallback scanner after unexpected error");
-      setUseFallbackScanner(true);
-      await startFallbackScanner();
+      setError(`فشل غير متوقع. يرجى المحاولة مرة أخرى. (رمز الخطأ: UNEXPECTED_ERROR)\n\nتفاصيل: ${err.message}`);
+      setIsScanning(false);
     }
   };
 
   const stopScanner = async () => {
     console.log("Stopping scanner");
-    
-    // Stop the fallback HTML5QrCode scanner if it's active
-    if (useFallbackScanner && html5QrCodeRef.current) {
-      try {
-        console.log("Stopping HTML5QrCode fallback scanner");
-        await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current = null;
-        console.log("HTML5QrCode fallback scanner stopped");
-      } catch (err) {
-        console.error("Error stopping HTML5QrCode fallback scanner:", err);
-      }
-    }
     
     // Stop Scandit scanner if it's active
     if (scanditRef.current.isInitialized) {
