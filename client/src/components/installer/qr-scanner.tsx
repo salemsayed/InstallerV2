@@ -84,20 +84,28 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Initialize camera
       console.log("[SCANDIT DEBUG] Initializing camera...");
       if (!cameraRef.current) {
-        console.log("[SCANDIT DEBUG] Getting default camera");
-        const defaultCamera = ScanditCore.Camera.defaultCamera;
-        console.log("[SCANDIT DEBUG] Default camera:", defaultCamera);
-        
-        if (!defaultCamera) {
-          console.error("[SCANDIT DEBUG] No default camera available");
-          throw new Error("No camera available");
+        try {
+          console.log("[SCANDIT DEBUG] Getting cameras");
+          const cameras = await ScanditCore.Camera.getCameras();
+          console.log("[SCANDIT DEBUG] Available cameras:", cameras);
+          
+          if (cameras.length === 0) {
+            console.error("[SCANDIT DEBUG] No cameras found");
+            throw new Error("لم يتم العثور على كاميرا");
+          }
+          
+          // Try to get the back camera first, fall back to first available
+          const backCamera = cameras.find(c => c.position === ScanditCore.CameraPosition.WorldFacing);
+          cameraRef.current = backCamera || cameras[0];
+          console.log("[SCANDIT DEBUG] Selected camera:", cameraRef.current);
+          
+          // Add camera to context
+          console.log("[SCANDIT DEBUG] Setting camera as frame source");
+          await contextRef.current.setFrameSource(cameraRef.current);
+        } catch (err) {
+          console.error("[SCANDIT DEBUG] Camera initialization error:", err);
+          throw new Error("فشل في تهيئة الكاميرا: " + (err.message || "خطأ غير معروف"));
         }
-        
-        cameraRef.current = defaultCamera;
-        
-        // Add camera to context
-        console.log("[SCANDIT DEBUG] Setting camera as frame source");
-        await contextRef.current.setFrameSource(cameraRef.current);
       }
       
       // Setup barcode tracking
