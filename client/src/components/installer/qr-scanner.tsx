@@ -187,38 +187,22 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
         await context.setFrameSource(camera);
         console.log("Configured camera");
         
-        // Configure barcode settings to scan only QR codes
+        // --- barcode settings ------------------------------------------------
         const settings = new ScanditSDK.BarcodeCaptureSettings();
-        
-        // Disable all symbologies by default and only enable QR codes
-        settings.enableSymbologies([ScanditSDK.Symbology.QR], true);
-        
-        // Set basic barcode settings without advanced features
-        // In newer versions, highEndBlurryRecognition is removed and defaults are sufficient
-        // Just ensure we're safely setting properties to avoid TypeErrors
-        try {
-          // Get the settings for the QR code symbology if available
-          const qrSettings = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
-          
-          // If there are symbology-specific settings and they support blurry recognition
-          if (qrSettings && typeof qrSettings === 'object') {
-            // Only set properties that exist on the object
-            if ('blurryRecognition' in qrSettings) {
-              qrSettings.blurryRecognition = true;
-            }
-            
-            // Avoid attempting to access highEndBlurryRecognition which causes errors
-            console.log("QR settings configured safely");
-          }
-        } catch (e) {
-          // If there's any error in configuring QR settings, just log it
-          // but continue with default settings
-          console.log("Using default QR settings:", e);
-        }
+
+        // 1️⃣  Enable the symbology you need.
+        //     (single code → enableSymbology; list → enableSymbologies)
+        settings.enableSymbology(ScanditSDK.Symbology.QR, true);
+
+        // 2️⃣  OPTIONAL: tweak per-symbology options
+        //     (the object is always defined now, no need for defensive checks)
+        const qr = settings.settingsForSymbology(ScanditSDK.Symbology.QR);
+        qr.setExtensionEnabled?.('strict', true);   // example – remove if undesired
+        // ---------------------------------------------------------------------
         
         console.log("Configured barcode settings");
-        
-        // Configure viewfinder
+
+        // Create the capture mode as before
         const barcodeCapture = ScanditSDK.BarcodeCapture.forContext(context, settings);
         console.log("Created barcode capture");
         
