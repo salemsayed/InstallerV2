@@ -95,7 +95,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       // Create DataCaptureContext if not already created
       if (!contextRef.current) {
         console.log("[SCANDIT DEBUG] Creating new DataCaptureContext");
-        contextRef.current = new DataCaptureContext();
+        contextRef.current = new ScanditCore.DataCaptureContext();
       }
       
       // Initialize camera
@@ -103,7 +103,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
       if (!cameraRef.current) {
         try {
           console.log("[SCANDIT DEBUG] Getting cameras");
-          const cameras = await Camera.getCameras();
+          const cameras = await ScanditCore.Camera.getCameras();
           console.log("[SCANDIT DEBUG] Available cameras:", cameras);
           
           if (cameras.length === 0) {
@@ -112,7 +112,7 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
           }
           
           // Try to get the back camera first, fall back to first available
-          const backCamera = cameras.find(c => c.position === CameraPosition.WorldFacing);
+          const backCamera = cameras.find(c => c.position === ScanditCore.CameraPosition.WorldFacing);
           cameraRef.current = backCamera || cameras[0];
           console.log("[SCANDIT DEBUG] Selected camera:", cameraRef.current);
           
