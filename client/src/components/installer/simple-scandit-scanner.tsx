@@ -48,17 +48,11 @@ export default function SimpleScanditScanner({
       // Initialize Scandit
       const scanditInitCode = `
         try {
-          // Initialize with Scandit 6.x API which is more stable for web applications
-          if (!window.Scandit) {
-            window.dispatchEvent(new CustomEvent('scandit-error', { 
-              detail: 'Scandit SDK not loaded properly' 
-            }));
-            return;
-          }
-          
-          // Configure Scandit SDK with license key
-          window.Scandit.configure("${licenseKey}", {
-            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/datacapture-js-browser@6.14.0/build/"
+          // Initialize scandit with license key using version 7.2.2
+          const ScanditSDK = window.ScanditSDK;
+          ScanditSDK.configure({
+            licenseKey: "${licenseKey}",
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/engine/"
           }).then(() => {
             // Create data capture context
             const context = window.Scandit.DataCaptureContext.create("${licenseKey}", {

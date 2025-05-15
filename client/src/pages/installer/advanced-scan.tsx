@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import InstallerLayout from "@/components/layouts/installer-layout";
-import Html5QrScanner from "@/components/installer/html5-qr-scanner";
+import SimpleScanditScanner from "@/components/installer/simple-scandit-scanner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +15,7 @@ export default function AdvancedScanPage() {
   const { toast } = useToast();
   const [isScannerEnabled, setScannerEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState("scan");
-  const [scannerInitFailed, setScannerInitFailed] = useState(false);
+  const [scanditInitFailed, setScanditInitFailed] = useState(false);
   const [scannedData, setScannedData] = useState<{
     data: string;
     symbology: string;
@@ -25,7 +25,15 @@ export default function AdvancedScanPage() {
   } | null>(null);
   
   // Fetch Scandit license key
-  // We don't need the Scandit license key anymore with HTML5 QR Scanner
+  const { 
+    data: scanditData,
+    isLoading: isScanditKeyLoading,
+    isError: isScanditKeyError,
+    error: scanditKeyError
+  } = useQuery({
+    queryKey: [`/api/scandit/license-key?userId=${user?.id}`],
+    enabled: !!user?.id,
+  });
 
   // Scan QR code mutation
   const { mutate: processQrCode, isPending: isProcessing } = useMutation({
@@ -147,13 +155,52 @@ export default function AdvancedScanPage() {
               </CardHeader>
               
               <CardContent className="p-0">
-                <Html5QrScanner 
-                  onScanSuccess={(data) => handleScanSuccess(data, 'QR_CODE')}
-                  isEnabled={isScannerEnabled}
-                  className="w-full"
-                />
+                {isScanditKeyLoading ? (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                    <p className="text-center">جاري تحميل الماسح المتقدم...</p>
+                  </div>
+                ) : isScanditKeyError ? (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
+                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+                    <h3 className="font-bold text-red-600 mb-2">فشل تحميل الماسح</h3>
+                    <p className="text-gray-600 mb-4">
+                      {scanditKeyError instanceof Error ? scanditKeyError.message : 'حدث خطأ أثناء تحميل مفتاح ترخيص الماسح'}
+                    </p>
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                      size="sm"
+                    >
+                      إعادة المحاولة
+                    </Button>
+                  </div>
+                ) : scanditData?.success && scanditData?.licenseKey ? (
+                  <SimpleScanditScanner 
+                    onScanSuccess={handleScanSuccess}
+                    onError={(error) => {
+                      toast({
+                        title: "خطأ في تحميل الماسح المتقدم",
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                      setScannerInitFailed(true);
+                    }}
+                    isEnabled={isScannerEnabled}
+                    className="w-full" 
+                    licenseKey={scanditData.licenseKey}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
+                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+                    <h3 className="font-bold text-red-600 mb-2">مفتاح ترخيص غير متوفر</h3>
+                    <p className="text-gray-600">
+                      لم يتم العثور على مفتاح ترخيص Scandit
+                    </p>
+                  </div>
+                )}
                 
-                {scannerInitFailed && 
+                {scanditInitFailed && 
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 py-12 px-4 text-center text-white">
                     <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
                     <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة الماسح الضوئي</h3>
