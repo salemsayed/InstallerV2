@@ -180,7 +180,7 @@ export default function AdvancedScanPage() {
                     onScanSuccess={handleScanSuccess}
                     onError={(error) => {
                       toast({
-                        title: "خطأ في تحميل الماسح المتقدم",
+                        title: "خطأ في تحميل ماسح Scandit",
                         description: error.message,
                         variant: "destructive"
                       });
