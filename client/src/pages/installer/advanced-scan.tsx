@@ -100,41 +100,53 @@ export default function AdvancedScanPage() {
 
   return (
     <InstallerLayout activeTab="advanced-scan">
-      <div className="container py-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">المسح المتقدم (Scandit)</h1>
-          
-          {/* License Status Indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm">حالة الترخيص:</span>
-            <div className={`h-3 w-3 rounded-full ${
-              licenseStatus === 'initialized' ? 'bg-green-500' : 
-              licenseStatus === 'failed' ? 'bg-red-500' : 'bg-gray-300'
-            }`}></div>
-            <span className="text-sm">
-              {licenseStatus === 'initialized' ? 'مفعّل' : 
-               licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
-            </span>
+      {/* Full height container */}
+      <div className="flex flex-col h-[calc(100dvh-4.5rem)]">
+        {/* Header */}
+        <div className="px-4 py-3 bg-white shadow-sm z-10">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-bold">المسح المتقدم (Scandit)</h1>
+            
+            {/* License Status Indicator */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs">حالة الترخيص:</span>
+              <div className={`h-2.5 w-2.5 rounded-full ${
+                licenseStatus === 'initialized' ? 'bg-green-500' : 
+                licenseStatus === 'failed' ? 'bg-red-500' : 'bg-gray-300'
+              }`}></div>
+              <span className="text-xs">
+                {licenseStatus === 'initialized' ? 'مفعّل' : 
+                 licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
+              </span>
+            </div>
           </div>
         </div>
         
-        {/* Scanner viewport – 3:4 gives a nice full-screen phone frame */}
-        <div
-          ref={scannerRef}
-          className="w-full aspect-[3/4] bg-black rounded-lg overflow-hidden"
-        />
+        {/* Scanner viewport - flex-grow to take all available space */}
+        <div className="flex-1 relative">
+          <div
+            ref={scannerRef}
+            className="absolute inset-0 bg-black overflow-hidden"
+          />
+        </div>
 
-        {result && (
-          <p className="text-green-600 font-medium">تم المسح: {result}</p>
-        )}
-        {error && <p className="text-red-600 font-medium">{error}</p>}
-        
-        {/* Environment info (only visible in dev mode) */}
-        {import.meta.env.DEV && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs">
-            <p className="font-mono">License Key Used: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? 'From Environment' : 'Missing (fallback to empty string)'}</p>
-          </div>
-        )}
+        {/* Results/Status Bar */}
+        <div className="px-4 py-3 bg-white shadow-inner">
+          {result && (
+            <p className="text-green-600 font-medium text-sm py-1">تم المسح: {result}</p>
+          )}
+          {error && <p className="text-red-600 font-medium text-sm py-1">{error}</p>}
+          {!result && !error && (
+            <p className="text-gray-500 text-sm py-1">قم بتوجيه الكاميرا نحو رمز QR للمنتج</p>
+          )}
+          
+          {/* Environment info (only visible in dev mode) */}
+          {import.meta.env.DEV && (
+            <div className="mt-2 p-2 bg-gray-100 rounded-lg text-xs">
+              <p className="font-mono">License Key: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? 'From Environment' : 'Missing'}</p>
+            </div>
+          )}
+        </div>
       </div>
     </InstallerLayout>
   );
