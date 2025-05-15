@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 // Import Scandit libraries
 import {
@@ -14,7 +15,8 @@ import {
   barcodeCaptureLoader,
   BarcodeCaptureSettings,
   BarcodeCapture,
-  Symbology
+  Symbology,
+  SymbologyDescription
 } from '@scandit/web-datacapture-barcode';
 
 interface ScanditScannerProps {
@@ -32,13 +34,9 @@ export default function ScanditScanner({
   licenseKey
 }: ScanditScannerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const contextRef = useRef<DataCaptureContext | null>(null);
-  const viewRef = useRef<DataCaptureView | null>(null);
-  const cameraRef = useRef<Camera | null>(null);
-  const barcodeCaptureRef = useRef<BarcodeCapture | null>(null);
-  
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [barcodeCaptureMode, setBarcodeCaptureMode] = useState<BarcodeCapture | null>(null);
   
   const { toast } = useToast();
 
@@ -74,148 +72,110 @@ export default function ScanditScanner({
     try {
       logInfo('Initializing Scandit scanner...');
       
-      // Create and initialize the data capture view
-      const view = new DataCaptureView();
-      viewRef.current = view;
-      
-      // Connect the view to the HTML container
-      view.connectToElement(containerRef.current);
-      view.showProgressBar();
+      /**
+       * IMPORTANT: Setup Scandit global namespace before configure()
+       * This is a workaround for Error 28 issues
+       */
+      const globalAny = window as any;
+      globalAny.ScanditSDK = globalAny.ScanditSDK || {};
+      globalAny.ScanditSDK.engineLocation = 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/engine/';
       
       logInfo('Configuring Scandit license...');
-      // Configure Scandit with license key
       try {
         logInfo('Configuring Scandit with library from CDN...');
-        
-        // First define the engine location before configuration
-        // This helps avoid the Error 28 resource loading issue
-        (window as any).ScanditSDK = (window as any).ScanditSDK || {};
-        (window as any).ScanditSDK.engineLocation = 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/engine/';
-        
-        // Then configure with explicit paths
         await configure({
           licenseKey: licenseKey,
           moduleLoaders: [barcodeCaptureLoader()],
           libraryLocation: 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/',
-          preloadEngine: true,
-          preloadBlurryRecognition: true,
+          engineLocation: 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/engine/',
         });
-        
         logInfo('Scandit configuration successful');
       } catch (configError) {
         logError('Failed to configure Scandit', configError);
         throw configError; // Re-throw to be caught by the outer try-catch
       }
       
-      view.hideProgressBar();
+      // Create and initialize the data capture view
+      const view = new DataCaptureView();
       
-      logInfo('Creating DataCaptureContext...');
+      // Connect the view to the HTML container
+      view.connectToElement(containerRef.current);
+      
       // Create the data capture context with license key
       const context = DataCaptureContext.forLicenseKey(licenseKey);
-      contextRef.current = context;
-      
-      // Preload resources to prevent Error 28
-      try {
-        logInfo('Preloading resources...');
-        await context.preloadResources().catch(e => {
-          console.warn('Resource preloading warning (non-fatal):', e);
-        });
-        logInfo('Resources preloaded successfully');
-      } catch (preloadError) {
-        // Log but continue
-        console.warn('Resource preloading issue (continuing):', preloadError);
-      }
       
       // Set the context to the view
-      await view.setContext(context);
+      view.setContext(context);
       
-      logInfo('Initializing camera...');
-      // Initialize camera
       try {
         // Try to get the default camera
         const camera = Camera.default;
         if (!camera) {
           throw new Error('No camera available');
         }
-        cameraRef.current = camera;
         
         // Apply recommended camera settings
         const cameraSettings = BarcodeCapture.recommendedCameraSettings;
-        await camera.applySettings(cameraSettings);
+        camera.applySettings(cameraSettings);
         
         // Set the camera as the frame source
-        await context.setFrameSource(camera);
+        context.setFrameSource(camera);
+        
+        // Create barcode capture settings
+        const settings = new BarcodeCaptureSettings();
+        
+        // Enable QR and other common barcode symbologies
+        settings.enableSymbologies([
+          Symbology.QR,
+          Symbology.DataMatrix,
+          Symbology.Code128,
+          Symbology.EAN13UPCA,
+          Symbology.EAN8
+        ]);
+      
+        // Create barcode capture with settings
+        const barcodeCapture = BarcodeCapture.forContext(context, settings);
+        setBarcodeCaptureMode(barcodeCapture);
+        
+        // Add listener for barcode scanning
+        barcodeCapture.addListener({
+          didScan: (_, session) => {
+            const barcode = session.newlyRecognizedBarcodes[0];
+            if (!barcode) return;
+            
+            const data = barcode.data || '';
+            const symbology = new SymbologyDescription(barcode.symbology);
+            
+            logInfo(`Barcode scanned: ${data} (${symbology.identifier})`);
+            
+            // Pause scanning while processing
+            barcodeCapture.isEnabled = false;
+            
+            // Call the onScanSuccess callback with scan data
+            onScanSuccess(data, symbology.identifier);
+          }
+        });
+        
+        // Enable the barcode capture and camera
+        barcodeCapture.isEnabled = isEnabled;
+        
+        if (isEnabled) {
+          camera.switchToDesiredState(FrameSourceState.On);
+        }
+        
+        setIsInitialized(true);
+        logInfo('Scandit scanner initialization complete');
       } catch (cameraError) {
-        logError('Camera access error. This is expected in environments without camera access.', cameraError);
-        // Continue with setup, just without a camera
-        // This allows the scanner to still be initialized for testing purposes
+        logError('Camera access error', cameraError);
+        setIsInitialized(true); // Mark as initialized even with camera errors
       }
-      
-      logInfo('Creating barcode capture settings...');
-      // Create barcode capture settings
-      const settings = new BarcodeCaptureSettings();
-      
-      // Enable QR and other common barcode symbologies
-      settings.enableSymbologies([
-        Symbology.QR,
-        Symbology.DataMatrix,
-        Symbology.Code128,
-        Symbology.EAN13UPCA,
-        Symbology.EAN8
-      ]);
-      
-      logInfo('Creating barcode capture...');
-      // Create barcode capture with settings
-      const barcodeCapture = await BarcodeCapture.forContext(context, settings);
-      barcodeCaptureRef.current = barcodeCapture;
-      
-      // Add listener for barcode scanning
-      barcodeCapture.addListener({
-        didScan: async (_, session) => {
-          const barcode = session.newlyRecognizedBarcodes[0];
-          if (!barcode) return;
-          
-          const data = barcode.data || '';
-          const symbologyName = barcode.symbology || 'Unknown';
-          
-          logInfo(`Barcode scanned: ${data} (${symbologyName})`);
-          
-          // Pause scanning while processing
-          await barcodeCapture.setEnabled(false);
-          
-          // Call the onScanSuccess callback with scan data
-          onScanSuccess(data, symbologyName);
-          
-          // Resume scanning after a short delay
-          setTimeout(async () => {
-            if (isEnabled && barcodeCaptureRef.current) {
-              await barcodeCaptureRef.current.setEnabled(true);
-            }
-          }, 1000);
-        }
-      });
-      
-      // Enable the barcode capture
-      await barcodeCapture.setEnabled(isEnabled);
-      
-      // Start the camera if available
-      if (isEnabled && context.frameSource) {
-        try {
-          await context.frameSource.switchToDesiredState(FrameSourceState.On);
-          logInfo('Camera started');
-        } catch (cameraError) {
-          logError('Could not start camera', cameraError);
-          // Don't throw error here, continue with initialization
-        }
-      } else if (isEnabled) {
-        logInfo('No camera available to start');
-      }
-      
-      setIsInitialized(true);
-      logInfo('Scandit scanner initialization complete');
-      
     } catch (error: any) {
-      logError('Failed to initialize scanner', error);
+      // Special handling for Error 28
+      if (error.message && error.message.includes('Error 28')) {
+        setError('Error 28: The Scandit SDK could not access a required resource to operate');
+      } else {
+        logError('Failed to initialize scanner', error);
+      }
     }
   };
 
@@ -230,80 +190,19 @@ export default function ScanditScanner({
     
     // Cleanup function
     return () => {
-      const cleanupScanner = async () => {
-        logInfo('Cleaning up scanner resources...');
-        try {
-          // Disable barcode capture
-          if (barcodeCaptureRef.current) {
-            try {
-              await barcodeCaptureRef.current.setEnabled(false);
-              logInfo('Barcode capture disabled');
-            } catch (e) {
-              logError('Could not disable barcode capture', e);
-            }
-          }
-          
-          // Turn off camera
-          if (contextRef.current?.frameSource) {
-            try {
-              await contextRef.current.frameSource.switchToDesiredState(FrameSourceState.Off);
-              logInfo('Camera turned off');
-            } catch (e) {
-              logError('Could not turn off camera', e);
-            }
-          }
-          
-          // Dispose of context
-          if (contextRef.current) {
-            try {
-              await contextRef.current.dispose();
-              contextRef.current = null;
-              logInfo('Context disposed');
-            } catch (e) {
-              logError('Could not dispose context', e);
-            }
-          }
-        } catch (error) {
-          logError('Error during cleanup', error);
-        }
-      };
-      
-      cleanupScanner();
+      if (barcodeCaptureMode) {
+        barcodeCaptureMode.isEnabled = false;
+      }
     };
   }, []);
 
   // Effect to handle enabling/disabling the scanner
   useEffect(() => {
-    const updateScannerState = async () => {
-      if (!isInitialized) return;
-      
-      try {
-        if (barcodeCaptureRef.current) {
-          try {
-            await barcodeCaptureRef.current.setEnabled(isEnabled);
-            logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
-          } catch (e) {
-            logError('Could not update barcode capture state', e);
-          }
-        }
-        
-        if (contextRef.current?.frameSource) {
-          try {
-            await contextRef.current.frameSource.switchToDesiredState(
-              isEnabled ? FrameSourceState.On : FrameSourceState.Off
-            );
-            logInfo(`Camera ${isEnabled ? 'started' : 'stopped'}`);
-          } catch (e) {
-            logError('Could not update camera state', e);
-          }
-        }
-      } catch (error) {
-        logError('Error updating scanner state', error);
-      }
-    };
+    if (!isInitialized || !barcodeCaptureMode) return;
     
-    updateScannerState();
-  }, [isEnabled, isInitialized]);
+    barcodeCaptureMode.isEnabled = isEnabled;
+    logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
+  }, [isEnabled, isInitialized, barcodeCaptureMode]);
 
   // Check if the error is related to camera access, resource loading, or protocol
   const isCameraAccessError = error && (
@@ -327,7 +226,7 @@ export default function ScanditScanner({
         className="w-full h-full min-h-[60vh] bg-black"
       />
       
-      {error && !isCameraAccessError && !isResourceError && (
+      {error && !isCameraAccessError && !isResourceError && !isProtocolError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div>
             <p className="text-red-500 font-bold mb-2">حدث خطأ في تشغيل الماسح</p>
@@ -364,7 +263,6 @@ export default function ScanditScanner({
                 <li>تأكد من اتصالك بالإنترنت</li>
                 <li>استخدم متصفح حديث (مثل Chrome أو Safari)</li>
                 <li>امنح التطبيق الأذونات اللازمة</li>
-                <li>قم بتحديث الصفحة</li>
                 <li>تأكد من استخدام رابط HTTPS</li>
               </ul>
             </div>
