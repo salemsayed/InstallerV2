@@ -3,7 +3,6 @@ import LoginPage from "@/pages/auth/login-page";
 import InstallerDashboard from "@/pages/installer/dashboard";
 import InstallerStats from "@/pages/installer/stats";
 import InstallerProfile from "@/pages/installer/profile";
-import AdvancedScanPage from "@/pages/installer/advanced-scan";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
@@ -21,7 +20,6 @@ function Router() {
       <Route path="/installer/dashboard" component={InstallerDashboard} />
       <Route path="/installer/stats" component={InstallerStats} />
       <Route path="/installer/profile" component={InstallerProfile} />
-      <Route path="/installer/advanced-scan" component={AdvancedScanPage} />
       
       {/* Admin Routes */}
       <Route path="/admin/dashboard" component={AdminDashboard} />
