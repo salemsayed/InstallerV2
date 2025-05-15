@@ -179,7 +179,8 @@ export default function AdvancedScanPage() {
           DataCaptureView,
           DataCaptureContext,
           Camera,
-          FrameSourceState
+          FrameSourceState,
+          TorchSwitchControl
         } = core as any;
 
         const {
@@ -209,6 +210,10 @@ export default function AdvancedScanPage() {
         const view = new DataCaptureView();
         await view.setContext(context);
         view.connectToElement(scannerRef.current!);
+        
+        // 🔦 Torch toggle button (auto-hides if torch not available)
+        const torchSwitch = new TorchSwitchControl();
+        await view.addControl(torchSwitch);
 
         /* Camera */
         const camera = Camera.default;
