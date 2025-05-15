@@ -1,9 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import arOnlyLogo from "@assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
-import ScanditScanner from "@/components/installer/scandit-scanner";
+import QrScanner from "@/components/installer/qr-scanner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
     if (location.includes('dashboard')) return 'dashboard';
     if (location.includes('stats')) return 'stats';
     if (location.includes('profile')) return 'profile';
+    if (location.includes('advanced-scan')) return 'advanced-scan';
     return 'dashboard';
   })();
 
@@ -63,12 +64,12 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
         {children}
       </main>
       
-      {/* Scandit QR Scanner */}
-      <ScanditScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
+      {/* QR Scanner */}
+      <QrScanner onScanSuccess={(productName) => console.log(`Scanned product: ${productName}`)} />
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/dashboard">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -80,7 +81,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
           </Link>
         </div>
         
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/stats">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -92,7 +93,19 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
           </Link>
         </div>
         
-        <div className="w-1/3">
+        <div className="w-1/4">
+          <Link href="/installer/advanced-scan">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              currentTab === "advanced-scan" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">qr_code_scanner</span>
+              <span className="text-xs mt-1">المسح المتقدم</span>
+            </div>
+          </Link>
+        </div>
+        
+        <div className="w-1/4">
           <Link href="/installer/profile">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
