@@ -24,17 +24,23 @@ export default function SimpleScanditScanner({
   useEffect(() => {
     // Check for HTTPS protocol
     if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-      setError('يرجى استخدام بروتوكول HTTPS لاستخدام الماسح المتقدم');
+      const errorMsg = 'يرجى استخدام بروتوكول HTTPS لاستخدام الماسح المتقدم';
+      setError(errorMsg);
       setIsLoading(false);
+      if (onError) {
+        onError(new Error(errorMsg));
+      }
       return;
     }
     
     // Create script elements for loading the SDK libraries
+    // Use alternative CDN URLs to improve load success rate
     const coreScript = document.createElement('script');
-    coreScript.src = 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core/build/engine/index.min.js';
+    coreScript.src = 'https://unpkg.com/@scandit/datacapture-js-browser@7.2.2/build/scandit-datacapture-sdk.min.js'; 
     
+    // We don't need a separate barcode script when using the unified SDK
     const barcodeScript = document.createElement('script');
-    barcodeScript.src = 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode/build/engine/index.min.js';
+    barcodeScript.src = 'https://unpkg.com/@scandit/datacapture-js-browser@7.2.2/build/scandit-datacapture-sdk.min.js';
     
     // Add custom initialization script
     const initScript = document.createElement('script');
@@ -156,6 +162,9 @@ export default function SimpleScanditScanner({
     const handleError = (event: any) => {
       setError(event.detail);
       setIsLoading(false);
+      if (onError) {
+        onError(new Error(event.detail));
+      }
     };
     
     const handleLoaded = () => {
@@ -178,13 +187,21 @@ export default function SimpleScanditScanner({
     };
     
     coreScript.onerror = () => {
-      setError('Failed to load Scandit core library');
+      const errorMsg = 'Failed to load Scandit core library';
+      setError(errorMsg);
       setIsLoading(false);
+      if (onError) {
+        onError(new Error(errorMsg));
+      }
     };
     
     barcodeScript.onerror = () => {
-      setError('Failed to load Scandit barcode library');
+      const errorMsg = 'Failed to load Scandit barcode library';
+      setError(errorMsg);
       setIsLoading(false);
+      if (onError) {
+        onError(new Error(errorMsg));
+      }
     };
     
     // Add scripts to DOM
@@ -239,7 +256,8 @@ export default function SimpleScanditScanner({
       <div 
         id="scandit-container"
         ref={containerRef}
-        className="w-full h-full min-h-[60vh] bg-black"
+        className="w-full h-full min-h-[60vh] bg-black overflow-hidden"
+        style={{ aspectRatio: '4/3' }}
       />
       
       {isLoading && (

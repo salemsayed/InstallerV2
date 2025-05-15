@@ -178,6 +178,14 @@ export default function AdvancedScanPage() {
                 ) : scanditData?.success && scanditData?.licenseKey ? (
                   <SimpleScanditScanner 
                     onScanSuccess={handleScanSuccess}
+                    onError={(error) => {
+                      toast({
+                        title: "خطأ في تحميل الماسح المتقدم",
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                      setScanditInitFailed(true);
+                    }}
                     isEnabled={isScannerEnabled}
                     className="w-full" 
                     licenseKey={scanditData.licenseKey}
