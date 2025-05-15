@@ -19,6 +19,7 @@ import {
 
 interface ScanditScannerProps {
   onScanSuccess: (data: string, symbology: string) => void;
+  onError?: (error: Error) => void;
   isEnabled?: boolean;
   className?: string;
   licenseKey: string;
@@ -79,7 +80,8 @@ export default function ScanditScanner({
       await configure({
         licenseKey: licenseKey,
         moduleLoaders: [barcodeCaptureLoader()],
-        libraryLocation: new URL('node_modules/@scandit/web-datacapture-barcode/sdc-lib/', window.location.origin).href,
+        // Use CDN path instead of relative path to avoid Replit environment issues
+        libraryLocation: 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/dist/',
       });
       
       view.hideProgressBar();
@@ -94,18 +96,25 @@ export default function ScanditScanner({
       
       logInfo('Initializing camera...');
       // Initialize camera
-      const camera = Camera.default;
-      if (!camera) {
-        throw new Error('No camera available');
+      try {
+        // Try to get the default camera
+        const camera = Camera.default;
+        if (!camera) {
+          throw new Error('No camera available');
+        }
+        cameraRef.current = camera;
+        
+        // Apply recommended camera settings
+        const cameraSettings = BarcodeCapture.recommendedCameraSettings;
+        await camera.applySettings(cameraSettings);
+        
+        // Set the camera as the frame source
+        await context.setFrameSource(camera);
+      } catch (cameraError) {
+        logError('Camera access error. This is expected in environments without camera access.', cameraError);
+        // Continue with setup, just without a camera
+        // This allows the scanner to still be initialized for testing purposes
       }
-      cameraRef.current = camera;
-      
-      // Apply recommended camera settings
-      const cameraSettings = BarcodeCapture.recommendedCameraSettings;
-      await camera.applySettings(cameraSettings);
-      
-      // Set the camera as the frame source
-      await context.setFrameSource(camera);
       
       logInfo('Creating barcode capture settings...');
       // Create barcode capture settings

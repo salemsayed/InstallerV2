@@ -15,6 +15,7 @@ export default function AdvancedScanPage() {
   const { toast } = useToast();
   const [isScannerEnabled, setScannerEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState("scan");
+  const [scanditInitFailed, setScanditInitFailed] = useState(false);
   const [scannedData, setScannedData] = useState<{
     data: string;
     symbology: string;
@@ -177,6 +178,14 @@ export default function AdvancedScanPage() {
                 ) : scanditData?.success && scanditData?.licenseKey ? (
                   <ScanditScanner 
                     onScanSuccess={handleScanSuccess}
+                    onError={(error) => {
+                      toast({
+                        title: "خطأ في تحميل الماسح المتقدم",
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                      setScanditInitFailed(true);
+                    }}
                     isEnabled={isScannerEnabled}
                     className="w-full" 
                     licenseKey={scanditData.licenseKey}
@@ -188,6 +197,23 @@ export default function AdvancedScanPage() {
                     <p className="text-gray-600">
                       لم يتم العثور على مفتاح ترخيص Scandit
                     </p>
+                  </div>
+                )}
+                
+                {scanditInitFailed && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 py-12 px-4 text-center text-white">
+                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+                    <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة الماسح المتقدم</h3>
+                    <p className="text-gray-200 mb-6">
+                      واجهنا مشكلة في الوصول إلى مكتبات الماسح المتقدم. قد يكون ذلك بسبب اتصال الإنترنت أو إعدادات الخادم.
+                    </p>
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="default"
+                      size="lg"
+                    >
+                      إعادة المحاولة
+                    </Button>
                   </div>
                 )}
               </CardContent>
