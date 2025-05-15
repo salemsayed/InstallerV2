@@ -33,54 +33,52 @@ export default function SimpleScanditScanner({
       return;
     }
     
-    // Create script elements for loading the SDK libraries
-    // Use alternative CDN URLs to improve load success rate
-    const coreScript = document.createElement('script');
-    coreScript.src = 'https://unpkg.com/@scandit/datacapture-js-browser@7.2.2/build/scandit-datacapture-sdk.min.js'; 
-    
-    // We don't need a separate barcode script when using the unified SDK
-    const barcodeScript = document.createElement('script');
-    barcodeScript.src = 'https://unpkg.com/@scandit/datacapture-js-browser@7.2.2/build/scandit-datacapture-sdk.min.js';
+    // Create script element for loading the SDK library
+    const scanditScript = document.createElement('script');
+    // Use version 6.x that is known to be more stable with web applications
+    scanditScript.src = 'https://cdn.jsdelivr.net/npm/@scandit/datacapture-js-browser@6.14.0/build/scandit-datacapture-sdk.min.js';
     
     // Add custom initialization script
     const initScript = document.createElement('script');
     initScript.type = 'text/javascript';
     
-    // Only initialize once both scripts are loaded
-    let coreLoaded = false;
-    let barcodeLoaded = false;
-    
+    // Initialize when script is loaded
     const initScandit = () => {
-      if (!coreLoaded || !barcodeLoaded) return;
       
       // Initialize Scandit
       const scanditInitCode = `
         try {
-          // Initialize scandit with license key
-          const ScanditSDK = window.ScanditSDK;
-          ScanditSDK.configure({
-            licenseKey: "${licenseKey}",
-            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode/build/engine/"
+          // Initialize with Scandit 6.x API which is more stable for web applications
+          if (!window.Scandit) {
+            window.dispatchEvent(new CustomEvent('scandit-error', { 
+              detail: 'Scandit SDK not loaded properly' 
+            }));
+            return;
+          }
+          
+          // Configure Scandit SDK with license key
+          window.Scandit.configure("${licenseKey}", {
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/datacapture-js-browser@6.14.0/build/"
           }).then(() => {
-            const { DataCaptureView, Camera, BarcodeCaptureSettings, BarcodeCapture, Symbology } = ScanditSDK;
-            
             // Create data capture context
-            const context = new ScanditSDK.DataCaptureContext({ licenseKey: "${licenseKey}" });
+            const context = window.Scandit.DataCaptureContext.create("${licenseKey}", {
+              deviceName: "Browser",
+              libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/datacapture-js-browser@6.14.0/build/"
+            });
             
-            // Get camera if available
-            ScanditSDK.Camera.getDefaultCameraDeviceId()
-              .then(deviceId => {
-                if (!deviceId) {
-                  window.dispatchEvent(new CustomEvent('scandit-error', { 
-                    detail: 'No camera available' 
-                  }));
-                  return;
-                }
+            // Setup camera
+            window.Scandit.Camera.default.applySettings(
+              window.Scandit.BarcodeCapture.recommendedCameraSettings
+            ).then(() => {
+              // Continue with camera setup
+              if (!window.Scandit.Camera.default) {
+                window.dispatchEvent(new CustomEvent('scandit-error', { 
+                  detail: 'No camera available' 
+                }));
+                return;
+              }
                 
-                const camera = ScanditSDK.Camera.withSettings({
-                  preferredResolution: 'HD',
-                  deviceId: deviceId
-                });
+              // Use default camera
                 
                 // Set camera as frame source
                 context.setFrameSource(camera);
@@ -176,18 +174,12 @@ export default function SimpleScanditScanner({
     window.addEventListener('scandit-loaded', handleLoaded);
     
     // Handle script loading
-    coreScript.onload = () => {
-      coreLoaded = true;
+    scanditScript.onload = () => {
       initScandit();
     };
     
-    barcodeScript.onload = () => {
-      barcodeLoaded = true;
-      initScandit();
-    };
-    
-    coreScript.onerror = () => {
-      const errorMsg = 'Failed to load Scandit core library';
+    scanditScript.onerror = () => {
+      const errorMsg = 'Failed to load Scandit library';
       setError(errorMsg);
       setIsLoading(false);
       if (onError) {
@@ -195,18 +187,8 @@ export default function SimpleScanditScanner({
       }
     };
     
-    barcodeScript.onerror = () => {
-      const errorMsg = 'Failed to load Scandit barcode library';
-      setError(errorMsg);
-      setIsLoading(false);
-      if (onError) {
-        onError(new Error(errorMsg));
-      }
-    };
-    
-    // Add scripts to DOM
-    document.head.appendChild(coreScript);
-    document.head.appendChild(barcodeScript);
+    // Add script to DOM
+    document.head.appendChild(scanditScript);
     
     // Cleanup function
     return () => {
@@ -227,8 +209,7 @@ export default function SimpleScanditScanner({
       }
       
       // Remove scripts
-      if (coreScript.parentNode) coreScript.parentNode.removeChild(coreScript);
-      if (barcodeScript.parentNode) barcodeScript.parentNode.removeChild(barcodeScript);
+      if (scanditScript.parentNode) scanditScript.parentNode.removeChild(scanditScript);
       if (initScript.parentNode) initScript.parentNode.removeChild(initScript);
     };
   }, [licenseKey, onScanSuccess]);
