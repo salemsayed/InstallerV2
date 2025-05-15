@@ -140,47 +140,25 @@ export default function AdvancedScanPage() {
           <TabsContent value="scan" className="mt-4">
             <Card className="overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle>ماسح Scandit المتقدم</CardTitle>
+                <CardTitle>الماسح الضوئي المتقدم</CardTitle>
                 <CardDescription>
                   قم بتوجيه الكاميرا نحو رمز QR للمنتج
                 </CardDescription>
               </CardHeader>
               
               <CardContent className="p-0">
-                {isScanditKeyLoading ? (
-                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                    <p className="text-center">جاري تحميل الماسح المتقدم...</p>
-                  </div>
-                ) : isScanditKeyError ? (
-                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
-                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="font-bold text-red-600 mb-2">فشل تحميل الماسح</h3>
-                    <p className="text-gray-600 mb-4">
-                      {scanditKeyError instanceof Error ? scanditKeyError.message : 'حدث خطأ أثناء تحميل مفتاح ترخيص الماسح'}
-                    </p>
-                    <Button 
-                      onClick={() => window.location.reload()}
-                      variant="outline"
-                      size="sm"
-                    >
-                      إعادة المحاولة
-                    </Button>
-                  </div>
-                ) : (
-                  <Html5QrScanner 
-                    onScanSuccess={(data) => handleScanSuccess(data, 'QR_CODE')}
-                    isEnabled={isScannerEnabled}
-                    className="w-full"
-                  />
-                )}
+                <Html5QrScanner 
+                  onScanSuccess={(data) => handleScanSuccess(data, 'QR_CODE')}
+                  isEnabled={isScannerEnabled}
+                  className="w-full"
+                />
                 
-                {scanditInitFailed && (
+                {scannerInitFailed && 
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 py-12 px-4 text-center text-white">
                     <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة الماسح المتقدم</h3>
+                    <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة الماسح الضوئي</h3>
                     <p className="text-gray-200 mb-6">
-                      واجهنا مشكلة في الوصول إلى مكتبات الماسح المتقدم. قد يكون ذلك بسبب اتصال الإنترنت أو إعدادات الخادم.
+                      واجهنا مشكلة في الوصول إلى مكتبات الماسح الضوئي. قد يكون ذلك بسبب اتصال الإنترنت أو إعدادات المتصفح.
                     </p>
                     <Button 
                       onClick={() => window.location.reload()}
@@ -190,12 +168,12 @@ export default function AdvancedScanPage() {
                       إعادة المحاولة
                     </Button>
                   </div>
-                )}
+                }
               </CardContent>
               
               <CardFooter className="flex justify-between pt-4">
                 <p className="text-sm text-muted-foreground">
-                  باستخدام تقنية Scandit للمسح الضوئي
+                  ماسح ضوئي متطور لرموز QR والباركود
                 </p>
               </CardFooter>
             </Card>
