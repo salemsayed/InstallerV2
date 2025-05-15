@@ -54,25 +54,25 @@ export default function SimpleScanditScanner({
             licenseKey: "${licenseKey}",
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/build/engine/"
           }).then(() => {
-            // Create data capture context
-            const context = window.Scandit.DataCaptureContext.create("${licenseKey}", {
-              deviceName: "Browser",
-              libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/datacapture-js-browser@6.14.0/build/"
-            });
+            const { DataCaptureView, Camera, BarcodeCaptureSettings, BarcodeCapture, Symbology } = ScanditSDK;
             
-            // Setup camera
-            window.Scandit.Camera.default.applySettings(
-              window.Scandit.BarcodeCapture.recommendedCameraSettings
-            ).then(() => {
-              // Continue with camera setup
-              if (!window.Scandit.Camera.default) {
-                window.dispatchEvent(new CustomEvent('scandit-error', { 
-                  detail: 'No camera available' 
-                }));
-                return;
-              }
+            // Create data capture context
+            const context = new ScanditSDK.DataCaptureContext({ licenseKey: "${licenseKey}" });
+            
+            // Get camera if available
+            ScanditSDK.Camera.getDefaultCameraDeviceId()
+              .then(deviceId => {
+                if (!deviceId) {
+                  window.dispatchEvent(new CustomEvent('scandit-error', { 
+                    detail: 'No camera available' 
+                  }));
+                  return;
+                }
                 
-              // Use default camera
+                const camera = ScanditSDK.Camera.withSettings({
+                  preferredResolution: 'HD',
+                  deviceId: deviceId
+                });
                 
                 // Set camera as frame source
                 context.setFrameSource(camera);

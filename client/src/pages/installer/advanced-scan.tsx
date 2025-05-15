@@ -148,7 +148,7 @@ export default function AdvancedScanPage() {
           <TabsContent value="scan" className="mt-4">
             <Card className="overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle>الماسح الضوئي المتقدم</CardTitle>
+                <CardTitle>ماسح Scandit المتقدم</CardTitle>
                 <CardDescription>
                   قم بتوجيه الكاميرا نحو رمز QR للمنتج
                 </CardDescription>
@@ -220,7 +220,7 @@ export default function AdvancedScanPage() {
               
               <CardFooter className="flex justify-between pt-4">
                 <p className="text-sm text-muted-foreground">
-                  ماسح ضوئي متطور لرموز QR والباركود
+                  باستخدام تقنية Scandit للمسح الضوئي
                 </p>
               </CardFooter>
             </Card>
