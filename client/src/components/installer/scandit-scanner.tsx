@@ -49,6 +49,13 @@ export default function ScanditScanner({
   const logError = (message: string, error?: any) => {
     const errorMessage = error ? `${message}: ${error.message || JSON.stringify(error)}` : message;
     console.error(`[Scandit Scanner] ERROR: ${errorMessage}`);
+    
+    // Special handling for Error 28 - resource load failure
+    if (typeof error === 'object' && error?.message?.includes('Error 28')) {
+      setError('Error 28: The Scandit SDK could not access a required resource to operate');
+      return; // Don't show toast for this common error
+    }
+    
     setError(errorMessage);
     
     toast({
@@ -77,12 +84,20 @@ export default function ScanditScanner({
       
       logInfo('Configuring Scandit license...');
       // Configure Scandit with license key
-      await configure({
-        licenseKey: licenseKey,
-        moduleLoaders: [barcodeCaptureLoader()],
-        // Use CDN path instead of relative path to avoid Replit environment issues
-        libraryLocation: 'https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.2/dist/',
-      });
+      try {
+        logInfo('Configuring Scandit with library from CDN...');
+        await configure({
+          licenseKey: licenseKey,
+          moduleLoaders: [barcodeCaptureLoader()],
+          // Use older, more stable version via unpkg CDN
+          libraryLocation: 'https://unpkg.com/@scandit/datacapture-js-browser@6.16.1/build/',
+          engineLocation: 'https://unpkg.com/@scandit/datacapture-js-browser@6.16.1/build/engine/',
+        });
+        logInfo('Scandit configuration successful');
+      } catch (configError) {
+        logError('Failed to configure Scandit', configError);
+        throw configError; // Re-throw to be caught by the outer try-catch
+      }
       
       view.hideProgressBar();
       
@@ -185,6 +200,12 @@ export default function ScanditScanner({
   };
 
   useEffect(() => {
+    // Check for HTTPS protocol
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      setError('يرجى استخدام بروتوكول HTTPS لاستخدام الماسح المتقدم');
+      return;
+    }
+    
     initializeScanner();
     
     // Cleanup function
@@ -264,12 +285,20 @@ export default function ScanditScanner({
     updateScannerState();
   }, [isEnabled, isInitialized]);
 
-  // Check if the error is related to camera access
+  // Check if the error is related to camera access, resource loading, or protocol
   const isCameraAccessError = error && (
     error.includes("No camera available") || 
     error.includes("Camera access") ||
     error.includes("Could not start camera")
   );
+  
+  const isResourceError = error && (
+    error.includes("Error 28") || 
+    error.includes("could not access a required resource") ||
+    error.includes("Failed to load resource")
+  );
+  
+  const isProtocolError = error && error.includes("HTTPS");
   
   return (
     <div className={`relative ${className}`}>
@@ -278,11 +307,55 @@ export default function ScanditScanner({
         className="w-full h-full min-h-[60vh] bg-black"
       />
       
-      {error && !isCameraAccessError && (
+      {error && !isCameraAccessError && !isResourceError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div>
             <p className="text-red-500 font-bold mb-2">حدث خطأ في تشغيل الماسح</p>
             <p>{error}</p>
+          </div>
+        </div>
+      )}
+      
+      {isProtocolError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
+          <div className="max-w-md">
+            <p className="text-red-500 font-bold mb-2">بروتوكول غير آمن</p>
+            <p className="mb-4">يتطلب الماسح المتقدم استخدام بروتوكول HTTPS الآمن للعمل بشكل صحيح</p>
+            <div className="bg-gray-800 rounded p-3 text-sm">
+              <p className="text-right mb-2">الحلول:</p>
+              <ul className="text-right list-disc list-inside space-y-1">
+                <li>استخدم رابط HTTPS بدلاً من HTTP</li>
+                <li>قم بتثبيت التطبيق على الهاتف من خلال رابط HTTPS</li>
+                <li>استخدم متصفحاً حديثاً يدعم HTTPS</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {isResourceError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
+          <div className="max-w-md">
+            <p className="text-red-500 font-bold mb-2">تعذر تحميل موارد الماسح</p>
+            <p className="mb-4">يواجه الماسح مشكلة في تحميل الموارد المطلوبة للعمل بشكل صحيح</p>
+            <div className="bg-gray-800 rounded p-3 text-sm">
+              <p className="text-right mb-2">الحلول المحتملة:</p>
+              <ul className="text-right list-disc list-inside space-y-1">
+                <li>تأكد من اتصالك بالإنترنت</li>
+                <li>استخدم متصفح حديث (مثل Chrome أو Safari)</li>
+                <li>امنح التطبيق الأذونات اللازمة</li>
+                <li>قم بتحديث الصفحة</li>
+                <li>تأكد من استخدام رابط HTTPS</li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => window.location.reload()}
+              variant="default"
+              size="sm"
+              className="mt-4"
+            >
+              إعادة تحميل الصفحة
+            </Button>
           </div>
         </div>
       )}
