@@ -158,7 +158,7 @@ export default function AdvancedScanPage() {
                 {isScanditKeyLoading ? (
                   <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                    <p className="text-center">جاري تحميل الماسح المتقدم...</p>
+                    <p className="text-center">جاري تحميل ماسح Scandit المتقدم...</p>
                   </div>
                 ) : isScanditKeyError ? (
                   <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
