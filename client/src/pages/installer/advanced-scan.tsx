@@ -44,7 +44,7 @@ export default function AdvancedScanPage() {
 
         /* Initialise the engine (downloads WASM files automatically) */
         await configure({
-          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY,
+          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || process.env.SCANDIT_LICENSE_KEY,
           libraryLocation:
             "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.3.0/sdc-lib/",
           moduleLoaders: [barcodeCaptureLoader()]
