@@ -10,6 +10,7 @@ export default function AdvancedScanPage() {
   const scannerRef = useRef<HTMLDivElement>(null);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError]   = useState<string | null>(null);
+  const [licenseStatus, setLicenseStatus] = useState<'initialized' | 'failed' | null>(null);
 
   useEffect(() => {
     document.title = "مسح متقدم | برنامج مكافآت بريق";
@@ -44,9 +45,9 @@ export default function AdvancedScanPage() {
 
         /* Initialise the engine (downloads WASM files automatically) */
         await configure({
-          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || process.env.SCANDIT_LICENSE_KEY,
+          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
           libraryLocation:
-            "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.3.0/sdc-lib/",
+            "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
           moduleLoaders: [barcodeCaptureLoader()]
         });
 
