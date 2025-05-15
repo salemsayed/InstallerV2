@@ -101,8 +101,6 @@ export default function InstallerDashboard() {
         />
       </section>
       
-      {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}
-      <QrScanner />
     </InstallerLayout>
   );
 }
