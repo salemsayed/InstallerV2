@@ -7,8 +7,7 @@ import {
   DataCaptureView,
   Camera,
   DataCaptureContext,
-  FrameSourceState,
-  SymbologyDescription
+  FrameSourceState
 } from '@scandit/web-datacapture-core';
 
 import {

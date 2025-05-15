@@ -1510,6 +1510,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API to get Scandit license key
+  app.get("/api/scandit/license-key", async (req: Request, res: Response) => {
+    // Validate user authentication
+    const userId = parseInt(req.query.userId as string || '0');
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED"
+      });
+    }
+    
+    try {
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول.",
+          error_code: "UNAUTHORIZED"
+        });
+      }
+      
+      // Return the Scandit license key from environment variables
+      const licenseKey = process.env.SCANDIT_LICENSE_KEY;
+      
+      if (!licenseKey) {
+        console.error("Scandit license key not found in environment variables");
+        return res.status(500).json({
+          success: false,
+          message: "مفتاح ترخيص Scandit غير متوفر",
+          error_code: "LICENSE_KEY_MISSING"
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        licenseKey
+      });
+      
+    } catch (error: any) {
+      console.error("Error retrieving Scandit license key:", error);
+      return res.status(500).json({
+        success: false,
+        message: "فشل في استرجاع مفتاح ترخيص Scandit",
+        error_code: "LICENSE_KEY_ERROR",
+        details: { error: error.message || "خطأ غير معروف" }
+      });
+    }
+  });
+  
   // Create the HTTP server
   const httpServer = createServer(app);
   return httpServer;

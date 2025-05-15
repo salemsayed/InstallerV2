@@ -8,7 +8,7 @@ import ScanditScanner from "@/components/installer/scandit-scanner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, QrCode, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, QrCode, CheckCircle2, AlertCircle, ShieldAlert } from "lucide-react";
 
 export default function AdvancedScanPage() {
   const { user } = useAuth();
@@ -22,6 +22,17 @@ export default function AdvancedScanPage() {
     processed: boolean;
     result?: { success: boolean; message: string; points?: number; productName?: string; };
   } | null>(null);
+  
+  // Fetch Scandit license key
+  const { 
+    data: scanditData,
+    isLoading: isScanditKeyLoading,
+    isError: isScanditKeyError,
+    error: scanditKeyError
+  } = useQuery({
+    queryKey: [`/api/scandit/license-key?userId=${user?.id}`],
+    enabled: !!user?.id,
+  });
 
   // Scan QR code mutation
   const { mutate: processQrCode, isPending: isProcessing } = useMutation({
@@ -143,12 +154,42 @@ export default function AdvancedScanPage() {
               </CardHeader>
               
               <CardContent className="p-0">
-                <ScanditScanner 
-                  onScanSuccess={handleScanSuccess}
-                  isEnabled={isScannerEnabled}
-                  className="w-full" 
-                  licenseKey="YOUR_SCANDIT_LICENSE_KEY" 
-                />
+                {isScanditKeyLoading ? (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                    <p className="text-center">جاري تحميل الماسح المتقدم...</p>
+                  </div>
+                ) : isScanditKeyError ? (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
+                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+                    <h3 className="font-bold text-red-600 mb-2">فشل تحميل الماسح</h3>
+                    <p className="text-gray-600 mb-4">
+                      {scanditKeyError instanceof Error ? scanditKeyError.message : 'حدث خطأ أثناء تحميل مفتاح ترخيص الماسح'}
+                    </p>
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                      size="sm"
+                    >
+                      إعادة المحاولة
+                    </Button>
+                  </div>
+                ) : scanditData?.success && scanditData?.licenseKey ? (
+                  <ScanditScanner 
+                    onScanSuccess={handleScanSuccess}
+                    isEnabled={isScannerEnabled}
+                    className="w-full" 
+                    licenseKey={scanditData.licenseKey}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
+                    <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+                    <h3 className="font-bold text-red-600 mb-2">مفتاح ترخيص غير متوفر</h3>
+                    <p className="text-gray-600">
+                      لم يتم العثور على مفتاح ترخيص Scandit
+                    </p>
+                  </div>
+                )}
               </CardContent>
               
               <CardFooter className="flex justify-between pt-4">
