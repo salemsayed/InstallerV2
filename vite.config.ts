@@ -31,7 +31,10 @@ export default defineConfig({
     rollupOptions: {
       external: [
         '@scandit/web-datacapture-core',
-        '@scandit/web-datacapture-barcode'
+        '@scandit/web-datacapture-core/*',
+        '@scandit/web-datacapture-barcode',
+        '@scandit/web-datacapture-barcode/*',
+        /^@scandit\/.*/
       ]
     }
   },
