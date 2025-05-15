@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 interface SimpleScanditScannerProps {
   onScanSuccess: (data: string, symbology: string) => void;
+  onError?: (error: Error) => void;
   isEnabled?: boolean;
   className?: string;
   licenseKey: string;
@@ -11,6 +12,7 @@ interface SimpleScanditScannerProps {
 
 export default function SimpleScanditScanner({
   onScanSuccess,
+  onError,
   isEnabled = true,
   className = '',
   licenseKey

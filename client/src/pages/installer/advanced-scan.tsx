@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import InstallerLayout from "@/components/layouts/installer-layout";
-import ScanditScanner from "@/components/installer/scandit-scanner-alt";
+import SimpleScanditScanner from "@/components/installer/simple-scandit-scanner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -176,16 +176,8 @@ export default function AdvancedScanPage() {
                     </Button>
                   </div>
                 ) : scanditData?.success && scanditData?.licenseKey ? (
-                  <ScanditScanner 
+                  <SimpleScanditScanner 
                     onScanSuccess={handleScanSuccess}
-                    onError={(error) => {
-                      toast({
-                        title: "خطأ في تحميل الماسح المتقدم",
-                        description: error.message,
-                        variant: "destructive"
-                      });
-                      setScanditInitFailed(true);
-                    }}
                     isEnabled={isScannerEnabled}
                     className="w-full" 
                     licenseKey={scanditData.licenseKey}
