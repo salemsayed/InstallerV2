@@ -163,10 +163,17 @@ export default function ScanditScanner({
       // Enable the barcode capture
       await barcodeCapture.setEnabled(isEnabled);
       
-      // Start the camera
-      if (isEnabled) {
-        await context.frameSource?.switchToDesiredState(FrameSourceState.On);
-        logInfo('Camera started');
+      // Start the camera if available
+      if (isEnabled && context.frameSource) {
+        try {
+          await context.frameSource.switchToDesiredState(FrameSourceState.On);
+          logInfo('Camera started');
+        } catch (cameraError) {
+          logError('Could not start camera', cameraError);
+          // Don't throw error here, continue with initialization
+        }
+      } else if (isEnabled) {
+        logInfo('No camera available to start');
       }
       
       setIsInitialized(true);
@@ -187,21 +194,33 @@ export default function ScanditScanner({
         try {
           // Disable barcode capture
           if (barcodeCaptureRef.current) {
-            await barcodeCaptureRef.current.setEnabled(false);
-            logInfo('Barcode capture disabled');
+            try {
+              await barcodeCaptureRef.current.setEnabled(false);
+              logInfo('Barcode capture disabled');
+            } catch (e) {
+              logError('Could not disable barcode capture', e);
+            }
           }
           
           // Turn off camera
           if (contextRef.current?.frameSource) {
-            await contextRef.current.frameSource.switchToDesiredState(FrameSourceState.Off);
-            logInfo('Camera turned off');
+            try {
+              await contextRef.current.frameSource.switchToDesiredState(FrameSourceState.Off);
+              logInfo('Camera turned off');
+            } catch (e) {
+              logError('Could not turn off camera', e);
+            }
           }
           
           // Dispose of context
           if (contextRef.current) {
-            await contextRef.current.dispose();
-            contextRef.current = null;
-            logInfo('Context disposed');
+            try {
+              await contextRef.current.dispose();
+              contextRef.current = null;
+              logInfo('Context disposed');
+            } catch (e) {
+              logError('Could not dispose context', e);
+            }
           }
         } catch (error) {
           logError('Error during cleanup', error);
@@ -219,15 +238,23 @@ export default function ScanditScanner({
       
       try {
         if (barcodeCaptureRef.current) {
-          await barcodeCaptureRef.current.setEnabled(isEnabled);
-          logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
+          try {
+            await barcodeCaptureRef.current.setEnabled(isEnabled);
+            logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
+          } catch (e) {
+            logError('Could not update barcode capture state', e);
+          }
         }
         
         if (contextRef.current?.frameSource) {
-          await contextRef.current.frameSource.switchToDesiredState(
-            isEnabled ? FrameSourceState.On : FrameSourceState.Off
-          );
-          logInfo(`Camera ${isEnabled ? 'started' : 'stopped'}`);
+          try {
+            await contextRef.current.frameSource.switchToDesiredState(
+              isEnabled ? FrameSourceState.On : FrameSourceState.Off
+            );
+            logInfo(`Camera ${isEnabled ? 'started' : 'stopped'}`);
+          } catch (e) {
+            logError('Could not update camera state', e);
+          }
         }
       } catch (error) {
         logError('Error updating scanner state', error);
@@ -237,6 +264,13 @@ export default function ScanditScanner({
     updateScannerState();
   }, [isEnabled, isInitialized]);
 
+  // Check if the error is related to camera access
+  const isCameraAccessError = error && (
+    error.includes("No camera available") || 
+    error.includes("Camera access") ||
+    error.includes("Could not start camera")
+  );
+  
   return (
     <div className={`relative ${className}`}>
       <div 
@@ -244,11 +278,28 @@ export default function ScanditScanner({
         className="w-full h-full min-h-[60vh] bg-black"
       />
       
-      {error && (
+      {error && !isCameraAccessError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div>
             <p className="text-red-500 font-bold mb-2">حدث خطأ في تشغيل الماسح</p>
             <p>{error}</p>
+          </div>
+        </div>
+      )}
+      
+      {isCameraAccessError && isInitialized && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
+          <div className="max-w-md">
+            <p className="text-yellow-400 font-bold mb-2">لا يمكن الوصول إلى الكاميرا</p>
+            <p className="mb-4">يجب الوصول إلى كاميرا الجهاز لاستخدام الماسح المتقدم</p>
+            <div className="bg-gray-800 rounded p-3 text-sm">
+              <p className="text-right mb-2">للاستخدام:</p>
+              <ul className="text-right list-disc list-inside space-y-1">
+                <li>تأكد من منح التطبيق صلاحية استخدام الكاميرا</li>
+                <li>استخدم هاتفك أو جهازاً به كاميرا</li>
+                <li>استخدم متصفحاً يدعم الوصول إلى الكاميرا</li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
