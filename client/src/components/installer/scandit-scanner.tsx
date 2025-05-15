@@ -59,7 +59,7 @@ export default function ScanditScanner({
     setError(errorMessage);
     
     toast({
-      title: 'خطأ في الماسح الضوئي',
+      title: 'خطأ في ماسح Scandit',
       description: errorMessage,
       variant: 'destructive',
     });
@@ -330,7 +330,7 @@ export default function ScanditScanner({
       {error && !isCameraAccessError && !isResourceError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div>
-            <p className="text-red-500 font-bold mb-2">حدث خطأ في تشغيل الماسح</p>
+            <p className="text-red-500 font-bold mb-2">حدث خطأ في تشغيل ماسح Scandit</p>
             <p>{error}</p>
           </div>
         </div>
@@ -340,7 +340,7 @@ export default function ScanditScanner({
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div className="max-w-md">
             <p className="text-red-500 font-bold mb-2">بروتوكول غير آمن</p>
-            <p className="mb-4">يتطلب الماسح المتقدم استخدام بروتوكول HTTPS الآمن للعمل بشكل صحيح</p>
+            <p className="mb-4">يتطلب ماسح Scandit استخدام بروتوكول HTTPS الآمن للعمل بشكل صحيح</p>
             <div className="bg-gray-800 rounded p-3 text-sm">
               <p className="text-right mb-2">الحلول:</p>
               <ul className="text-right list-disc list-inside space-y-1">
@@ -356,8 +356,8 @@ export default function ScanditScanner({
       {isResourceError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div className="max-w-md">
-            <p className="text-red-500 font-bold mb-2">تعذر تحميل موارد الماسح</p>
-            <p className="mb-4">يواجه الماسح مشكلة في تحميل الموارد المطلوبة للعمل بشكل صحيح</p>
+            <p className="text-red-500 font-bold mb-2">تعذر تحميل موارد ماسح Scandit</p>
+            <p className="mb-4">يواجه ماسح Scandit مشكلة في تحميل الموارد المطلوبة للعمل بشكل صحيح</p>
             <div className="bg-gray-800 rounded p-3 text-sm">
               <p className="text-right mb-2">الحلول المحتملة:</p>
               <ul className="text-right list-disc list-inside space-y-1">
@@ -384,7 +384,7 @@ export default function ScanditScanner({
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white p-4 text-center">
           <div className="max-w-md">
             <p className="text-yellow-400 font-bold mb-2">لا يمكن الوصول إلى الكاميرا</p>
-            <p className="mb-4">يجب الوصول إلى كاميرا الجهاز لاستخدام الماسح المتقدم</p>
+            <p className="mb-4">يجب الوصول إلى كاميرا الجهاز لاستخدام ماسح Scandit المتقدم</p>
             <div className="bg-gray-800 rounded p-3 text-sm">
               <p className="text-right mb-2">للاستخدام:</p>
               <ul className="text-right list-disc list-inside space-y-1">
@@ -401,7 +401,7 @@ export default function ScanditScanner({
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-white">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4">جاري تحميل الماسح المتقدم...</p>
+            <p className="mt-4">جاري تحميل ماسح Scandit المتقدم...</p>
           </div>
         </div>
       )}

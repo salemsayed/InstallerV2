@@ -163,9 +163,9 @@ export default function AdvancedScanPage() {
                 ) : isScanditKeyError ? (
                   <div className="flex flex-col items-center justify-center bg-gray-100 py-12 px-4 text-center">
                     <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="font-bold text-red-600 mb-2">فشل تحميل الماسح</h3>
+                    <h3 className="font-bold text-red-600 mb-2">فشل تحميل ماسح Scandit</h3>
                     <p className="text-gray-600 mb-4">
-                      {scanditKeyError instanceof Error ? scanditKeyError.message : 'حدث خطأ أثناء تحميل مفتاح ترخيص الماسح'}
+                      {scanditKeyError instanceof Error ? scanditKeyError.message : 'حدث خطأ أثناء تحميل مفتاح ترخيص Scandit'}
                     </p>
                     <Button 
                       onClick={() => window.location.reload()}
@@ -203,9 +203,9 @@ export default function AdvancedScanPage() {
                 {scanditInitFailed && 
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 py-12 px-4 text-center text-white">
                     <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة الماسح الضوئي</h3>
+                    <h3 className="font-bold text-white text-xl mb-2">فشل تحميل مكتبة Scandit</h3>
                     <p className="text-gray-200 mb-6">
-                      واجهنا مشكلة في الوصول إلى مكتبات الماسح الضوئي. قد يكون ذلك بسبب اتصال الإنترنت أو إعدادات المتصفح.
+                      واجهنا مشكلة في الوصول إلى مكتبات Scandit. قد يكون ذلك بسبب اتصال الإنترنت أو إعدادات المتصفح.
                     </p>
                     <Button 
                       onClick={() => window.location.reload()}
