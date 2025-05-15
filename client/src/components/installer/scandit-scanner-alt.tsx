@@ -101,25 +101,33 @@ export default function ScanditScanner({
       // Connect the view to the HTML container
       view.connectToElement(containerRef.current);
       
-      // Create the data capture context with license key
-      const context = DataCaptureContext.forLicenseKey(licenseKey);
+      // Create the data capture context with license key - using the correct API method
+      const context = new DataCaptureContext({ licenseKey: licenseKey });
       
       // Set the context to the view
       view.setContext(context);
       
       try {
-        // Try to get the default camera
-        const camera = Camera.default;
-        if (!camera) {
+        // In v7.2.2, we need to access camera differently
+        // First check if camera is available
+        const deviceId = await Camera.getDefaultCameraDeviceId();
+        if (!deviceId) {
           throw new Error('No camera available');
         }
         
-        // Apply recommended camera settings
+        // Then create camera instance
+        const camera = Camera.withSettings({
+          preferredResolution: 'HD',
+          focusRange: 'Far',
+          deviceId: deviceId
+        });
+        
+        // Apply recommended camera settings - note API method changes in v7.2.2
         const cameraSettings = BarcodeCapture.recommendedCameraSettings;
-        camera.applySettings(cameraSettings);
+        await camera.applySettings(cameraSettings);
         
         // Set the camera as the frame source
-        context.setFrameSource(camera);
+        await context.setFrameSource(camera);
         
         // Create barcode capture settings
         const settings = new BarcodeCaptureSettings();
@@ -133,8 +141,8 @@ export default function ScanditScanner({
           Symbology.EAN8
         ]);
       
-        // Create barcode capture with settings
-        const barcodeCapture = BarcodeCapture.forContext(context, settings);
+        // Create barcode capture with settings (using proper API for version 7.2.2)
+        const barcodeCapture = new BarcodeCapture({ context, settings });
         setBarcodeCaptureMode(barcodeCapture);
         
         // Add listener for barcode scanning
@@ -149,7 +157,7 @@ export default function ScanditScanner({
             logInfo(`Barcode scanned: ${data} (${symbology.identifier})`);
             
             // Pause scanning while processing
-            barcodeCapture.isEnabled = false;
+            barcodeCapture.setEnabled(false);
             
             // Call the onScanSuccess callback with scan data
             onScanSuccess(data, symbology.identifier);
@@ -157,10 +165,10 @@ export default function ScanditScanner({
         });
         
         // Enable the barcode capture and camera
-        barcodeCapture.isEnabled = isEnabled;
+        await barcodeCapture.setEnabled(isEnabled);
         
         if (isEnabled) {
-          camera.switchToDesiredState(FrameSourceState.On);
+          await camera.switchToDesiredState(FrameSourceState.On);
         }
         
         setIsInitialized(true);
@@ -190,9 +198,18 @@ export default function ScanditScanner({
     
     // Cleanup function
     return () => {
-      if (barcodeCaptureMode) {
-        barcodeCaptureMode.isEnabled = false;
-      }
+      const cleanup = async () => {
+        if (barcodeCaptureMode) {
+          try {
+            await barcodeCaptureMode.setEnabled(false);
+            logInfo('Barcode capture disabled during cleanup');
+          } catch (error) {
+            console.warn('Error during scanner cleanup:', error);
+          }
+        }
+      };
+      
+      cleanup();
     };
   }, []);
 
@@ -200,8 +217,16 @@ export default function ScanditScanner({
   useEffect(() => {
     if (!isInitialized || !barcodeCaptureMode) return;
     
-    barcodeCaptureMode.isEnabled = isEnabled;
-    logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
+    const updateScanner = async () => {
+      try {
+        await barcodeCaptureMode.setEnabled(isEnabled);
+        logInfo(`Scanner ${isEnabled ? 'enabled' : 'disabled'}`);
+      } catch (error) {
+        logError('Failed to update scanner state', error);
+      }
+    };
+    
+    updateScanner();
   }, [isEnabled, isInitialized, barcodeCaptureMode]);
 
   // Check if the error is related to camera access, resource loading, or protocol
