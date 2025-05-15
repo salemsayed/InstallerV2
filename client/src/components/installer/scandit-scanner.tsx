@@ -131,16 +131,16 @@ export default function ScanditScanner({
           const barcode = session.newlyRecognizedBarcodes[0];
           if (!barcode) return;
           
-          const symbology = new SymbologyDescription(barcode.symbology);
           const data = barcode.data || '';
+          const symbologyName = barcode.symbology || 'Unknown';
           
-          logInfo(`Barcode scanned: ${data} (${symbology.readableName})`);
+          logInfo(`Barcode scanned: ${data} (${symbologyName})`);
           
           // Pause scanning while processing
           await barcodeCapture.setEnabled(false);
           
           // Call the onScanSuccess callback with scan data
-          onScanSuccess(data, symbology.readableName);
+          onScanSuccess(data, symbologyName);
           
           // Resume scanning after a short delay
           setTimeout(async () => {
