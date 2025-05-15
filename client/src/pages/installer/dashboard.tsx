@@ -5,7 +5,7 @@ import InstallerLayout from "@/components/layouts/installer-layout";
 import PointsCard from "@/components/installer/points-card";
 import AchievementCard from "@/components/installer/achievement-card";
 import TransactionsList from "@/components/installer/transactions-list";
-import QrScanner from "@/components/installer/qr-scanner";
+import AdvancedScanButton from "@/components/installer/advanced-scan-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";
@@ -102,8 +102,8 @@ export default function InstallerDashboard() {
         />
       </section>
       
-      {/* QR Scanner - no need for onScanSuccess since the component handles page reload */}
-      <QrScanner />
+      {/* Advanced Scan Button - redirects to the advanced scanner page */}
+      <AdvancedScanButton />
     </InstallerLayout>
   );
 }
