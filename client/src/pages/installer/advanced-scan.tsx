@@ -180,7 +180,13 @@ export default function AdvancedScanPage() {
           DataCaptureContext,
           Camera,
           FrameSourceState,
-          TorchSwitchControl
+          TorchSwitchControl,
+          NumberWithUnit,
+          MeasureUnit,
+          RectangularLocationSelection,
+          VideoResolution,
+          CameraSettings,
+          ScanIntention
         } = core as any;
 
         const {
