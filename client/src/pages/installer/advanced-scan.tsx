@@ -29,11 +29,15 @@ export default function AdvancedScanPage() {
   const contextRef = useRef<any>(null);
   const captureRef = useRef<any>(null);
 
+  // State for scan success animation
+  const [showSuccess, setShowSuccess] = useState(false);
+
   // Function to validate QR code
   const validateQrCode = async (url: string) => {
     setIsValidating(true);
     setError(null);
     setResult(null);
+    setShowSuccess(false);
 
     try {
       // Step 1: URL shape validation
@@ -100,6 +104,12 @@ export default function AdvancedScanPage() {
       // Success path
       setIsValidating(false);
       setResult(`تم التحقق من المنتج: ${result.productName}`);
+      setShowSuccess(true);
+      
+      // Hide success animation after a few seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
       
       // Log success and product name
       console.log("Scanned product:", result.productName);
@@ -221,14 +231,32 @@ export default function AdvancedScanPage() {
         const torchSwitch = new TorchSwitchControl();
         await view.addControl(torchSwitch);
 
-        /* Camera */
+        /* Camera with optimized settings */
         const camera = Camera.default;
         await context.setFrameSource(camera);
+        
+        // Optimization 3: Camera Settings
+        const cameraSettings = new CameraSettings();
+        cameraSettings.preferredResolution = VideoResolution.FullHD; // 1920 × 1080
+        cameraSettings.zoomFactor = 1.3; // Helpful for small QR codes
+        await camera.applySettings(cameraSettings);
+        
         await camera.switchToDesiredState(FrameSourceState.On);
 
-        /* Capture only QR codes */
+        /* Capture only QR codes with optimized settings */
         const settings = new BarcodeCaptureSettings();
         settings.enableSymbologies([Symbology.QR]);
+        
+        // Optimization 1: Rectangular location selection (focused scan area)
+        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
+        const heightToWidth = 1; // Square finder
+        const locationSelection = RectangularLocationSelection.withWidthAndAspectRatio(
+          width, heightToWidth
+        );
+        settings.locationSelection = locationSelection;
+        
+        // Optimization 2: Smart scan intention to reduce duplicate scans
+        settings.scanIntention = ScanIntention.Smart;
 
         const capture = await BarcodeCapture.forContext(context, settings);
         captureRef.current = capture; // Store capture in ref
@@ -299,18 +327,28 @@ export default function AdvancedScanPage() {
             className="absolute inset-0 bg-black overflow-hidden"
           />
           
-          {/* Scanner overlay - scanning guides */}
+          {/* Scanner overlay - scanning guides (80% of view as square to match locationSelection) */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[70vmin] h-[70vmin] max-w-sm max-h-sm">
+              <div className="relative w-[80vmin] h-[80vmin] max-w-sm max-h-sm">
                 {/* Scan animation */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
+                
+                {/* Visual border to indicate the scan area */}
+                <div className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-md"></div>
                 
                 {/* Corners */}
                 <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
                 <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
                 <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
                 <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
+              </div>
+            </div>
+            
+            {/* Scanning instruction message */}
+            <div className="absolute bottom-20 left-0 right-0 flex justify-center">
+              <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
+                وجه الكاميرا نحو رمز QR الخاص بالمنتج
               </div>
             </div>
           </div>
@@ -321,6 +359,19 @@ export default function AdvancedScanPage() {
               <div className="bg-black/50 p-6 rounded-xl backdrop-blur-sm flex flex-col items-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                 <p className="text-center text-white text-lg font-medium">جارٍ التحقق من الكود...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Success animation overlay */}
+          {showSuccess && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 animate-fade-in">
+              <div className="bg-green-600/80 p-8 rounded-full backdrop-blur-sm flex flex-col items-center animate-scale-up">
+                <div className="h-24 w-24 rounded-full border-4 border-white flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white animate-success-check" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               </div>
             </div>
           )}

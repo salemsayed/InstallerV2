@@ -16,9 +16,57 @@
   }
 }
 
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-up {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  80% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes success-check {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
 @layer utilities {
   .animate-scanline {
     animation: scanline 2s linear infinite;
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+  
+  .animate-scale-up {
+    animation: scale-up 0.5s ease-out forwards;
+  }
+  
+  .animate-success-check {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: success-check 0.8s ease-out forwards;
   }
 }
 
