@@ -256,7 +256,14 @@ export default function AdvancedScanPage() {
         settings.locationSelection = locationSelection;
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
-        settings.scanIntention = ScanIntention.Smart;
+        // Try different possible locations of ScanIntention based on Scandit's structure
+        if (barcode.ScanIntention) {
+          settings.scanIntention = barcode.ScanIntention.Smart;
+        } else if (core.ScanIntention) {
+          settings.scanIntention = core.ScanIntention.Smart;
+        } else {
+          console.log("ScanIntention not found in API, skipping this optimization");
+        }
 
         const capture = await BarcodeCapture.forContext(context, settings);
         captureRef.current = capture; // Store capture in ref
