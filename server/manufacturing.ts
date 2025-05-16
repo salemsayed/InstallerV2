@@ -6,11 +6,11 @@ console.log('[MANUFACTURING_DB] Initializing connection to external manufacturin
 export const manufacturingDb = knex({
   client: 'pg',
   connection: {
-    host: '157.230.125.93',
-    port: 5432,
-    user: 'bareeq_user',
-    password: 'bareeq@sigma20406080',
-    database: 'manufacturing',
+    host: process.env.MANUFACTURING_DB_HOST || '157.230.125.93',
+    port: parseInt(process.env.MANUFACTURING_DB_PORT || '5432'),
+    user: process.env.MANUFACTURING_DB_USER || 'bareeq_user',
+    password: process.env.MANUFACTURING_DB_PASSWORD,
+    database: process.env.MANUFACTURING_DB_NAME || 'manufacturing',
     ssl: { rejectUnauthorized: false }
   },
   pool: { 
