@@ -60,9 +60,32 @@ export default function DeleteConfirmationDialog({
           description: "تم حذف المستخدم من النظام",
         });
 
-        // Refresh data
-        queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+        // Optimistically update the cache
+        const queryKey = `/api/admin/users?userId=${adminId}`;
+        
+        // Update the cache directly before invalidating
+        queryClient.setQueryData([queryKey], (oldData: any) => {
+          if (!oldData || !oldData.users) return oldData;
+          
+          return {
+            ...oldData,
+            users: oldData.users.filter((user: any) => user.id !== userId)
+          };
+        });
+        
+        // Also update dashboard query if it exists
+        queryClient.setQueryData([`/api/admin/users`], (oldData: any) => {
+          if (!oldData || !oldData.users) return oldData;
+          
+          return {
+            ...oldData,
+            users: oldData.users.filter((user: any) => user.id !== userId)
+          };
+        });
 
+        // Then invalidate all related queries to ensure data consistency
+        queryClient.invalidateQueries({ queryKey: [`/api/admin/users`] });
+        
         if (onSuccess) {
           onSuccess();
         }
