@@ -33,6 +33,38 @@ import { AnalyticsSummary } from "./analytics-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Define types for API responses to enable proper type checking
+interface Transaction {
+  id: number;
+  userId: number;
+  type: string;
+  amount: number;
+  description: string | null;
+  metadata: any;
+  createdAt: string;
+}
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  points: number;
+  level: number;
+  region?: string;
+  badgeIds: number[];
+}
+
+interface TransactionsResponse {
+  transactions: Transaction[];
+  total: number;
+}
+
+interface UsersResponse {
+  users: User[];
+}
 import { TransactionType, UserRole } from "@shared/schema";
 
 // Colors for charts
@@ -141,46 +173,50 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
   // State for active chart tab
   const [activeChartTab, setActiveChartTab] = useState("installations");
   
-  // Fetch transaction data
+  // Fetch transaction data with proper type checking
   const { 
     data: transactionsData, 
     isLoading: transactionsLoading 
-  } = useQuery({
+  } = useQuery<TransactionsResponse>({
     queryKey: [`/api/admin/transactions?userId=${userId || 0}`],
     enabled: !!userId,
     refetchInterval: 5000,
   });
   
-  // Fetch users data
+  // Fetch users data with proper type checking
   const { 
     data: usersData, 
     isLoading: usersLoading 
-  } = useQuery({
+  } = useQuery<UsersResponse>({
     queryKey: [`/api/admin/users?userId=${userId || 0}`],
     enabled: !!userId,
     refetchInterval: 5000,
   });
   
   // Filter data based on date range
-  const filteredTransactions = transactionsData && 'transactions' in transactionsData 
-    ? transactionsData.transactions.filter((t: any) => {
-        if (!dateRange?.from || !dateRange?.to) return true;
-        
-        const transactionDate = parseISO(t.createdAt);
-        const fromDate = startOfDay(dateRange.from);
-        const toDate = endOfDay(dateRange.to || dateRange.from);
-        
-        return (
-          isAfter(transactionDate, fromDate) && 
-          isBefore(transactionDate, toDate)
-        );
-      }) 
+  const transactions = transactionsData && typeof transactionsData === 'object' && transactionsData !== null && 'transactions' in transactionsData 
+    ? (transactionsData.transactions as any[]) 
     : [];
+    
+  const filteredTransactions = transactions.filter((t: any) => {
+    if (!dateRange?.from || !dateRange?.to) return true;
+    
+    const transactionDate = parseISO(t.createdAt);
+    const fromDate = startOfDay(dateRange.from);
+    const toDate = endOfDay(dateRange.to || dateRange.from);
+    
+    return (
+      isAfter(transactionDate, fromDate) && 
+      isBefore(transactionDate, toDate)
+    );
+  });
   
   // Analysis data
-  const totalInstallers = usersData && 'users' in usersData 
-    ? usersData.users.filter((u: any) => u.role === UserRole.INSTALLER).length 
-    : 0;
+  const users = usersData && typeof usersData === 'object' && usersData !== null && 'users' in usersData
+    ? (usersData.users as any[])
+    : [];
+    
+  const totalInstallers = users.filter((u: any) => u.role === UserRole.INSTALLER).length;
   
   const installationTransactions = filteredTransactions.filter((t: any) => t.type === TransactionType.EARNING);
   const totalInstallations = installationTransactions.length;
@@ -241,18 +277,16 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
   }, [dateRange, filteredTransactions]);
   
   // Generate region data with proper null checking
-  const regionDistribution = usersData?.users
-    ? usersData.users
-        .filter((u: any) => u.role === UserRole.INSTALLER && u.region)
-        .reduce((acc: any, user: any) => {
-          const region = user.region;
-          if (!acc[region]) {
-            acc[region] = { region, count: 0 };
-          }
-          acc[region].count += 1;
-          return acc;
-        }, {})
-    : {};
+  const regionDistribution = users
+    .filter((u: any) => u.role === UserRole.INSTALLER && u.region)
+    .reduce((acc: Record<string, {region: string, count: number}>, user: any) => {
+      const region = user.region;
+      if (!acc[region]) {
+        acc[region] = { region, count: 0 };
+      }
+      acc[region].count += 1;
+      return acc;
+    }, {} as Record<string, {region: string, count: number}>);
   
   const regionChartData = Object.values(regionDistribution);
   
