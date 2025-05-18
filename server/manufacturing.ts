@@ -1,4 +1,5 @@
 import knex from 'knex';
+import { logSqlSafely, logResultSafely, logErrorSafely } from './utils/secure-logger';
 
 console.log('[MANUFACTURING_DB] Initializing connection to external manufacturing database');
 
@@ -62,11 +63,11 @@ manufacturingDb.raw('SELECT 1')
 
 // Function to check if a serial number exists in the manufacturing database
 export async function checkSerialNumber(serialNumber: string): Promise<boolean> {
-  console.log(`[MANUFACTURING_DB] Checking serial number: "${serialNumber}"`);
+  console.log(`[MANUFACTURING_DB] Checking serial number (ID length: ${serialNumber.length})`);
   
   try {
     // Using the recommended EXISTS query approach for efficiency
-    console.log(`[MANUFACTURING_DB] Using EXISTS query with serial_number: "${serialNumber}"`);
+    console.log(`[MANUFACTURING_DB] Using EXISTS query`);
     
     const sql = `
       SELECT EXISTS (
@@ -76,12 +77,13 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       ) AS po_item_exists
     `;
     
-    console.log(`[MANUFACTURING_DB] Raw SQL query: ${sql.replace('?', `'${serialNumber}'`)}`);
+    // Use secure logging without exposing parameters
+    logSqlSafely('CHECK_SERIAL', sql, [serialNumber]);
     
     const result = await manufacturingDb.raw(sql, [serialNumber]);
     
-    // Debug what was returned
-    console.log(`[MANUFACTURING_DB] Query result:`, result);
+    // Safely log query results
+    logResultSafely('CHECK_SERIAL', result);
     
     // For Postgres, the result format is different from other SQL engines
     // It returns an array with objects, we need to extract the boolean value from it
@@ -102,13 +104,14 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       .where('serial_number', serialNumber)
       .limit(1);
     
-    console.log(`[MANUFACTURING_DB] Fallback query: ${fallbackQuery.toString()}`);
+    // Log the SQL query template without parameters
+    logSqlSafely('CHECK_SERIAL_FALLBACK', 'SELECT serial_number FROM po_items WHERE serial_number = ? LIMIT 1', [serialNumber]);
     
     const fallbackResult = await fallbackQuery;
-    console.log(`[MANUFACTURING_DB] Fallback result:`, fallbackResult);
+    logResultSafely('CHECK_SERIAL_FALLBACK', fallbackResult);
     
     if (fallbackResult && fallbackResult.length > 0) {
-      console.log(`[MANUFACTURING_DB] Found via fallback: ${fallbackResult[0].serial_number}`);
+      console.log(`[MANUFACTURING_DB] Found via fallback query (result count: ${fallbackResult.length})`);
       return true;
     }
     
@@ -120,26 +123,24 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       .whereRaw('printed_url LIKE ?', [`%${serialNumber}%`])
       .limit(1);
     
-    console.log(`[MANUFACTURING_DB] URL check query: ${urlQuery.toString()}`);
+    // Log the URL check SQL template without parameters
+    logSqlSafely('CHECK_SERIAL_URL', 'SELECT serial_number FROM po_items WHERE printed_url LIKE ? LIMIT 1', [`%${serialNumber}%`]);
     
     const urlResult = await urlQuery;
-    console.log(`[MANUFACTURING_DB] URL check result:`, urlResult);
+    logResultSafely('CHECK_SERIAL_URL', urlResult);
     
     return urlResult && urlResult.length > 0;
   } catch (error) {
-    console.error('[MANUFACTURING_DB] Error checking serial number:', error);
-    if (error instanceof Error) {
-      console.error(`[MANUFACTURING_DB] Error message: ${error.message}`);
-      console.error(`[MANUFACTURING_DB] Error stack: ${error.stack}`);
-    }
+    // Use secure error logging
+    logErrorSafely('CHECK_SERIAL', error);
     
-    // Additional connection debugging
+    // Additional connection debugging without exposing sensitive data
     try {
       console.log('[MANUFACTURING_DB] Testing database connection...');
       await manufacturingDb.raw('SELECT 1 as connection_test');
       console.log('[MANUFACTURING_DB] Database connection is working');
     } catch (connError) {
-      console.error('[MANUFACTURING_DB] Database connection test failed:', connError);
+      logErrorSafely('CONNECTION_TEST', connError);
     }
     
     return false;
@@ -147,8 +148,10 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
 }
 
 // Function to get product name by serial number
+import { logSqlSafely, logResultSafely, logErrorSafely } from './utils/secure-logger';
+
 export async function getProductNameBySerialNumber(serialNumber: string): Promise<string | null> {
-  console.log(`[MANUFACTURING_DB] Getting product name for serial number: "${serialNumber}"`);
+  console.log(`[MANUFACTURING_DB] Getting product name for serial number (ID length: ${serialNumber.length})`);
   
   try {
     // Simplified approach with direct SQL query
@@ -162,17 +165,18 @@ export async function getProductNameBySerialNumber(serialNumber: string): Promis
       LIMIT 1
     `;
     
-    console.log(`[MANUFACTURING_DB] Raw SQL query: ${sql.replace('?', `'${serialNumber}'`)}`);
+    // Use secure logging without exposing the actual serial number
+    logSqlSafely('GET_PRODUCT', sql, [serialNumber]);
     
     const result = await manufacturingDb.raw(sql, [serialNumber]);
     
-    // Debug what was returned
-    console.log(`[MANUFACTURING_DB] Query result:`, result);
+    // Safely log the query result structure without exposing data
+    logResultSafely('GET_PRODUCT', result);
     
     // For Postgres, the result format is different from other SQL engines
     if (result && result.rows && result.rows.length > 0) {
       const productName = result.rows[0].product_name;
-      console.log(`[MANUFACTURING_DB] Found product name: ${productName}`);
+      console.log(`[MANUFACTURING_DB] Found product name (length: ${productName ? productName.length : 0})`);
       return productName;
     }
     
@@ -187,16 +191,17 @@ export async function getProductNameBySerialNumber(serialNumber: string): Promis
       LIMIT 1
     `;
     
-    console.log(`[MANUFACTURING_DB] Fallback SQL query: ${fallbackSql.replace('?', `'%${serialNumber}%'`)}`);
+    // Log safely without exposing the serial number
+    logSqlSafely('GET_PRODUCT_FALLBACK', fallbackSql, [`%${serialNumber}%`]);
     
     const fallbackResult = await manufacturingDb.raw(fallbackSql, [`%${serialNumber}%`]);
     
-    // Debug what was returned
-    console.log(`[MANUFACTURING_DB] Fallback query result:`, fallbackResult);
+    // Safely log the result structure
+    logResultSafely('GET_PRODUCT_FALLBACK', fallbackResult);
     
     if (fallbackResult && fallbackResult.rows && fallbackResult.rows.length > 0) {
       const productName = fallbackResult.rows[0].product_name;
-      console.log(`[MANUFACTURING_DB] Found product name via fallback: ${productName}`);
+      console.log(`[MANUFACTURING_DB] Found product name via fallback (length: ${productName ? productName.length : 0})`);
       return productName;
     }
     
@@ -204,35 +209,31 @@ export async function getProductNameBySerialNumber(serialNumber: string): Promis
     console.log(`[MANUFACTURING_DB] Final attempt: Get product_id directly from po_items`);
     
     const itemQuery = `SELECT product_id FROM po_items WHERE serial_number = ? LIMIT 1`;
-    console.log(`[MANUFACTURING_DB] Item SQL query: ${itemQuery.replace('?', `'${serialNumber}'`)}`);
+    logSqlSafely('GET_PRODUCT_ID', itemQuery, [serialNumber]);
     
     const itemResult = await manufacturingDb.raw(itemQuery, [serialNumber]);
-    console.log(`[MANUFACTURING_DB] Item query result:`, itemResult);
+    logResultSafely('GET_PRODUCT_ID', itemResult);
     
     if (itemResult && itemResult.rows && itemResult.rows.length > 0 && itemResult.rows[0].product_id) {
       const productId = itemResult.rows[0].product_id;
-      console.log(`[MANUFACTURING_DB] Found product_id: ${productId}`);
+      console.log(`[MANUFACTURING_DB] Found product_id (not showing actual ID)`);
       
       // Get product name directly
       const productQuery = `SELECT name FROM products WHERE pid = ? LIMIT 1`;
-      console.log(`[MANUFACTURING_DB] Product SQL query: ${productQuery.replace('?', productId)}`);
+      logSqlSafely('GET_PRODUCT_BY_ID', productQuery, [productId]);
       
       const productResult = await manufacturingDb.raw(productQuery, [productId]);
-      console.log(`[MANUFACTURING_DB] Product query result:`, productResult);
+      logResultSafely('GET_PRODUCT_BY_ID', productResult);
       
       if (productResult && productResult.rows && productResult.rows.length > 0) {
         return productResult.rows[0].name;
       }
     }
     
-    console.log(`[MANUFACTURING_DB] Could not find product name for serial number: ${serialNumber}`);
+    console.log(`[MANUFACTURING_DB] Could not find product name for the provided serial number`);
     return null;
   } catch (error) {
-    console.error('[MANUFACTURING_DB] Error getting product name:', error);
-    if (error instanceof Error) {
-      console.error(`[MANUFACTURING_DB] Error message: ${error.message}`);
-      console.error(`[MANUFACTURING_DB] Error stack: ${error.stack}`);
-    }
+    logErrorSafely('GET_PRODUCT_NAME', error);
     return null;
   }
 }
