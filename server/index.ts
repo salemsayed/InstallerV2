@@ -64,7 +64,7 @@ const SENSITIVE_FIELDS = [
  * @param obj Object to be redacted
  * @returns Redacted object safe for logging
  */
-function redactSensitiveInfo(obj: any): any {
+export function redactSensitiveInfo(obj: any): any {
   if (!obj || typeof obj !== 'object') {
     return obj;
   }
