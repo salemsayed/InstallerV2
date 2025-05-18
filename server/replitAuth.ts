@@ -169,7 +169,8 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user?.claims) {
+  // Check if user exists and has required data instead of using isAuthenticated()
+  if (!user || !user?.claims) {
     return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
   }
 
