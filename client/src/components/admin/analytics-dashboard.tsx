@@ -236,17 +236,19 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
     setTimeSeriesData(result);
   }, [dateRange, filteredTransactions]);
   
-  // Generate region data
+  // Generate region data with proper null checking
   const regionDistribution = usersData?.users
-    ?.filter((u: any) => u.role === UserRole.INSTALLER && u.region)
-    .reduce((acc: any, user: any) => {
-      const region = user.region;
-      if (!acc[region]) {
-        acc[region] = { region, count: 0 };
-      }
-      acc[region].count += 1;
-      return acc;
-    }, {}) || {};
+    ? usersData.users
+        .filter((u: any) => u.role === UserRole.INSTALLER && u.region)
+        .reduce((acc: any, user: any) => {
+          const region = user.region;
+          if (!acc[region]) {
+            acc[region] = { region, count: 0 };
+          }
+          acc[region].count += 1;
+          return acc;
+        }, {})
+    : {};
   
   const regionChartData = Object.values(regionDistribution);
   
@@ -293,7 +295,7 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
         totalInstallations={totalInstallations}
         pointsAwarded={pointsAwarded}
         pointsRedeemed={pointsRedeemed}
-        regionData={Object.entries(regionDistribution).map(([name, count]) => ({ name, count }))}
+        regionData={regionDistribution ? Object.entries(regionDistribution).map(([name, value]: [string, any]) => ({ name, count: value.count })) : []}
         productData={productChartData}
         dateRange={dateRange}
         className="mb-2"
