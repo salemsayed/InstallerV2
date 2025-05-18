@@ -112,39 +112,8 @@ export default function EditUserDialog({
           description: "تم تحديث بيانات المستخدم بنجاح",
         });
         
-        // Optimistically update the cache
-        const queryKey = `/api/admin/users?userId=${adminId}`;
-        
-        // Update the cache directly for a smoother UI experience
-        queryClient.setQueryData([queryKey], (oldData: any) => {
-          if (!oldData || !oldData.users) return oldData;
-          
-          return {
-            ...oldData,
-            users: oldData.users.map((u: any) => 
-              u.id === user.id 
-                ? { ...u, ...values } // Update the specific user's data
-                : u
-            )
-          };
-        });
-        
-        // Do the same for any dashboard query if it exists
-        queryClient.setQueryData([`/api/admin/users`], (oldData: any) => {
-          if (!oldData || !oldData.users) return oldData;
-          
-          return {
-            ...oldData,
-            users: oldData.users.map((u: any) => 
-              u.id === user.id 
-                ? { ...u, ...values } // Update the specific user's data
-                : u
-            )
-          };
-        });
-        
-        // Then invalidate all related queries to ensure data consistency
-        queryClient.invalidateQueries({ queryKey: [`/api/admin/users`] });
+        // Refresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
         
         if (onSuccess) {
           onSuccess();
