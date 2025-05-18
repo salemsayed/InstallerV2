@@ -78,7 +78,7 @@ export function logErrorSafely(operation: string, error: any): void {
   ];
   
   sensitivePatterns.forEach(pattern => {
-    stack = stack.replace(pattern, (match) => {
+    stack = stack.replace(pattern, (match: string) => {
       // Keep the key part but replace the value part with [REDACTED]
       const keyPart = match.split('=')[0];
       if (keyPart) {

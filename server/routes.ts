@@ -182,10 +182,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ADMIN ROUTES
   app.post("/api/admin/users", async (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('user-create');
+    
     // Check if the requester is an admin
     const adminId = parseInt(req.query.userId as string);
     
     if (!adminId) {
+      logger.error('Missing admin ID in user creation request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -193,9 +198,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
+        logger.error('Unauthorized user creation attempt', { 
+          adminId, 
+          role: admin?.role 
+        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
       
+      logger.info('Processing user creation request', { adminId });
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
       
@@ -207,6 +217,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if phone is already in use
       const existingUser = await storage.getUserByPhone(userData.phone);
       if (existingUser) {
+        logger.info('User creation failed - phone number already in use', {
+          // No need to log the actual phone number
+          existingUserId: existingUser.id
+        });
         return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل." });
       }
       
@@ -214,8 +228,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       userData.invitedBy = adminId;
       userData.status = UserStatus.ACTIVE;
       
-      // Create new user
+      // Create new user with secure logging (not logging the full user object with phone)
+      logger.info('Creating new user', {
+        name: userData.name,
+        role: userData.role,
+        region: userData.region
+        // Intentionally not logging phone number
+      });
+      
       const newUser = await storage.createUser(userData);
+      
+      logger.success('user', newUser.id, 'created');
       
       return res.status(201).json({
         success: true,
@@ -234,6 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
+      logger.error('User creation failed', error);
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء إضافة المستخدم" });
     }
   });
