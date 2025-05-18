@@ -472,7 +472,7 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
               <CardTitle>توزيع المركبين حسب المنطقة</CardTitle>
               <InsightTooltip
                 chartType="region_distribution"
-                dataPoints={Object.entries(regionDistribution).map(([name, count]) => ({ name, count }))}
+                dataPoints={regionDistribution ? Object.entries(regionDistribution).map(([name, value]: [string, any]) => ({ name, count: value.count })) : []}
                 metric="installers_by_region"
                 dateRange={dateRange}
               />
