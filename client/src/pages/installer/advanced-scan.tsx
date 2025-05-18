@@ -383,25 +383,46 @@ export default function AdvancedScanPage() {
           )}
         </div>
 
-        {/* Results/Status Bar */}
-        <div className="px-4 py-3 bg-white shadow-inner">
-          {result && (
-            <p className="text-green-600 font-medium text-sm py-1">{result}</p>
-          )}
-          {error && <p className="text-red-600 font-medium text-sm py-1 whitespace-pre-wrap">{error}</p>}
-          {!result && !error && !isValidating && (
-            <p className="text-gray-500 text-sm py-1">قم بتوجيه الكاميرا نحو رمز QR للمنتج</p>
-          )}
-          {isValidating && (
-            <p className="text-gray-500 text-sm py-1">جاري التحقق...</p>
-          )}
-          
-          {/* Environment info (only visible in dev mode) */}
-          {import.meta.env.DEV && (
-            <div className="mt-2 p-2 bg-gray-100 rounded-lg text-xs">
-              <p className="font-mono">License Key: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? 'From Environment' : 'Missing'}</p>
+        {/* Floating Result Panel (instead of static bottom status bar) */}
+        <div className={`absolute bottom-6 left-4 right-4 transition-all duration-300 ${(result || error) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+          <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-xl overflow-hidden">
+            <div className={`px-5 py-4 ${result ? 'border-l-4 border-green-500' : error ? 'border-l-4 border-red-500' : ''}`}>
+              {result && (
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">تم التحقق من المنتج بنجاح</h3>
+                    <p className="text-green-600 font-medium text-sm mt-1">{result}</p>
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">فشل التحقق</h3>
+                    <p className="text-red-600 text-sm mt-1 whitespace-pre-wrap">{error}</p>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </div>
+        
+        {/* Environment info (only visible in dev mode) - now floating in corner */}
+        {import.meta.env.DEV && (
+          <div className="absolute bottom-2 left-2 p-2 bg-black/50 text-white rounded-lg text-xs z-10">
+            <p className="font-mono">License: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? '✓' : '✗'}</p>
+          </div>
+        )}
         </div>
       </div>
     </InstallerLayout>
