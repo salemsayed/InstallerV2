@@ -7,6 +7,7 @@ import {
   requestOtpSchema, verifyOtpSchema, insertUserSchema,
   pointsAllocationSchema
 } from "@shared/schema";
+import { z } from "zod";
 import { createTransport } from "nodemailer";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
@@ -916,18 +917,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // QR code scanning endpoint
+  // Schema for validating QR code scan requests
+  const scanQrSchema = z.object({
+    uuid: z.string().min(1, { message: "QR code is required" })
+  });
+
+  // QR code scanning endpoint - secured with authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);
     try {
-      const { uuid, userId } = req.body;
+      // Get userId from the authenticated session instead of request body
+      const userId = parseInt(req.query.userId as string);
       
-      if (!uuid || !userId) {
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول.",
+          error_code: "UNAUTHORIZED",
+        });
+      }
+      
+      // Verify user exists and is active
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "المستخدم غير موجود.",
+          error_code: "USER_NOT_FOUND" 
+        });
+      }
+      
+      if (user.status !== UserStatus.ACTIVE) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "الحساب غير نشط. يرجى التواصل مع المسؤول.",
+          error_code: "INACTIVE_ACCOUNT" 
+        });
+      }
+      
+      // Validate request body
+      const { uuid } = scanQrSchema.parse(req.body);
+      
+      if (!uuid) {
         return res.status(400).json({ 
           success: false, 
-          message: "Please provide both user ID and QR code",
+          message: "يرجى تقديم رمز QR صالح",
           error_code: "MISSING_PARAMS",
-          details: { missing: !uuid ? "uuid" : "userId" } 
+          details: { missing: "uuid" } 
         });
       }
       
@@ -1017,83 +1053,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save the scanned code to database with product reference if available
       const scannedCode = await storage.createScannedCode({
         uuid,
-        scannedBy: parseInt(userId.toString()),
+        scannedBy: userId, // Using the authenticated userId from session
         productName: productName || undefined,
         productId: localProduct ? localProduct.id : undefined
       });
       
-      // Add points to the user for scanning
-      const user = await storage.getUser(parseInt(userId.toString()));
-      if (user) {
-        const updatedUser = await storage.updateUser(user.id, {
-          points: user.points + pointsAwarded
-        });
-        
-        // Create a transaction record with product metadata
-        await storage.createTransaction({
-          userId: user.id,
-          type: TransactionType.EARNING,
-          amount: pointsAwarded,
-          description: productName 
-            ? `تم تركيب منتج ${productName}`
-            : "تم تركيب منتج جديد",
-          metadata: localProduct ? { productId: localProduct.id } : undefined
-        });
-        
-        // Check if user qualifies for any new badges after earning these points
-        const allBadges = await storage.listBadges(true);
-        
-        // Get user's installation count (transactions of type EARNING that have product installations)
-        const transactions = await storage.getTransactionsByUserId(user.id);
-        const installationCount = transactions.filter(t => 
-          t.type === TransactionType.EARNING && 
-          (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
-        ).length;
-        
-        console.log(`[DEBUG] After QR scan, user ${user.id} has ${installationCount} installations and ${updatedUser?.points} points`);
-        
-        // Initialize badgeIds array if it doesn't exist
-        if (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds)) {
-          updatedUser.badgeIds = [];
+      // We already have the user from authentication check above
+      // Now just update their points
+      const updatedUser = await storage.updateUser(userId, {
+        points: user.points + pointsAwarded
+      });
+      
+      // Create a transaction record with product metadata
+      await storage.createTransaction({
+        userId: userId,
+        type: TransactionType.EARNING,
+        amount: pointsAwarded,
+        description: productName 
+          ? `تم تركيب منتج ${productName}`
+          : "تم تركيب منتج جديد",
+        metadata: localProduct ? { productId: localProduct.id } : undefined
+      });
+      
+      // Check if user qualifies for any new badges after earning these points
+      const allBadges = await storage.listBadges(true);
+      
+      // Get user's installation count (transactions of type EARNING that have product installations)
+      const transactions = await storage.getTransactionsByUserId(userId);
+      const installationCount = transactions.filter(t => 
+        t.type === TransactionType.EARNING && 
+        (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
+      ).length;
+      
+      console.log(`[DEBUG] After QR scan, user ${userId} has ${installationCount} installations and ${updatedUser?.points} points`);
+      
+      // Initialize badgeIds array if it doesn't exist
+      if (updatedUser && (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds))) {
+        updatedUser.badgeIds = [];
+      }
+      
+      // Check each badge to see if user qualifies
+      let userBadgesUpdated = false;
+      let newBadges = [];
+      let updatedBadgeIds: number[] = [];
+      
+      for (const badge of allBadges) {
+        if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
+          console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
+          break;
         }
         
-        // Check each badge to see if user qualifies
-        let userBadgesUpdated = false;
-        let newBadges = [];
-        let updatedBadgeIds: number[] = [];
+        const alreadyHasBadge = updatedUser.badgeIds.includes(badge.id);
         
-        for (const badge of allBadges) {
-          if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
-            console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
-            break;
-          }
-          
-          const alreadyHasBadge = updatedUser.badgeIds.includes(badge.id);
-          
-          // Check qualification
-          const qualifies = (
-            (badge.requiredPoints === null || badge.requiredPoints === undefined || updatedUser.points >= badge.requiredPoints) &&
-            (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
-          );
-          
-          if (qualifies) {
-            // If user qualifies for badge but doesn't have it yet, add it
-            if (!alreadyHasBadge) {
-              console.log(`[DEBUG] User ${user.id} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
-              updatedBadgeIds.push(badge.id);
-              newBadges.push(badge);
-              userBadgesUpdated = true;
-            } else {
-              // User already has this badge and still qualifies
-              updatedBadgeIds.push(badge.id);
-            }
-          } else if (alreadyHasBadge) {
-            // User has badge but no longer qualifies - remove it
-            console.log(`[DEBUG] User ${user.id} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
+        // Check qualification
+        const qualifies = (
+          (badge.requiredPoints === null || badge.requiredPoints === undefined || updatedUser.points >= badge.requiredPoints) &&
+          (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
+        );
+        
+        if (qualifies) {
+          // If user qualifies for badge but doesn't have it yet, add it
+          if (!alreadyHasBadge) {
+            console.log(`[DEBUG] User ${userId} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
+            updatedBadgeIds.push(badge.id);
+            newBadges.push(badge);
             userBadgesUpdated = true;
-            // Badge is not added to updatedBadgeIds, effectively removing it
+          } else {
+            // User already has this badge and still qualifies
+            updatedBadgeIds.push(badge.id);
           }
+        } else if (alreadyHasBadge) {
+          // User has badge but no longer qualifies - remove it
+          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
+          userBadgesUpdated = true;
+          // Badge is not added to updatedBadgeIds, effectively removing it
         }
+      }
         
         // Update user's badges in database if changes were made
         if (userBadgesUpdated && updatedUser) {
