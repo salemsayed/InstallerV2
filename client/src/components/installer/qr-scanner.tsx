@@ -118,13 +118,12 @@ export default function QrScanner({ onScanSuccess }: QrScannerProps) {
     }
 
     try {
-      // Step 3: Send to server for validation and processing
+      // Step 3: Send to server for validation and processing - userId is now obtained from the authenticated session
       const scanResult = await apiRequest(
         "POST", 
         "/api/scan-qr", 
         {
-          uuid,
-          userId: user?.id
+          uuid
         }
       );
       
