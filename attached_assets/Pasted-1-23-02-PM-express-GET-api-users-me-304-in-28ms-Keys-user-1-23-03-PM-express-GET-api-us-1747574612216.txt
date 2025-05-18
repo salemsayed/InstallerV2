@@ -1,0 +1,28 @@
+1:23:02 PM [express] GET /api/users/me 304 in 28ms :: Keys: [user]
+1:23:03 PM [express] GET /api/users/me 401 in 1ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:03 PM [express] GET /api/transactions 304 in 46ms :: Keys: [transactions, total]
+1:23:04 PM [express] GET /api/badges 304 in 73ms :: Keys: [badges]
+1:23:04 PM [express] GET /api/users/me 304 in 27ms :: Keys: [user]
+1:23:05 PM [express] GET /api/users/me 401 in 1ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:06 PM [express] GET /api/transactions 304 in 48ms :: Keys: [transactions, total]
+1:23:06 PM [express] GET /api/badges 304 in 69ms :: Keys: [badges]
+1:23:06 PM [express] GET /api/users/me 304 in 21ms :: Keys: [user]
+1:23:08 PM [express] GET /api/users/me 401 in 1ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:08 PM [express] GET /api/users/me 304 in 29ms :: Keys: [user]
+1:23:08 PM [express] GET /api/transactions 304 in 55ms :: Keys: [transactions, total]
+1:23:08 PM [express] GET /api/badges 304 in 74ms :: Keys: [badges]
+1:23:10 PM [express] GET /api/users/me 304 in 28ms :: Keys: [user]
+1:23:10 PM [express] GET /api/users/me 401 in 0ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:10 PM [express] GET /api/transactions 304 in 53ms :: Keys: [transactions, total]
+1:23:11 PM [express] GET /api/badges 304 in 69ms :: Keys: [badges]
+1:23:12 PM [express] GET /api/users/me 304 in 22ms :: Keys: [user]
+1:23:12 PM [express] GET /api/users/me 401 in 0ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:12 PM [express] GET /api/transactions 304 in 44ms :: Keys: [transactions, total]
+1:23:13 PM [express] GET /api/badges 304 in 72ms :: Keys: [badges]
+1:23:14 PM [express] GET /api/users/me 304 in 23ms :: Keys: [user]
+1:23:14 PM [express] GET /api/users/me 401 in 1ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:15 PM [express] GET /api/transactions 304 in 50ms :: Keys: [transactions, total]
+1:23:15 PM [express] GET /api/badges 304 in 75ms :: Keys: [badges]
+1:23:16 PM [express] GET /api/users/me 304 in 22ms :: Keys: [user]
+1:23:17 PM [express] GET /api/users/me 401 in 0ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:23:17 PM [express] GET /api/transactions 304 in 68ms :: Keys: [transactions, total]

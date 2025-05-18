@@ -162,21 +162,25 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
   });
   
   // Filter data based on date range
-  const filteredTransactions = transactionsData?.transactions?.filter((t: any) => {
-    if (!dateRange?.from || !dateRange?.to) return true;
-    
-    const transactionDate = parseISO(t.createdAt);
-    const fromDate = startOfDay(dateRange.from);
-    const toDate = endOfDay(dateRange.to || dateRange.from);
-    
-    return (
-      isAfter(transactionDate, fromDate) && 
-      isBefore(transactionDate, toDate)
-    );
-  }) || [];
+  const filteredTransactions = transactionsData && 'transactions' in transactionsData 
+    ? transactionsData.transactions.filter((t: any) => {
+        if (!dateRange?.from || !dateRange?.to) return true;
+        
+        const transactionDate = parseISO(t.createdAt);
+        const fromDate = startOfDay(dateRange.from);
+        const toDate = endOfDay(dateRange.to || dateRange.from);
+        
+        return (
+          isAfter(transactionDate, fromDate) && 
+          isBefore(transactionDate, toDate)
+        );
+      }) 
+    : [];
   
   // Analysis data
-  const totalInstallers = usersData?.users?.filter((u: any) => u.role === UserRole.INSTALLER).length || 0;
+  const totalInstallers = usersData && 'users' in usersData 
+    ? usersData.users.filter((u: any) => u.role === UserRole.INSTALLER).length 
+    : 0;
   
   const installationTransactions = filteredTransactions.filter((t: any) => t.type === TransactionType.EARNING);
   const totalInstallations = installationTransactions.length;

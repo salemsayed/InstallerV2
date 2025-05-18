@@ -50,7 +50,7 @@ function redactSensitiveInfo(obj: any): any {
   return redacted;
 }
 
-// Logging middleware with enhanced security
+// Logging middleware with enhanced security (controlled verbosity)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -65,24 +65,27 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      // Log request metadata without sensitive data
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      
-      // Only log response keys for API insights, not the full contents
-      if (capturedJsonResponse) {
-        // For success responses, only log the structure, not the content
-        if (res.statusCode >= 200 && res.statusCode < 400) {
-          const keys = Object.keys(capturedJsonResponse);
-          logLine += ` :: Keys: [${keys.join(', ')}]`;
-        } 
-        // For error responses, redact sensitive info but log more details
-        else {
-          const redactedResponse = redactSensitiveInfo(capturedJsonResponse);
-          logLine += ` :: ${JSON.stringify(redactedResponse)}`;
+      // Completely disable API logging in development mode to reduce console clutter
+      if (false) {
+        // Log request metadata without sensitive data
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        
+        // Only log response keys for API insights, not the full contents
+        if (capturedJsonResponse) {
+          // For success responses, only log the structure, not the content
+          if (res.statusCode >= 200 && res.statusCode < 400) {
+            const keys = Object.keys(capturedJsonResponse);
+            logLine += ` :: Keys: [${keys.join(', ')}]`;
+          } 
+          // For error responses, redact sensitive info but log more details
+          else {
+            const redactedResponse = redactSensitiveInfo(capturedJsonResponse);
+            logLine += ` :: ${JSON.stringify(redactedResponse)}`;
+          }
         }
-      }
 
-      log(logLine);
+        log(logLine);
+      }
     }
   });
 
