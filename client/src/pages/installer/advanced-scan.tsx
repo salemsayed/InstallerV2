@@ -31,6 +31,9 @@ export default function AdvancedScanPage() {
 
   // State for scan success animation
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // State to use fallback scanner (HTML5) if needed
+  const [useFallbackScanner, setUseFallbackScanner] = useState(false);
 
   // Function to validate QR code
   const validateQrCode = async (url: string) => {
@@ -175,20 +178,52 @@ export default function AdvancedScanPage() {
     }, delay);
   };
 
+  // State to track whether to use fallback scanner
+  const [useFallbackScanner, setUseFallbackScanner] = useState(true);
+  
   useEffect(() => {
     document.title = "مسح متقدم | برنامج مكافآت بريق";
 
+    // Immediately use the HTML5 scanner instead of trying to load Scandit
+    console.log("Using HTML5 QR scanner instead of Scandit SDK");
+    
+    /*
+    // This code is commented out until we can resolve the Scandit SDK loading issues
     let dispose: (() => Promise<void>) | undefined;
 
     (async () => {
       try {
-        /* Dynamically import the two SDK packages loaded via the CDN */
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const core = await import("@scandit/web-datacapture-core");
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const barcode = await import("@scandit/web-datacapture-barcode");
+        // Set a timeout to fall back to HTML5 scanner if Scandit takes too long to load
+        const timeoutId = setTimeout(() => {
+          console.log("Scandit SDK load timeout - falling back to HTML5 scanner");
+          setUseFallbackScanner(true);
+        }, 3000);
+        
+        // Try to access the Scandit SDK (either global or dynamic import)
+        let core, barcode;
+        
+        if (window.ScanditSDK?.loaded) {
+          console.log("Using preloaded Scandit SDK from global scope");
+          core = window.ScanditSDK.core;
+          barcode = window.ScanditSDK.barcode;
+        } else {
+          try {
+            console.log("Attempting to dynamically import Scandit SDK");
+            // Use dynamic import as fallback
+            core = await import("@scandit/web-datacapture-core");
+            barcode = await import("@scandit/web-datacapture-barcode");
+            clearTimeout(timeoutId);
+          } catch (importError) {
+            console.error("Failed to import Scandit SDK:", importError);
+            setUseFallbackScanner(true);
+            clearTimeout(timeoutId);
+            return; // Exit early since we're switching to fallback
+          }
+        }
+        
+        // Clear the timeout since we successfully loaded the SDK
+        clearTimeout(timeoutId);
+    */
 
         const {
           configure,
