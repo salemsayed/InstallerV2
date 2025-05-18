@@ -263,10 +263,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/admin/users", async (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('user-list');
+    
     // Check if the requester is an admin
     const adminId = parseInt(req.query.userId as string);
     
     if (!adminId) {
+      logger.error('Missing admin ID in user list request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -274,11 +279,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
+        logger.error('Unauthorized user list attempt', { 
+          adminId, 
+          role: admin?.role 
+        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
       
+      logger.info('Admin requesting user list', { adminId });
       // Get all users
       const users = await storage.listUsers();
+      
+      // Log user count without exposing sensitive data
+      logger.info(`Processing ${users.length} users for admin dashboard`, {
+        userCount: users.length,
+        adminId
+      });
       
       // Create a new array with calculated point balances
       const usersWithCalculatedPoints = await Promise.all(users.map(async user => {
@@ -300,19 +316,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
+      logger.success('user-list', adminId, 'retrieved');
       return res.status(200).json({ users: usersWithCalculatedPoints });
       
     } catch (error: any) {
+      logger.error('Failed to retrieve user list', error);
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المستخدمين" });
     }
   });
   
   // Update user
   app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('user-update');
+    
     const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
     
     if (!adminId) {
+      logger.error('Missing admin ID in user update request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -320,8 +343,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
+        logger.error('Unauthorized user update attempt', { 
+          adminId, 
+          role: admin?.role 
+        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
+      
+      logger.info('Processing user update request', { 
+        adminId, 
+        targetUserId 
+      });
       
       // Validate input data
       let { name, phone, region, status, points } = req.body;
@@ -330,6 +362,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (phone && phone.startsWith('0')) {
         phone = '+2' + phone;
       }
+      
+      // Log update attempt with non-sensitive details (not including the actual phone number)
+      logger.info('Attempting to update user', {
+        targetUserId,
+        fieldsToUpdate: {
+          hasName: !!name,
+          hasPhone: !!phone,
+          hasRegion: !!region,
+          hasStatus: !!status,
+          hasPoints: points !== undefined
+        }
+      });
       
       // Update user data
       const updatedUser = await storage.updateUser(targetUserId, {
@@ -341,11 +385,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (!updatedUser) {
+        logger.error('User not found for update', { targetUserId });
         return res.status(404).json({ 
           success: false,
           message: "لم يتم العثور على المستخدم."
         });
       }
+      
+      logger.success('user', updatedUser.id, 'updated');
       
       return res.status(200).json({
         success: true,
@@ -363,6 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
+      logger.error('Error updating user', error);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء تحديث بيانات المستخدم" 
