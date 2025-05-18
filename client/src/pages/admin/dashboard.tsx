@@ -81,57 +81,31 @@ export default function AdminDashboard() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   
-  console.log("DEBUG: Total transactions received:", transactions.length);
-  console.log("DEBUG: All transactions:", JSON.stringify(transactions));
-  
-  // First, let's log the API response data
-  console.log("DEBUG: Raw transactions data:", JSON.stringify(transactionsData));
-  
-  // Let's examine what's in the transaction array
-  if (transactions.length > 0) {
-    console.log("DEBUG: First transaction sample:", JSON.stringify(transactions[0]));
-    console.log("DEBUG: First transaction type:", transactions[0].type);
-    console.log("DEBUG: First transaction date:", transactions[0].createdAt);
-  }
-  
+  // Filter for installation transactions from the current month
   const installationTransactions = transactions.filter((t: any) => {
-    // Log every transaction we're examining for debugging
-    console.log(`DEBUG: Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
-    
-    // First check if it's an earning transaction
+    // Check if it's an earning transaction
     if (t.type !== TransactionType.EARNING) {
-      console.log(`DEBUG: Transaction ${t.id} rejected - not an EARNING type`);
       return false;
     }
     
-    // Then check if it's from the current month
+    // Check if it's from the current month (safely parse the date)
     let transactionDate;
     try {
       transactionDate = new Date(t.createdAt);
-      console.log(`DEBUG: Transaction ${t.id} date parsed as:`, 
-        transactionDate.toISOString(), 
-        `Month: ${transactionDate.getMonth()}, Year: ${transactionDate.getFullYear()}`);
+      // Handle potential timezone issues by using UTC methods for comparison
+      const transactionMonth = transactionDate.getUTCMonth();
+      const transactionYear = transactionDate.getUTCFullYear();
+      
+      // Compare with current month/year (also in UTC)
+      return (
+        transactionMonth === now.getUTCMonth() && 
+        transactionYear === now.getUTCFullYear()
+      );
     } catch (e) {
-      console.error(`DEBUG: Error parsing date for transaction ${t.id}:`, e);
+      // If date parsing fails, exclude this transaction
       return false;
     }
-    
-    const isCurrentMonth = (
-      transactionDate.getMonth() === currentMonth && 
-      transactionDate.getFullYear() === currentYear
-    );
-    
-    console.log(`DEBUG: Transaction ${t.id} current month check:`, 
-      isCurrentMonth,
-      `(${transactionDate.getMonth()} === ${currentMonth} && ${transactionDate.getFullYear()} === ${currentYear})`
-    );
-    
-    return isCurrentMonth;
   });
-  
-  console.log("DEBUG: Current month/year:", currentMonth, currentYear);
-  console.log("DEBUG: Filtered installation transactions:", installationTransactions.length);
-  console.log("DEBUG: Installation transactions:", JSON.stringify(installationTransactions));
   
   const totalInstallations = installationTransactions.length;
   const pointsAwarded = transactions
