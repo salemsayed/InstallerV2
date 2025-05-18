@@ -914,6 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       
       if (!user || !user.claims) {
+        console.log("Authentication failed: No user claims found in session");
         return res.status(401).json({ 
           success: false, 
           message: "غير مصرح. يرجى تسجيل الدخول.",
@@ -921,23 +922,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get user ID from Replit Auth session
-      // We'll handle authentication directly using the session info and user query
-      // For security, we don't trust user IDs from request body
+      // Get user's email from the authenticated Replit session
+      const userEmail = user.claims.email;
       
-      // Get authenticated user ID from query parameter (secure because this is after isAuthenticated middleware)
-      const userId = parseInt(req.query.userId as string);
-      
-      if (!userId || isNaN(userId)) {
+      if (!userEmail) {
+        console.log("Authentication failed: No email in user claims");
         return res.status(401).json({ 
           success: false, 
-          message: "غير مصرح. يرجى تسجيل الدخول مرة أخرى.",
-          error_code: "INVALID_SESSION" 
+          message: "غير مصرح. البريد الإلكتروني غير متوفر.",
+          error_code: "MISSING_EMAIL" 
         });
       }
       
-      // Verify user exists and is authorized
-      const dbUser = await storage.getUser(userId);
+      // Lookup the user by email from our database
+      const dbUser = await storage.getUserByEmail(userEmail);
       
       if (!dbUser) {
         return res.status(404).json({ 
