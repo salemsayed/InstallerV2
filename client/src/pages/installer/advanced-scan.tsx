@@ -66,12 +66,19 @@ export default function AdvancedScanPage() {
         return;
       }
 
-      // Step 3: Send to server for validation and processing - userId is now obtained from the authenticated session
+      // Step 3: Send to server for validation and processing - include userId in request
+      if (!user || !user.id) {
+        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
+        setIsValidating(false);
+        return;
+      }
+      
       const scanResult = await apiRequest(
         "POST", 
         "/api/scan-qr", 
         {
-          uuid
+          uuid,
+          userId: user.id
         }
       );
       
