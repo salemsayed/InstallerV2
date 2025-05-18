@@ -1004,6 +1004,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // QR code scanning endpoint - secured with basic authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('qr-scan');
+    
     try {
       // Create schema for QR scan validation
       const scanQrSchema = z.object({
@@ -1015,7 +1019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validation = scanQrSchema.safeParse(req.body);
       
       if (!validation.success) {
-        console.log("QR scan validation failed:", validation.error);
+        logger.error('QR scan validation failed', { 
+          errorCount: validation.error.errors.length
+        });
         return res.status(400).json({ 
           success: false, 
           message: "بيانات غير صالحة. الرجاء التحقق من المعلومات المقدمة.",
@@ -1026,10 +1032,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { uuid, userId } = validation.data;
       
+      logger.info('Processing QR scan', { 
+        userId,
+        uuidPrefix: uuid.substring(0, 8) // Only log prefix for tracing without revealing full UUID
+      });
+      
       // Verify user exists and is authorized
       const dbUser = await storage.getUser(userId);
       
       if (!dbUser) {
+        logger.error('User not found during QR scan', { userId });
         return res.status(404).json({ 
           success: false, 
           message: "المستخدم غير موجود.",
@@ -1038,6 +1050,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (dbUser.status !== UserStatus.ACTIVE) {
+        logger.error('Inactive user attempted QR scan', {
+          userId,
+          status: dbUser.status
+        });
         return res.status(403).json({ 
           success: false, 
           message: "الحساب غير نشط. يرجى التواصل مع المسؤول.",
@@ -1072,37 +1088,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the code exists in the manufacturing database
-      console.log(`[DEBUG] About to check UUID in manufacturing database: "${uuid}"`);
+      logger.info('Checking UUID in manufacturing database', {
+        uuidPrefix: uuid.substring(0, 8)
+      });
       
       // Try different formats - sometimes UUIDs might be stored differently
       const uuidNoHyphens = uuid.replace(/-/g, '');
-      console.log(`[DEBUG] UUID without hyphens: "${uuidNoHyphens}"`);
       
       // First try with normal UUID format
-      console.log(`[DEBUG] Checking with original UUID format`);
+      logger.info('Checking with original UUID format');
       let isValid = await checkSerialNumber(uuid);
       
       // If not found, try without hyphens
       if (!isValid) {
-        console.log(`[DEBUG] Original UUID not found, trying without hyphens`);
+        logger.info('Original UUID not found, trying without hyphens');
         isValid = await checkSerialNumber(uuidNoHyphens);
       }
       
       if (!isValid) {
-        console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
+        logger.error('UUID not found in manufacturing database', {
+          uuidPrefix: uuid.substring(0, 8)
+        });
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مسجل في قاعدة بيانات التصنيع لدينا",
           error_code: "INVALID_PRODUCT",
-          details: { uuid, uuidNoHyphens }
+          details: { uuidPrefix: uuid.substring(0, 8) } // Only return prefix for security
         });
       }
       
-      console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
+      logger.info('UUID validated in manufacturing database');
       
       // Get product details from manufacturing database
       const productName = await getProductNameBySerialNumber(uuid);
-      console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
+      
+      if (productName) {
+        logger.info('Product name retrieved from manufacturing database');
+      } else {
+        logger.error('No product name found for valid UUID');
+      }
       
       // Find matching product in our local database to determine reward points
       let pointsAwarded = 0;
@@ -1111,26 +1135,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (productName) {
         // Look up the product name in our local database
         localProduct = await storage.getLocalProductByName(productName);
-        console.log(`[DEBUG] Local product match:`, localProduct);
+        
+        if (localProduct) {
+          logger.info('Found matching local product', {
+            productId: localProduct.id,
+            isActive: localProduct.isActive === 1
+          });
+        } else {
+          logger.info('No matching local product found for name');
+        }
         
         if (localProduct && localProduct.isActive === 1) {
           // Use the reward points defined in our local database
           pointsAwarded = localProduct.rewardPoints;
-          console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
+          logger.info('Awarding points for product scan', {
+            pointsAwarded,
+            productId: localProduct.id
+          });
         } else {
-          console.log(`[DEBUG] No active local product match found for: "${productName}". Returning error.`);
+          logger.error('Product not eligible for rewards', {
+            reason: localProduct ? "Product is inactive" : "Product not found in rewards database"
+          });
           return res.status(400).json({ 
             success: false, 
             message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
             error_code: "INELIGIBLE_PRODUCT",
             details: { 
-              productName,
               reason: localProduct ? "Product is inactive" : "Product not found in rewards database"
             }
           });
         }
       } else {
-        console.log(`[DEBUG] No product name found. Returning error.`);
+        logger.error('No product name found for scanned code');
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -1140,6 +1176,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Save the scanned code to database with product reference if available
+      logger.info('Saving scanned code to database', {
+        userId,
+        hasProductId: !!localProduct?.id
+      });
+      
       const scannedCode = await storage.createScannedCode({
         uuid,
         scannedBy: userId, // Using the authenticated userId from session
@@ -1149,11 +1190,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // We already have the user from authentication check above
       // Now just update their points
+      logger.info('Updating user points balance', {
+        userId,
+        currentPoints: dbUser.points,
+        pointsToAdd: pointsAwarded
+      });
+      
       const updatedUser = await storage.updateUser(userId, {
         points: dbUser.points + pointsAwarded
       });
       
       // Create a transaction record with product metadata
+      logger.info('Creating transaction record', {
+        userId,
+        transactionType: TransactionType.EARNING,
+        pointsAwarded
+      });
+      
       await storage.createTransaction({
         userId: userId,
         type: TransactionType.EARNING,
@@ -1174,7 +1227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       ).length;
       
-      console.log(`[DEBUG] After QR scan, user ${userId} has ${installationCount} installations and ${updatedUser?.points} points`);
+      logger.info('Checking badge qualification', {
+        userId,
+        installationCount,
+        currentPoints: updatedUser?.points
+      });
       
       // Initialize badgeIds array if it doesn't exist
       if (updatedUser && (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds))) {
@@ -1188,7 +1245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const badge of allBadges) {
         if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
-          console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
+          logger.error('Invalid user badge data, skipping badge checks', {
+            userId,
+            hasBadgeIds: !!updatedUser?.badgeIds
+          });
           break;
         }
         
@@ -1203,7 +1263,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (qualifies) {
           // If user qualifies for badge but doesn't have it yet, add it
           if (!alreadyHasBadge) {
-            console.log(`[DEBUG] User ${userId} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
+            logger.info('User qualifies for new badge', {
+              userId,
+              badgeId: badge.id,
+              badgeName: badge.name
+            });
             updatedBadgeIds.push(badge.id);
             newBadges.push(badge);
             userBadgesUpdated = true;
@@ -1213,7 +1277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else if (alreadyHasBadge) {
           // User has badge but no longer qualifies - remove it
-          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
+          logger.info('User no longer qualifies for badge', {
+            userId,
+            badgeId: badge.id,
+            badgeName: badge.name
+          });
           userBadgesUpdated = true;
           // Badge is not added to updatedBadgeIds, effectively removing it
         }
