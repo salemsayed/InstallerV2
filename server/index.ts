@@ -6,6 +6,51 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// List of fields that should be redacted in logs
+const SENSITIVE_FIELDS = [
+  'phone', 
+  'email', 
+  'password', 
+  'token', 
+  'secret', 
+  'badgeIds', 
+  'profileImageUrl'
+];
+
+/**
+ * Redacts sensitive information from objects to prevent PII leakage in logs
+ * @param obj Object to be redacted
+ * @returns Redacted object safe for logging
+ */
+function redactSensitiveInfo(obj: any): any {
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => redactSensitiveInfo(item));
+  }
+
+  // Deep copy the object to avoid mutations
+  const redacted = { ...obj };
+
+  // Recursively process object properties
+  for (const key in redacted) {
+    // Redact sensitive field names
+    if (SENSITIVE_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+      redacted[key] = typeof redacted[key] === 'string' ? '***REDACTED***' : '[REDACTED]';
+    } 
+    // Recursively process nested objects
+    else if (typeof redacted[key] === 'object' && redacted[key] !== null) {
+      redacted[key] = redactSensitiveInfo(redacted[key]);
+    }
+  }
+
+  return redacted;
+}
+
+// Logging middleware with enhanced security
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -20,13 +65,21 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      // Log request metadata without sensitive data
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      // Only log response keys for API insights, not the full contents
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        // For success responses, only log the structure, not the content
+        if (res.statusCode >= 200 && res.statusCode < 400) {
+          const keys = Object.keys(capturedJsonResponse);
+          logLine += ` :: Keys: [${keys.join(', ')}]`;
+        } 
+        // For error responses, redact sensitive info but log more details
+        else {
+          const redactedResponse = redactSensitiveInfo(capturedJsonResponse);
+          logLine += ` :: ${JSON.stringify(redactedResponse)}`;
+        }
       }
 
       log(logLine);
