@@ -802,28 +802,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minInstallations: parsedMinInstallations
       };
       
-      // Only log non-sensitive information or use redacted version
-      console.log(`Updating badge ID ${badgeId} with name: ${validatedData.name}, required points: ${validatedData.requiredPoints}, min installations: ${validatedData.minInstallations}, active: ${validatedData.active}`);
+      // Use secure logging to prevent exposing sensitive data
+      const { createAdminLogger } = await import('./utils/admin-logger');
+      const logger = createAdminLogger('badge-update');
+      
+      logger.info(`Updating badge with validated data`, {
+        badgeId,
+        name: validatedData.name,
+        requiredPoints: validatedData.requiredPoints,
+        minInstallations: validatedData.minInstallations,
+        active: validatedData.active
+      });
       
       try {
         const updatedBadge = await storage.updateBadge(badgeId, validatedData);
         
         if (!updatedBadge) {
-          console.error('Badge update failed - storage returned undefined');
+          logger.error('Badge update failed - storage returned undefined');
           return res.status(500).json({
             success: false,
             message: "فشل تحديث الشارة - خطأ في قاعدة البيانات"
           });
         }
         
-        console.log(`Badge ID ${updatedBadge.id} update successful`);
+        logger.success('badge', updatedBadge.id, 'updated');
         return res.status(200).json({ 
           success: true, 
           message: "تم تحديث الشارة بنجاح",
           badge: updatedBadge 
         });
       } catch (dbError: any) {
-        console.error('Database error during badge update:', dbError);
+        logger.error('Database error during badge update', dbError);
         return res.status(500).json({
           success: false,
           message: "Database error during badge update",
@@ -831,16 +840,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      console.error('Unexpected error in badge update endpoint:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      logger.error('Unexpected error in badge update endpoint', error);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء تحديث الشارة",
-        errorDetail: typeof error === 'object' ? JSON.stringify(error) : 'Unknown error'
+        // Only return non-sensitive error information
+        errorType: error.name || 'Error'
       });
-    } finally {
-      console.log('========= BADGE UPDATE ENDPOINT END =========');
     }
   });
   

@@ -74,7 +74,7 @@ app.use((req, res, next) => {
         if (capturedJsonResponse) {
           // For success responses, only log the structure, not the content
           if (res.statusCode >= 200 && res.statusCode < 400) {
-            const keys = Object.keys(capturedJsonResponse);
+            const keys = capturedJsonResponse ? Object.keys(capturedJsonResponse) : [];
             logLine += ` :: Keys: [${keys.join(', ')}]`;
           } 
           // For error responses, redact sensitive info but log more details
