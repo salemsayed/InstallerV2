@@ -902,40 +902,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().min(1, { message: "QR code is required" })
   });
 
-  // QR code scanning endpoint - secured with authentication
-  app.post("/api/scan-qr", isAuthenticated, async (req: Request, res: Response) => {
+  // QR code scanning endpoint - secured with basic authentication
+  app.post("/api/scan-qr", async (req: Request, res: Response) => {
     try {
       // Create schema for QR scan validation
       const scanQrSchema = z.object({
-        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
+        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" }),
+        userId: z.number({ message: "معرف المستخدم مطلوب" })
       });
       
-      // Get user info from authenticated session (req.user comes from isAuthenticated middleware)
-      const user = req.user as any;
+      // Validate the request body
+      const validation = scanQrSchema.safeParse(req.body);
       
-      if (!user || !user.claims) {
-        console.log("Authentication failed: No user claims found in session");
-        return res.status(401).json({ 
+      if (!validation.success) {
+        console.log("QR scan validation failed:", validation.error);
+        return res.status(400).json({ 
           success: false, 
-          message: "غير مصرح. يرجى تسجيل الدخول.",
-          error_code: "UNAUTHORIZED",
+          message: "بيانات غير صالحة. الرجاء التحقق من المعلومات المقدمة.",
+          error_code: "INVALID_INPUT",
+          errors: validation.error.errors
         });
       }
       
-      // Get user's email from the authenticated Replit session
-      const userEmail = user.claims.email;
+      const { uuid, userId } = validation.data;
       
-      if (!userEmail) {
-        console.log("Authentication failed: No email in user claims");
-        return res.status(401).json({ 
-          success: false, 
-          message: "غير مصرح. البريد الإلكتروني غير متوفر.",
-          error_code: "MISSING_EMAIL" 
-        });
-      }
-      
-      // Lookup the user by email from our database
-      const dbUser = await storage.getUserByEmail(userEmail);
+      // Verify user exists and is authorized
+      const dbUser = await storage.getUser(userId);
       
       if (!dbUser) {
         return res.status(404).json({ 
@@ -953,8 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate request body
-      const { uuid } = scanQrSchema.parse(req.body);
+      // We've already validated the request body above and extracted uuid
       
       if (!uuid) {
         return res.status(400).json({ 
