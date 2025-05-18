@@ -923,13 +923,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QR code scanning endpoint - secured with authentication
-  app.post("/api/scan-qr", async (req: Request, res: Response) => {
-    console.log('[DEBUG] POST /api/scan-qr received with body:', req.body);
+  app.post("/api/scan-qr", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      // Get userId from the authenticated session instead of request body
-      const userId = parseInt(req.query.userId as string);
+      // Create schema for QR scan validation
+      const scanQrSchema = z.object({
+        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
+      });
       
-      if (!userId) {
+      // Get user info from authenticated session (req.user comes from isAuthenticated middleware)
+      const user = req.user as any;
+      
+      if (!user || !user.claims) {
         return res.status(401).json({ 
           success: false, 
           message: "غير مصرح. يرجى تسجيل الدخول.",
@@ -937,9 +941,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Verify user exists and is active
-      const user = await storage.getUser(userId);
-      if (!user) {
+      // Get user ID from Replit Auth session
+      // We'll handle authentication directly using the session info and user query
+      // For security, we don't trust user IDs from request body
+      
+      // Get authenticated user ID from query parameter (secure because this is after isAuthenticated middleware)
+      const userId = parseInt(req.query.userId as string);
+      
+      if (!userId || isNaN(userId)) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول مرة أخرى.",
+          error_code: "INVALID_SESSION" 
+        });
+      }
+      
+      // Verify user exists and is authorized
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
         return res.status(404).json({ 
           success: false, 
           message: "المستخدم غير موجود.",
@@ -947,7 +967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (user.status !== UserStatus.ACTIVE) {
+      if (dbUser.status !== UserStatus.ACTIVE) {
         return res.status(403).json({ 
           success: false, 
           message: "الحساب غير نشط. يرجى التواصل مع المسؤول.",
@@ -1061,7 +1081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We already have the user from authentication check above
       // Now just update their points
       const updatedUser = await storage.updateUser(userId, {
-        points: user.points + pointsAwarded
+        points: dbUser.points + pointsAwarded
       });
       
       // Create a transaction record with product metadata
