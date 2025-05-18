@@ -420,10 +420,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Delete user
   app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('user-delete');
+    
     const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
     
     if (!adminId) {
+      logger.error('Missing admin ID in user delete request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -431,13 +436,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
+        logger.error('Unauthorized user deletion attempt', { 
+          adminId, 
+          role: admin?.role 
+        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
+      
+      logger.info('Processing user deletion request', { adminId, targetUserId });
       
       // Check if user exists
       const targetUser = await storage.getUser(targetUserId);
       
       if (!targetUser) {
+        logger.error('Target user not found for deletion', { targetUserId });
         return res.status(404).json({ 
           success: false,
           message: "لم يتم العثور على المستخدم."
@@ -446,27 +458,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Prevent deleting yourself
       if (targetUserId === adminId) {
+        logger.error('Admin attempted to delete self', { adminId });
         return res.status(400).json({
           success: false,
           message: "لا يمكن حذف حسابك الخاص."
         });
       }
       
+      logger.info('Attempting to delete user', { 
+        targetUserId,
+        targetUserRole: targetUser.role
+      });
+      
       const result = await storage.deleteUser(targetUserId);
       
       if (!result) {
+        logger.error('Database delete operation failed', { targetUserId });
         return res.status(500).json({
           success: false,
           message: "فشل حذف المستخدم. يرجى المحاولة مرة أخرى."
         });
       }
       
+      logger.success('user', targetUserId, 'deleted');
       return res.status(200).json({
         success: true,
         message: "تم حذف المستخدم بنجاح"
       });
       
     } catch (error: any) {
+      logger.error('Error during user deletion', error);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء حذف المستخدم" 
