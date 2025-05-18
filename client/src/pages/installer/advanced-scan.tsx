@@ -66,19 +66,20 @@ export default function AdvancedScanPage() {
         return;
       }
 
-      // Step 3: Send to server for validation and processing - include userId in request
+      // Step 3: Send to server for validation and processing
       if (!user || !user.id) {
         setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
         setIsValidating(false);
         return;
       }
       
+      // SECURITY FIX: Don't send userId in request body, use URL parameter instead
+      // The server will ignore userId in body and use the session/query parameter
       const scanResult = await apiRequest(
         "POST", 
-        "/api/scan-qr", 
+        `/api/scan-qr?userId=${user.id}`, 
         {
-          uuid,
-          userId: user.id
+          uuid
         }
       );
       

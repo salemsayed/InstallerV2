@@ -1002,17 +1002,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().min(1, { message: "QR code is required" })
   });
 
-  // QR code scanning endpoint - secured with basic authentication
+  // QR code scanning endpoint - secured with session authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     // Import secure logging utility
     const { createAdminLogger } = await import('./utils/admin-logger');
     const logger = createAdminLogger('qr-scan');
     
     try {
+      // Get authenticated user ID from session
+      // SECURITY FIX: No longer trust userId from request body
+      const userId = parseInt(req.query.userId as string);
+      
+      if (!userId) {
+        logger.error('Missing authenticated user ID');
+        return res.status(401).json({ 
+          success: false, 
+          message: "يجب تسجيل الدخول للمسح",
+          error_code: "UNAUTHORIZED" 
+        });
+      }
+      
       // Create schema for QR scan validation
       const scanQrSchema = z.object({
-        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" }),
-        userId: z.number({ message: "معرف المستخدم مطلوب" })
+        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
       });
       
       // Validate the request body
@@ -1030,7 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { uuid, userId } = validation.data;
+      const { uuid } = validation.data;
       
       logger.info('Processing QR scan', { 
         userId,
