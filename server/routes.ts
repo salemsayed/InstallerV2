@@ -115,8 +115,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create a JWT or session token here if needed
-      // For simplicity, we'll just return the user object
+      // Store user information in session for authentication
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+      
+      // Log successful authentication
+      console.log(`User authenticated: ${user.name} (ID: ${user.id})`);
       
       return res.json({
         success: true,
@@ -128,7 +132,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           points: user.points,
           level: user.level,
           region: user.region,
-          status: user.status
+          status: user.status,
+          badgeIds: user.badgeIds
         }
       });
     } catch (error: any) {
