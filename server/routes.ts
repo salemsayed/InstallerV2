@@ -545,39 +545,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter for current month installations only
       const now = new Date();
       // In JavaScript, months are 0-indexed (0=January, 1=February, ..., 11=December)
-      const currentMonth = now.getMonth(); // May = 4 in JavaScript's Date API
+      const currentMonth = now.getMonth(); 
       const currentYear = now.getFullYear();
-      
-      // Log for debugging
-      if (installationTransactions.length > 0) {
-        console.log("[DEBUG] First transaction sample:", JSON.stringify(installationTransactions[0]));
-        console.log("[DEBUG] First transaction type:", installationTransactions[0].type);
-        console.log("[DEBUG] First transaction date:", installationTransactions[0].createdAt);
-      }
       
       // Count only current month installations for badge qualification
       const currentMonthInstallations = installationTransactions.filter(t => {
         const transactionDate = new Date(t.createdAt);
-        // In JavaScript, months are 0-indexed (0=January, 1=February, ..., 11=December)
-        const transactionMonth = transactionDate.getMonth(); // May = 4 in JavaScript's Date API
+        const transactionMonth = transactionDate.getMonth();
         const transactionYear = transactionDate.getFullYear();
         
-        console.log(`[DEBUG] Examining transaction: id=${t.id}, type=${t.type}, date=${t.createdAt}`);
-        console.log(`[DEBUG] Transaction ${t.id} date parsed as:`, t.createdAt, `Month: ${transactionMonth}, Year: ${transactionYear}`);
-        
-        const isCurrentMonth = (transactionMonth === currentMonth && transactionYear === currentYear);
-        console.log(`[DEBUG] Transaction ${t.id} current month check:`, isCurrentMonth, `(${transactionMonth} === ${currentMonth} && ${transactionYear} === ${currentYear})`);
-        
-        return isCurrentMonth;
+        return (transactionMonth === currentMonth && transactionYear === currentYear);
       });
       
-      console.log(`[DEBUG] Current month/year:`, currentMonth, currentYear);
-      console.log(`[DEBUG] Filtered installation transactions:`, currentMonthInstallations.length);
-      console.log(`[DEBUG] Installation transactions:`, JSON.stringify(installationTransactions.slice(0, 6)));
-      
       const installationCount = currentMonthInstallations.length;
-      
-      console.log(`[DEBUG] User ${userId} has ${installationCount} installations and ${user.points} points`);
       
       // Initialize badgeIds array if it doesn't exist
       if (!user.badgeIds) {
