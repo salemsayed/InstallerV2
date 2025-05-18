@@ -73,11 +73,10 @@ export default function AdvancedScanPage() {
         return;
       }
       
-      // SECURITY FIX: Don't send userId in request body, use URL parameter instead
-      // The server will ignore userId in body and use the session/query parameter
+      // No longer need to send userId - server will get it from the session
       const scanResult = await apiRequest(
         "POST", 
-        `/api/scan-qr?userId=${user.id}`, 
+        "/api/scan-qr", 
         {
           uuid
         }

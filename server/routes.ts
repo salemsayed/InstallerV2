@@ -119,8 +119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       req.session.userRole = user.role;
       
-      // Log successful authentication
-      console.log(`User authenticated: ${user.name} (ID: ${user.id})`);
+      // Log successful authentication with secure logging
+      const { createAdminLogger } = await import('./utils/admin-logger');
+      const logger = createAdminLogger('auth');
+      logger.info('User authenticated successfully', { 
+        userId: user.id, 
+        role: user.role
+      });
       
       return res.json({
         success: true,
@@ -148,23 +153,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Add logout endpoint
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    // Import secure logging utility
+    const { createAdminLogger } = require('./utils/admin-logger');
+    const logger = createAdminLogger('auth');
+    
+    const userId = req.session?.userId;
+    
+    if (userId) {
+      logger.info('User logging out', { userId });
+    }
+    
+    req.session.destroy((err: any) => {
+      if (err) {
+        logger.error('Error destroying session', { 
+          userId: userId || 'unknown', 
+          error: err.message 
+        });
+        return res.status(500).json({
+          success: false,
+          message: "حدث خطأ أثناء تسجيل الخروج"
+        });
+      }
+      
+      // Clear session cookie
+      res.clearCookie('connect.sid');
+      
+      logger.info('Logout successful', { userId: userId || 'unknown' });
+      return res.status(200).json({
+        success: true,
+        message: "تم تسجيل الخروج بنجاح"
+      });
+    });
+  });
+  
   // USER ROUTES
 
-  // Legacy endpoint for the old auth system
+  // Current user profile endpoint - protected by session authentication
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // This would typically check session/token
-    // For demo, we'll use a query param
-    const userId = parseInt(req.query.userId as string);
+    // Import secure logging utility
+    const { createAdminLogger } = await import('./utils/admin-logger');
+    const logger = createAdminLogger('user-profile');
+    
+    // Get user ID from session
+    const userId = req.session?.userId;
     
     if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+      logger.info('Unauthenticated access attempt to /api/users/me');
+      return res.status(401).json({ 
+        success: false,
+        message: "غير مصرح. يرجى تسجيل الدخول." 
+      });
     }
     
     try {
       const user = await storage.getUser(userId);
       
       if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
+        logger.error('User not found in database despite valid session', { userId });
+        return res.status(404).json({ 
+          success: false,
+          message: "المستخدم غير موجود." 
+        });
       }
       
       return res.status(200).json({
@@ -1007,20 +1058,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().min(1, { message: "QR code is required" })
   });
 
-  // QR code scanning endpoint - secured with session authentication
+  // QR code scanning endpoint - secured with proper session authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     // Import secure logging utility
     const { createAdminLogger } = await import('./utils/admin-logger');
     const logger = createAdminLogger('qr-scan');
     
     try {
-      // Get authenticated user ID from session - this should eventually come from proper auth middleware
-      // For now, we're using the query parameter as a temporary security improvement
-      // SECURITY FIX: No longer trust userId from request body
-      const userId = parseInt(req.query.userId as string);
+      // Get authenticated user ID from session
+      const userId = req.session?.userId;
       
       if (!userId) {
-        logger.error('Missing authenticated user ID');
+        logger.error('Unauthorized QR scan attempt - No session');
         return res.status(401).json({ 
           success: false, 
           message: "يجب تسجيل الدخول للمسح",
@@ -1028,8 +1077,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // SECURITY ENHANCEMENT: Add rate limiting for QR scanning
-      // TODO: Implement proper rate limiting middleware
+      // SECURITY ENHANCEMENT: Basic rate limiting (could be expanded)
+      const lastScanTime = req.session.lastScanTime;
+      const now = Date.now();
+      
+      if (lastScanTime && (now - lastScanTime < 1000)) { // 1 second minimum between scans
+        logger.warn('Rate limit exceeded', { userId });
+        return res.status(429).json({
+          success: false,
+          message: "الرجاء الانتظار قبل إجراء مسح آخر",
+          error_code: "RATE_LIMIT_EXCEEDED"
+        });
+      }
+      
+      // Update last scan time in session
+      req.session.lastScanTime = now;
       
       // Create schema for QR scan validation
       const scanQrSchema = z.object({

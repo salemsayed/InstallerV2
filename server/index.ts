@@ -1,10 +1,52 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { pool } from "./db";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Configure secure session storage with PostgreSQL
+const configureSession = () => {
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  
+  // Fail fast if SESSION_SECRET is not set in production
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET must be set in production environment');
+  }
+  
+  // In development, warn but allow fallback secret
+  const sessionSecret = process.env.SESSION_SECRET || 'bareeq-installer-dev-session-secret';
+  if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using a dev secret which is insecure for production.');
+  }
+  
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    pool,
+    createTableIfMissing: true,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  
+  return session({
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: sessionTtl
+    }
+  });
+};
+
+// Apply session middleware
+app.use(configureSession());
 
 // List of fields that should be redacted in logs
 const SENSITIVE_FIELDS = [
