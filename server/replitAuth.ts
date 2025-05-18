@@ -25,6 +25,18 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  
+  // Fail fast if SESSION_SECRET is not set in production
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET must be set in production environment');
+  }
+  
+  // In development, warn but allow fallback
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using a random secret for development only. This would be insecure in production.');
+  }
+  
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -32,14 +44,20 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
   return session({
-    secret: process.env.SESSION_SECRET || "development-session-secret",
+    secret: sessionSecret || (isDevelopment ? Math.random().toString(36).substring(2, 15) : ''),
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // Always set secure=true in production regardless of configuration
+      secure: !isDevelopment,
+      // Set sameSite=lax in all environments except development
+      sameSite: isDevelopment ? undefined : 'lax',
       maxAge: sessionTtl,
     },
   });
