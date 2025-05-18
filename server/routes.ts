@@ -802,7 +802,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minInstallations: parsedMinInstallations
       };
       
-      console.log('Validated data to be sent:', JSON.stringify(validatedData));
+      // Only log non-sensitive information or use redacted version
+      console.log(`Updating badge ID ${badgeId} with name: ${validatedData.name}, required points: ${validatedData.requiredPoints}, min installations: ${validatedData.minInstallations}, active: ${validatedData.active}`);
       
       try {
         const updatedBadge = await storage.updateBadge(badgeId, validatedData);
@@ -815,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        console.log('Badge update successful:', JSON.stringify(updatedBadge));
+        console.log(`Badge ID ${updatedBadge.id} update successful`);
         return res.status(200).json({ 
           success: true, 
           message: "تم تحديث الشارة بنجاح",
