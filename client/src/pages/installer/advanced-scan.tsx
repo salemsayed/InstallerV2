@@ -3,8 +3,14 @@ import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader2 } from "lucide-react";
+import { Loader2, QrCode } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import InstallerLayout from "@/components/layouts/installer-layout";
+import QrScanner from "@/components/installer/qr-scanner";
+
+// Import the Scandit libraries now that they're properly installed
+import * as ScanditCore from '@scandit/web-datacapture-core';
+import * as ScanditBarcode from '@scandit/web-datacapture-barcode';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -32,9 +38,6 @@ export default function AdvancedScanPage() {
   // State for scan success animation
   const [showSuccess, setShowSuccess] = useState(false);
   
-  // State to use fallback scanner (HTML5) if needed
-  const [useFallbackScanner, setUseFallbackScanner] = useState(false);
-
   // Function to validate QR code
   const validateQrCode = async (url: string) => {
     setIsValidating(true);
