@@ -1130,30 +1130,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
         
-        // Update user's badges in database if changes were made
-        if (userBadgesUpdated && updatedUser) {
-          console.log(`[DEBUG] Updating user ${user.id} badges in database:`, updatedBadgeIds);
-          updatedUser.badgeIds = updatedBadgeIds;
-          await storage.updateUser(user.id, { badgeIds: updatedBadgeIds });
-        }
-        
-        return res.status(200).json({
-          success: true,
-          message: "تم التحقق من المنتج بنجاح وتمت إضافة النقاط",
-          productName,
-          pointsAwarded,
-          productDetails: localProduct,
-          newPoints: updatedUser?.points || user.points + pointsAwarded,
-          newBadges: newBadges.length > 0 ? newBadges : undefined
-        });
-      } else {
-        return res.status(404).json({
-          success: false,
-          message: "المستخدم غير موجود",
-          error_code: "USER_NOT_FOUND",
-          details: { userId }
-        });
+      // Update user's badges in database if changes were made
+      if (userBadgesUpdated && updatedUser) {
+        console.log(`[DEBUG] Updating user ${userId} badges in database:`, updatedBadgeIds);
+        updatedUser.badgeIds = updatedBadgeIds;
+        await storage.updateUser(userId, { badgeIds: updatedBadgeIds });
       }
+      
+      return res.status(200).json({
+        success: true,
+        message: "تم التحقق من المنتج بنجاح وتمت إضافة النقاط",
+        productName,
+        pointsAwarded,
+        productDetails: localProduct,
+        newPoints: updatedUser?.points || user.points + pointsAwarded,
+        newBadges: newBadges.length > 0 ? newBadges : undefined
+      });
       
     } catch (error: any) {
       console.error("QR scanning error:", error);
