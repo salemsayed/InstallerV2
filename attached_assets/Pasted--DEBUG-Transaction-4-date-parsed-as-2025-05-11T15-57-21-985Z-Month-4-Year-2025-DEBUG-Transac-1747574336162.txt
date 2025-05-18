@@ -1,0 +1,25 @@
+[DEBUG] Transaction 4 date parsed as: 2025-05-11T15:57:21.985Z Month: 4, Year: 2025
+[DEBUG] Transaction 4 current month check: true (4 === 4 && 2025 === 2025)
+[DEBUG] Examining transaction: id=3, type=earning, date=Sun May 11 2025 15:53:06 GMT+0000 (Coordinated Universal Time)
+[DEBUG] Transaction 3 date parsed as: 2025-05-11T15:53:06.642Z Month: 4, Year: 2025
+[DEBUG] Transaction 3 current month check: true (4 === 4 && 2025 === 2025)
+[DEBUG] Current month/year: 4 2025
+[DEBUG] Filtered installation transactions: 23
+[DEBUG] Installation transactions: [{"id":29,"userId":13,"type":"earning","amount":15,"description":"تم تركيب منتج BQ1303 BAREEQ Power Strip","metadata":{"productId":34},"createdAt":"2025-05-13T17:11:21.480Z"},{"id":28,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-13T15:33:54.081Z"},{"id":27,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-13T14:25:19.654Z"},{"id":26,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-12T15:47:14.856Z"},{"id":25,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-12T15:41:50.055Z"},{"id":24,"userId":13,"type":"earning","amount":69,"description":"تم تركيب منتج BQ520 BAREEQ 50W","metadata":{"productId":1},"createdAt":"2025-05-12T15:18:06.432Z"}]
+[DEBUG] User 13 has 23 installations and 1740 points
+1:14:46 PM [express] GET /api/badges 304 in 172ms :: Keys: [badges]
+1:14:46 PM [express] GET /api/users/me 401 in 1ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+1:14:48 PM [express] GET /api/users/me 304 in 29ms :: Keys: [user]
+1:14:50 PM [express] GET /api/users/me 304 in 22ms :: Keys: [user]
+1:14:52 PM [express] GET /api/users/me 304 in 34ms :: Keys: [user]
+1:14:54 PM [express] GET /api/users/me 304 in 24ms :: Keys: [user]
+1:14:56 PM [express] GET /api/users/me 304 in 24ms :: Keys: [user]
+1:14:58 PM [express] GET /api/users/me 304 in 24ms :: Keys: [user]
+1:15:20 PM [express] GET /api/users/me 304 in 123ms :: Keys: [user]
+1:15:42 PM [express] GET /api/users/me 401 in 0ms :: {"message":"غير مصرح. يرجى تسجيل الدخول."}
+[DEBUG] Getting transactions for user 13 with limit 100
+[DEBUG] Retrieved 23 transactions for user 13
+1:15:42 PM [express] GET /api/transactions 304 in 53ms :: Keys: [transactions, total]
+1:15:42 PM [express] GET /api/users/me 304 in 116ms :: Keys: [user]
+[DEBUG] Getting transactions for user 13 with limit 1000
+[DEBUG] Retrieved 23 transactions for user 13

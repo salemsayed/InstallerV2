@@ -7,8 +7,8 @@ console.log('[MANUFACTURING_DB] Initializing connection to external manufacturin
 export const manufacturingDb = knex({
   client: 'pg',
   connection: {
-    host: process.env.MANUFACTURING_DB_HOST,
-    port: parseInt(process.env.MANUFACTURING_DB_PORT),
+    host: process.env.MANUFACTURING_DB_HOST || '',
+    port: parseInt(process.env.MANUFACTURING_DB_PORT || '5432'),
     user: process.env.MANUFACTURING_DB_USER,
     password: process.env.MANUFACTURING_DB_PASSWORD,
     database: process.env.MANUFACTURING_DB_NAME,
@@ -24,7 +24,7 @@ export const manufacturingDb = knex({
     }
   },
   // Enable query debugging
-  debug: true,
+  debug: false, // Set to false to prevent raw SQL logging
   // Log queries
   log: {
     warn(message: string) {
@@ -37,7 +37,8 @@ export const manufacturingDb = knex({
       console.log('[MANUFACTURING_DB] Deprecated:', message);
     },
     debug(message: string) {
-      console.log('[MANUFACTURING_DB] Debug:', message);
+      // Don't log raw SQL debug messages
+      // console.log('[MANUFACTURING_DB] Debug:', message);
     },
   }
 });
@@ -50,20 +51,20 @@ manufacturingDb.raw('SELECT 1')
     return manufacturingDb.raw("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
   })
   .then((result) => {
-    console.log('[MANUFACTURING_DB] Available tables:', result.rows.map((r: any) => r.table_name));
-    // Check po_items table structure
+    console.log('[MANUFACTURING_DB] Available tables count:', result.rows.length);
+    // Check po_items table structure without logging full details
     return manufacturingDb.raw("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'po_items'");
   })
   .then((result) => {
-    console.log('[MANUFACTURING_DB] po_items table structure:', result.rows);
+    console.log('[MANUFACTURING_DB] po_items table structure column count:', result.rows.length);
   })
   .catch(err => {
-    console.error('[MANUFACTURING_DB] Connection test failed:', err);
+    console.error('[MANUFACTURING_DB] Connection test failed - generic error');
   });
 
 // Function to check if a serial number exists in the manufacturing database
 export async function checkSerialNumber(serialNumber: string): Promise<boolean> {
-  console.log(`[MANUFACTURING_DB] Checking serial number (ID length: ${serialNumber.length})`);
+  console.log(`[MANUFACTURING_DB] Checking serial number (ID length: ${serialNumber ? serialNumber.length : 0})`);
   
   try {
     // Using the recommended EXISTS query approach for efficiency
@@ -77,12 +78,12 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       ) AS po_item_exists
     `;
     
-    // Use secure logging without exposing parameters
+    // Log SQL template safely without exposing actual parameter values
     logSqlSafely('CHECK_SERIAL', sql, [serialNumber]);
     
     const result = await manufacturingDb.raw(sql, [serialNumber]);
     
-    // Safely log query results
+    // Log result structure without exposing actual data
     logResultSafely('CHECK_SERIAL', result);
     
     // For Postgres, the result format is different from other SQL engines
@@ -104,14 +105,14 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       .where('serial_number', serialNumber)
       .limit(1);
     
-    // Log the SQL query template without parameters
+    // Log SQL template safely
     logSqlSafely('CHECK_SERIAL_FALLBACK', 'SELECT serial_number FROM po_items WHERE serial_number = ? LIMIT 1', [serialNumber]);
     
     const fallbackResult = await fallbackQuery;
     logResultSafely('CHECK_SERIAL_FALLBACK', fallbackResult);
     
     if (fallbackResult && fallbackResult.length > 0) {
-      console.log(`[MANUFACTURING_DB] Found via fallback query (result count: ${fallbackResult.length})`);
+      console.log(`[MANUFACTURING_DB] Found via fallback query`);
       return true;
     }
     
@@ -123,7 +124,7 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
       .whereRaw('printed_url LIKE ?', [`%${serialNumber}%`])
       .limit(1);
     
-    // Log the URL check SQL template without parameters
+    // Log SQL template safely
     logSqlSafely('CHECK_SERIAL_URL', 'SELECT serial_number FROM po_items WHERE printed_url LIKE ? LIMIT 1', [`%${serialNumber}%`]);
     
     const urlResult = await urlQuery;
@@ -131,10 +132,10 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
     
     return urlResult && urlResult.length > 0;
   } catch (error) {
-    // Use secure error logging
+    // Log error details safely without exposing sensitive information
     logErrorSafely('CHECK_SERIAL', error);
     
-    // Additional connection debugging without exposing sensitive data
+    // Additional connection debugging without exposing sensitive details
     try {
       console.log('[MANUFACTURING_DB] Testing database connection...');
       await manufacturingDb.raw('SELECT 1 as connection_test');
@@ -148,10 +149,8 @@ export async function checkSerialNumber(serialNumber: string): Promise<boolean> 
 }
 
 // Function to get product name by serial number
-import { logSqlSafely, logResultSafely, logErrorSafely } from './utils/secure-logger';
-
 export async function getProductNameBySerialNumber(serialNumber: string): Promise<string | null> {
-  console.log(`[MANUFACTURING_DB] Getting product name for serial number (ID length: ${serialNumber.length})`);
+  console.log(`[MANUFACTURING_DB] Getting product name for serial number (ID length: ${serialNumber ? serialNumber.length : 0})`);
   
   try {
     // Simplified approach with direct SQL query
