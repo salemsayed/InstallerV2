@@ -123,6 +123,12 @@ export default function AdvancedQrScanner({ onScanSuccess }: AdvancedQrScannerPr
         return;
       }
       
+      console.log("Sending QR scan request with:", {
+        endpoint: `/api/scan-qr?userId=${user.id}`,
+        user: user,
+        uuid: uuid
+      });
+      
       const scanResult = await apiRequest(
         "POST", 
         `/api/scan-qr?userId=${user.id}`, 

@@ -905,10 +905,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // QR code scanning endpoint - secured with basic authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     try {
+      console.log("[DEBUG QR-SCAN] Request received:", {
+        query: req.query,
+        body: req.body,
+        headers: req.headers['user-agent']
+      });
+      
       // Get user ID from query parameters (this should be updated to use session authentication in production)
       const userId = parseInt(req.query.userId as string);
       
+      console.log("[DEBUG QR-SCAN] UserId from query:", userId);
+      
       if (!userId) {
+        console.log("[DEBUG QR-SCAN] No userId provided in query parameters");
         return res.status(401).json({ 
           success: false, 
           message: "غير مصرح. يرجى تسجيل الدخول.",
@@ -919,8 +928,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the request body
       const validation = scanQrSchema.safeParse(req.body);
       
+      console.log("[DEBUG QR-SCAN] Request body validation:", validation.success ? "Success" : "Failed", 
+        !validation.success ? validation.error : "");
+      
       if (!validation.success) {
-        console.log("QR scan validation failed:", validation.error);
+        console.log("[DEBUG QR-SCAN] QR scan validation failed:", validation.error);
         return res.status(400).json({ 
           success: false, 
           message: "بيانات غير صالحة. الرجاء التحقق من المعلومات المقدمة.",
@@ -930,6 +942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { uuid } = validation.data;
+      console.log("[DEBUG QR-SCAN] Extracted UUID:", uuid);
       
       // Verify user exists and is authorized
       const dbUser = await storage.getUser(userId);
