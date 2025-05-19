@@ -116,10 +116,16 @@ export default function AdvancedQrScanner({ onScanSuccess }: AdvancedQrScannerPr
     }
 
     try {
-      // Step 3: Send to server for validation and processing - userId is now obtained from the authenticated session
+      // Step 3: Send to server for validation and processing
+      if (!user || !user.id) {
+        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
+        setIsValidating(false);
+        return;
+      }
+      
       const scanResult = await apiRequest(
         "POST", 
-        "/api/scan-qr", 
+        `/api/scan-qr?userId=${user.id}`, 
         {
           uuid
         }
