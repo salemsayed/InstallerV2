@@ -184,5 +184,12 @@ function startListening(server: any) {
   });
 }
 
-// Start the server using promise chains
-startServer();
+// Use an IIFE to handle async initialization
+(async () => {
+  try {
+    await startServer();
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+})();
