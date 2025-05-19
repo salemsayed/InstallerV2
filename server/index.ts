@@ -135,8 +135,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize the server 
-async function initServer() {
+// Initialize and start the server using an IIFE
+(async () => {
   try {
     // Register all routes
     const server = await registerRoutes(app);
@@ -165,13 +165,8 @@ async function initServer() {
     }, () => {
       log(`serving on port ${port}`);
     });
-    
-    return server;
   } catch (error) {
     console.error("Failed to initialize server:", error);
     process.exit(1);
   }
-}
-
-// Start the server
-initServer();
+})();
