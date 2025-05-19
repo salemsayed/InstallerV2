@@ -50,6 +50,53 @@
   }
 }
 
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(calc(100vh + 100px)) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes confetti-sway {
+  0% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  100% {
+    transform: translateX(-5px);
+  }
+}
+
+@keyframes points-bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shine {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @layer utilities {
   .animate-scanline {
     animation: scanline 2s linear infinite;
@@ -67,6 +114,26 @@
     stroke-dasharray: 100;
     stroke-dashoffset: 100;
     animation: success-check 0.8s ease-out forwards;
+  }
+  
+  .animate-confetti-fall {
+    animation: confetti-fall 3s ease-in-out forwards;
+  }
+  
+  .animate-confetti-sway {
+    animation: confetti-sway 1.5s ease-in-out infinite;
+  }
+  
+  .animate-points-bounce {
+    animation: points-bounce 1.5s ease-out forwards;
+  }
+  
+  .animate-shine {
+    background: linear-gradient(90deg, #4d54e0, #0090ff, #4d54e0);
+    background-size: 200% 200%;
+    animation: shine 2s linear infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }
 
