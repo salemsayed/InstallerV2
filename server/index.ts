@@ -135,38 +135,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize and start the server using an IIFE
-(async () => {
-  try {
-    // Register all routes
-    const server = await registerRoutes(app);
+// Initialize the server without using async/await to avoid build issues
+function startServer() {
+  // Register all routes using promise chain
+  registerRoutes(app)
+    .then((server) => {
+      // Error handler middleware
+      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        const status = err.status || err.statusCode || 500;
+        const message = err.message || "Internal Server Error";
+        res.status(status).json({ message });
+        console.error(err);
+      });
 
-    // Error handler middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-      console.error(err);
+      // Setup front-end serving based on environment
+      if (app.get("env") === "development") {
+        // Handle Vite setup with promises
+        setupVite(app, server)
+          .then(() => {
+            // Start server after Vite is ready
+            startListening(server);
+          })
+          .catch((err) => {
+            console.error("Vite setup failed:", err);
+            process.exit(1);
+          });
+      } else {
+        // In production, just serve static files
+        serveStatic(app);
+        startListening(server);
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to initialize server:", error);
+      process.exit(1);
     });
+}
 
-    // Setup front-end serving (Vite in dev, static in prod)
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
+// Helper function to start the server listening
+function startListening(server: any) {
+  const port = 5000;
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+}
 
-    // Start the server
-    const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`serving on port ${port}`);
-    });
-  } catch (error) {
-    console.error("Failed to initialize server:", error);
-    process.exit(1);
-  }
-})();
+// Start the server using promise chains
+startServer();
