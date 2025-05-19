@@ -899,17 +899,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Schema for validating QR code scan requests
   const scanQrSchema = z.object({
-    uuid: z.string().min(1, { message: "QR code is required" })
+    uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
   });
 
   // QR code scanning endpoint - secured with basic authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
     try {
-      // Create schema for QR scan validation
-      const scanQrSchema = z.object({
-        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" }),
-        userId: z.number({ message: "معرف المستخدم مطلوب" })
-      });
+      // Get user ID from query parameters (this should be updated to use session authentication in production)
+      const userId = parseInt(req.query.userId as string);
+      
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول.",
+          error_code: "UNAUTHORIZED" 
+        });
+      }
       
       // Validate the request body
       const validation = scanQrSchema.safeParse(req.body);
@@ -924,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { uuid, userId } = validation.data;
+      const { uuid } = validation.data;
       
       // Verify user exists and is authorized
       const dbUser = await storage.getUser(userId);
