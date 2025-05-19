@@ -21,6 +21,7 @@ export default function AdvancedScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [licenseStatus, setLicenseStatus] = useState<'initialized' | 'failed' | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState(0);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   
@@ -114,12 +115,23 @@ export default function AdvancedScanPage() {
       // Success path
       setIsValidating(false);
       setResult(`تم التحقق من المنتج: ${result.productName}`);
+      
+      // Set points awarded if available in the response
+      if (result.pointsAwarded) {
+        setPointsAwarded(result.pointsAwarded);
+      } else {
+        // Default points when not provided by API
+        setPointsAwarded(50);
+      }
+      
       setShowSuccess(true);
       
       // Hide success animation after a few seconds
       setTimeout(() => {
         setShowSuccess(false);
-      }, 3000);
+        // Reset points after animation completes
+        setPointsAwarded(0);
+      }, 3500);
       
       // Log success and product name
       console.log("Scanned product:", result.productName);
@@ -414,10 +426,10 @@ export default function AdvancedScanPage() {
                 <p className="mt-4 text-white text-2xl font-bold">تم التحقق بنجاح!</p>
                 
                 {/* Points indicator */}
-                {productPoints > 0 && (
+                {pointsAwarded > 0 && (
                   <div className="mt-3 bg-white/20 backdrop-blur-md rounded-full px-6 py-2 animate-points-bounce">
                     <p className="text-white font-bold text-lg">
-                      <span className="ml-1 text-yellow-300">+{productPoints}</span> نقطة
+                      <span className="ml-1 text-yellow-300">+{pointsAwarded}</span> نقطة
                     </p>
                   </div>
                 )}
