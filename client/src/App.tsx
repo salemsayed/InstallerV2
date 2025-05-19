@@ -3,7 +3,7 @@ import LoginPage from "@/pages/auth/login-page";
 import InstallerDashboard from "@/pages/installer/dashboard";
 import InstallerStats from "@/pages/installer/stats";
 import InstallerProfile from "@/pages/installer/profile";
-import AdvancedScanPage from "@/pages/installer/advanced-scan-fixed";
+import AdvancedScanPage from "@/pages/installer/advanced-scan";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
