@@ -8,8 +8,8 @@ packages = ["jq"]
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+build = ["sh", "-c", "npm run build"]
+run = ["sh", "-c", "NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js"]
 
 [[ports]]
 localPort = 5000

@@ -1,0 +1,124 @@
+starting up user application
+    at async link (node:internal/modules/esm/module_job:87:21)
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    ^^^^^
+file:///home/runner/workspace/dist/index.js:1237
+file:///home/runner/workspace/dist/index.js:1237
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+
+    await init_index();
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+SyntaxError: Unexpected reserved word
+forwarding local port 5000 to external port 80 (mapped as 1104)
+SyntaxError: Unexpected reserved word
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+
+
+
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    at async link (node:internal/modules/esm/module_job:87:21)
+    at async link (node:internal/modules/esm/module_job:87:21)
+    ^^^^^
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+SyntaxError: Unexpected reserved word
+    ^^^^^
+    await init_index();
+
+    ^^^^^
+    ^^^^^
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+file:///home/runner/workspace/dist/index.js:1237
+
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+
+    await init_index();
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+
+
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    await init_index();
+    await init_index();
+
+file:///home/runner/workspace/dist/index.js:1237
+    at async link (node:internal/modules/esm/module_job:87:21)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+    at async link (node:internal/modules/esm/module_job:87:21)
+SyntaxError: Unexpected reserved word
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+Node.js v20.18.1
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+Node.js v20.18.1
+Node.js v20.18.1
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+Node.js v20.18.1
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    ^^^^^
+    await init_index();
+
+Node.js v20.18.1
+Node.js v20.18.1
+
+SyntaxError: Unexpected reserved word
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+SyntaxError: Unexpected reserved word
+file:///home/runner/workspace/dist/index.js:1237
+file:///home/runner/workspace/dist/index.js:1237
+    at async link (node:internal/modules/esm/module_job:87:21)
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    at async link (node:internal/modules/esm/module_job:87:21)
+    await init_index();
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    await init_index();
+SyntaxError: Unexpected reserved word
+
+file:///home/runner/workspace/dist/index.js:1237
+
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+    ^^^^^
+
+    at async link (node:internal/modules/esm/module_job:87:21)
+Node.js v20.18.1
+    ^^^^^
+Node.js v20.18.1
+SyntaxError: Unexpected reserved word
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+file:///home/runner/workspace/dist/index.js:1237
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+
+    at compileSourceTextModule (node:internal/modules/esm/utils:339:16)
+file:///home/runner/workspace/dist/index.js:1237
+    ^^^^^
+SyntaxError: Unexpected reserved word
+    at async link (node:internal/modules/esm/module_job:87:21)
+    at callTranslator (node:internal/modules/esm/loader:428:14)
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:434:30)
+
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    await init_index();
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:168:18)
+Node.js v20.18.1
+file:///home/runner/workspace/dist/index.js:1237
+    await init_index();
+command finished with error [sh -c NODE_ENV=production node --experimental-modules --es-module-specifier-resolution=node dist/index.js]: exit status 1
+    at async link (node:internal/modules/esm/module_job:87:21)
+Node.js v20.18.1
