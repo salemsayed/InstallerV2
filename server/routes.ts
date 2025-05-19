@@ -115,17 +115,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Store user information in session for authentication
-      req.session.userId = user.id;
-      req.session.userRole = user.role;
-      
-      // Log successful authentication with secure logging
-      const { createAdminLogger } = await import('./utils/admin-logger');
-      const logger = createAdminLogger('auth');
-      logger.info('User authenticated successfully', { 
-        userId: user.id, 
-        role: user.role
-      });
+      // Create a JWT or session token here if needed
+      // For simplicity, we'll just return the user object
       
       return res.json({
         success: true,
@@ -137,8 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           points: user.points,
           level: user.level,
           region: user.region,
-          status: user.status,
-          badgeIds: user.badgeIds
+          status: user.status
         }
       });
     } catch (error: any) {
@@ -153,69 +143,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Add logout endpoint
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = require('./utils/admin-logger');
-    const logger = createAdminLogger('auth');
-    
-    const userId = req.session?.userId;
-    
-    if (userId) {
-      logger.info('User logging out', { userId });
-    }
-    
-    req.session.destroy((err: any) => {
-      if (err) {
-        logger.error('Error destroying session', { 
-          userId: userId || 'unknown', 
-          error: err.message 
-        });
-        return res.status(500).json({
-          success: false,
-          message: "حدث خطأ أثناء تسجيل الخروج"
-        });
-      }
-      
-      // Clear session cookie
-      res.clearCookie('connect.sid');
-      
-      logger.info('Logout successful', { userId: userId || 'unknown' });
-      return res.status(200).json({
-        success: true,
-        message: "تم تسجيل الخروج بنجاح"
-      });
-    });
-  });
-  
   // USER ROUTES
 
-  // Current user profile endpoint - protected by session authentication
+  // Legacy endpoint for the old auth system
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('user-profile');
-    
-    // Get user ID from session
-    const userId = req.session?.userId;
+    // This would typically check session/token
+    // For demo, we'll use a query param
+    const userId = parseInt(req.query.userId as string);
     
     if (!userId) {
-      logger.info('Unauthenticated access attempt to /api/users/me');
-      return res.status(401).json({ 
-        success: false,
-        message: "غير مصرح. يرجى تسجيل الدخول." 
-      });
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
     try {
       const user = await storage.getUser(userId);
       
       if (!user) {
-        logger.error('User not found in database despite valid session', { userId });
-        return res.status(404).json({ 
-          success: false,
-          message: "المستخدم غير موجود." 
-        });
+        return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
       return res.status(200).json({
@@ -238,15 +182,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ADMIN ROUTES
   app.post("/api/admin/users", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('user-create');
-    
     // Check if the requester is an admin
     const adminId = parseInt(req.query.userId as string);
     
     if (!adminId) {
-      logger.error('Missing admin ID in user creation request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -254,14 +193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
-        logger.error('Unauthorized user creation attempt', { 
-          adminId, 
-          role: admin?.role 
-        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
       
-      logger.info('Processing user creation request', { adminId });
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
       
@@ -273,10 +207,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if phone is already in use
       const existingUser = await storage.getUserByPhone(userData.phone);
       if (existingUser) {
-        logger.info('User creation failed - phone number already in use', {
-          // No need to log the actual phone number
-          existingUserId: existingUser.id
-        });
         return res.status(400).json({ message: "رقم الهاتف مستخدم بالفعل." });
       }
       
@@ -284,17 +214,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       userData.invitedBy = adminId;
       userData.status = UserStatus.ACTIVE;
       
-      // Create new user with secure logging (not logging the full user object with phone)
-      logger.info('Creating new user', {
-        name: userData.name,
-        role: userData.role,
-        region: userData.region
-        // Intentionally not logging phone number
-      });
-      
+      // Create new user
       const newUser = await storage.createUser(userData);
-      
-      logger.success('user', newUser.id, 'created');
       
       return res.status(201).json({
         success: true,
@@ -313,21 +234,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
-      logger.error('User creation failed', error);
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء إضافة المستخدم" });
     }
   });
   
   app.get("/api/admin/users", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('user-list');
-    
     // Check if the requester is an admin
     const adminId = parseInt(req.query.userId as string);
     
     if (!adminId) {
-      logger.error('Missing admin ID in user list request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -335,22 +250,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
-        logger.error('Unauthorized user list attempt', { 
-          adminId, 
-          role: admin?.role 
-        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
       
-      logger.info('Admin requesting user list', { adminId });
       // Get all users
       const users = await storage.listUsers();
-      
-      // Log user count without exposing sensitive data
-      logger.info(`Processing ${users.length} users for admin dashboard`, {
-        userCount: users.length,
-        adminId
-      });
       
       // Create a new array with calculated point balances
       const usersWithCalculatedPoints = await Promise.all(users.map(async user => {
@@ -372,26 +276,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
-      logger.success('user-list', adminId, 'retrieved');
       return res.status(200).json({ users: usersWithCalculatedPoints });
       
     } catch (error: any) {
-      logger.error('Failed to retrieve user list', error);
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع المستخدمين" });
     }
   });
   
   // Update user
   app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('user-update');
-    
     const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
     
     if (!adminId) {
-      logger.error('Missing admin ID in user update request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -399,17 +296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
-        logger.error('Unauthorized user update attempt', { 
-          adminId, 
-          role: admin?.role 
-        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
-      
-      logger.info('Processing user update request', { 
-        adminId, 
-        targetUserId 
-      });
       
       // Validate input data
       let { name, phone, region, status, points } = req.body;
@@ -418,18 +306,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (phone && phone.startsWith('0')) {
         phone = '+2' + phone;
       }
-      
-      // Log update attempt with non-sensitive details (not including the actual phone number)
-      logger.info('Attempting to update user', {
-        targetUserId,
-        fieldsToUpdate: {
-          hasName: !!name,
-          hasPhone: !!phone,
-          hasRegion: !!region,
-          hasStatus: !!status,
-          hasPoints: points !== undefined
-        }
-      });
       
       // Update user data
       const updatedUser = await storage.updateUser(targetUserId, {
@@ -441,14 +317,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (!updatedUser) {
-        logger.error('User not found for update', { targetUserId });
         return res.status(404).json({ 
           success: false,
           message: "لم يتم العثور على المستخدم."
         });
       }
-      
-      logger.success('user', updatedUser.id, 'updated');
       
       return res.status(200).json({
         success: true,
@@ -466,7 +339,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
-      logger.error('Error updating user', error);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء تحديث بيانات المستخدم" 
@@ -476,15 +348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Delete user
   app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('user-delete');
-    
     const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
     
     if (!adminId) {
-      logger.error('Missing admin ID in user delete request');
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
     }
     
@@ -492,20 +359,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {
-        logger.error('Unauthorized user deletion attempt', { 
-          adminId, 
-          role: admin?.role 
-        });
         return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
       }
-      
-      logger.info('Processing user deletion request', { adminId, targetUserId });
       
       // Check if user exists
       const targetUser = await storage.getUser(targetUserId);
       
       if (!targetUser) {
-        logger.error('Target user not found for deletion', { targetUserId });
         return res.status(404).json({ 
           success: false,
           message: "لم يتم العثور على المستخدم."
@@ -514,36 +374,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Prevent deleting yourself
       if (targetUserId === adminId) {
-        logger.error('Admin attempted to delete self', { adminId });
         return res.status(400).json({
           success: false,
           message: "لا يمكن حذف حسابك الخاص."
         });
       }
       
-      logger.info('Attempting to delete user', { 
-        targetUserId,
-        targetUserRole: targetUser.role
-      });
-      
       const result = await storage.deleteUser(targetUserId);
       
       if (!result) {
-        logger.error('Database delete operation failed', { targetUserId });
         return res.status(500).json({
           success: false,
           message: "فشل حذف المستخدم. يرجى المحاولة مرة أخرى."
         });
       }
       
-      logger.success('user', targetUserId, 'deleted');
       return res.status(200).json({
         success: true,
         message: "تم حذف المستخدم بنجاح"
       });
       
     } catch (error: any) {
-      logger.error('Error during user deletion', error);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء حذف المستخدم" 
@@ -951,37 +802,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minInstallations: parsedMinInstallations
       };
       
-      // Use secure logging to prevent exposing sensitive data
-      const { createAdminLogger } = await import('./utils/admin-logger');
-      const logger = createAdminLogger('badge-update');
-      
-      logger.info(`Updating badge with validated data`, {
-        badgeId,
-        name: validatedData.name,
-        requiredPoints: validatedData.requiredPoints,
-        minInstallations: validatedData.minInstallations,
-        active: validatedData.active
-      });
+      console.log('Validated data to be sent:', JSON.stringify(validatedData));
       
       try {
         const updatedBadge = await storage.updateBadge(badgeId, validatedData);
         
         if (!updatedBadge) {
-          logger.error('Badge update failed - storage returned undefined');
+          console.error('Badge update failed - storage returned undefined');
           return res.status(500).json({
             success: false,
             message: "فشل تحديث الشارة - خطأ في قاعدة البيانات"
           });
         }
         
-        logger.success('badge', updatedBadge.id, 'updated');
+        console.log('Badge update successful:', JSON.stringify(updatedBadge));
         return res.status(200).json({ 
           success: true, 
           message: "تم تحديث الشارة بنجاح",
           badge: updatedBadge 
         });
       } catch (dbError: any) {
-        logger.error('Database error during badge update', dbError);
+        console.error('Database error during badge update:', dbError);
         return res.status(500).json({
           success: false,
           message: "Database error during badge update",
@@ -989,13 +830,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      logger.error('Unexpected error in badge update endpoint', error);
+      console.error('Unexpected error in badge update endpoint:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       return res.status(400).json({ 
         success: false,
         message: error.message || "حدث خطأ أثناء تحديث الشارة",
-        // Only return non-sensitive error information
-        errorType: error.name || 'Error'
+        errorDetail: typeof error === 'object' ? JSON.stringify(error) : 'Unknown error'
       });
+    } finally {
+      console.log('========= BADGE UPDATE ENDPOINT END =========');
     }
   });
   
@@ -1058,53 +902,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().min(1, { message: "QR code is required" })
   });
 
-  // QR code scanning endpoint - secured with proper session authentication
+  // QR code scanning endpoint - secured with basic authentication
   app.post("/api/scan-qr", async (req: Request, res: Response) => {
-    // Import secure logging utility
-    const { createAdminLogger } = await import('./utils/admin-logger');
-    const logger = createAdminLogger('qr-scan');
-    
     try {
-      // Get authenticated user ID from session
-      const userId = req.session?.userId;
-      
-      if (!userId) {
-        logger.error('Unauthorized QR scan attempt - No session');
-        return res.status(401).json({ 
-          success: false, 
-          message: "يجب تسجيل الدخول للمسح",
-          error_code: "UNAUTHORIZED" 
-        });
-      }
-      
-      // SECURITY ENHANCEMENT: Basic rate limiting (could be expanded)
-      const lastScanTime = req.session.lastScanTime;
-      const now = Date.now();
-      
-      if (lastScanTime && (now - lastScanTime < 1000)) { // 1 second minimum between scans
-        logger.warn('Rate limit exceeded', { userId });
-        return res.status(429).json({
-          success: false,
-          message: "الرجاء الانتظار قبل إجراء مسح آخر",
-          error_code: "RATE_LIMIT_EXCEEDED"
-        });
-      }
-      
-      // Update last scan time in session
-      req.session.lastScanTime = now;
-      
       // Create schema for QR scan validation
       const scanQrSchema = z.object({
-        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
+        uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" }),
+        userId: z.number({ message: "معرف المستخدم مطلوب" })
       });
       
       // Validate the request body
       const validation = scanQrSchema.safeParse(req.body);
       
       if (!validation.success) {
-        logger.error('QR scan validation failed', { 
-          errorCount: validation.error.errors.length
-        });
+        console.log("QR scan validation failed:", validation.error);
         return res.status(400).json({ 
           success: false, 
           message: "بيانات غير صالحة. الرجاء التحقق من المعلومات المقدمة.",
@@ -1113,18 +924,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { uuid } = validation.data;
-      
-      logger.info('Processing QR scan', { 
-        userId,
-        uuidPrefix: uuid.substring(0, 8) // Only log prefix for tracing without revealing full UUID
-      });
+      const { uuid, userId } = validation.data;
       
       // Verify user exists and is authorized
       const dbUser = await storage.getUser(userId);
       
       if (!dbUser) {
-        logger.error('User not found during QR scan', { userId });
         return res.status(404).json({ 
           success: false, 
           message: "المستخدم غير موجود.",
@@ -1133,10 +938,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (dbUser.status !== UserStatus.ACTIVE) {
-        logger.error('Inactive user attempted QR scan', {
-          userId,
-          status: dbUser.status
-        });
         return res.status(403).json({ 
           success: false, 
           message: "الحساب غير نشط. يرجى التواصل مع المسؤول.",
@@ -1171,45 +972,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the code exists in the manufacturing database
-      logger.info('Checking UUID in manufacturing database', {
-        uuidPrefix: uuid.substring(0, 8)
-      });
+      console.log(`[DEBUG] About to check UUID in manufacturing database: "${uuid}"`);
       
       // Try different formats - sometimes UUIDs might be stored differently
       const uuidNoHyphens = uuid.replace(/-/g, '');
+      console.log(`[DEBUG] UUID without hyphens: "${uuidNoHyphens}"`);
       
       // First try with normal UUID format
-      logger.info('Checking with original UUID format');
+      console.log(`[DEBUG] Checking with original UUID format`);
       let isValid = await checkSerialNumber(uuid);
       
       // If not found, try without hyphens
       if (!isValid) {
-        logger.info('Original UUID not found, trying without hyphens');
+        console.log(`[DEBUG] Original UUID not found, trying without hyphens`);
         isValid = await checkSerialNumber(uuidNoHyphens);
       }
       
       if (!isValid) {
-        logger.error('UUID not found in manufacturing database', {
-          uuidPrefix: uuid.substring(0, 8)
-        });
+        console.log(`[DEBUG] UUID not found in manufacturing database: ${uuid}`);
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مسجل في قاعدة بيانات التصنيع لدينا",
           error_code: "INVALID_PRODUCT",
-          details: { uuidPrefix: uuid.substring(0, 8) } // Only return prefix for security
+          details: { uuid, uuidNoHyphens }
         });
       }
       
-      logger.info('UUID validated in manufacturing database');
+      console.log(`[DEBUG] UUID found in manufacturing database: ${uuid}`);
       
       // Get product details from manufacturing database
       const productName = await getProductNameBySerialNumber(uuid);
-      
-      if (productName) {
-        logger.info('Product name retrieved from manufacturing database');
-      } else {
-        logger.error('No product name found for valid UUID');
-      }
+      console.log(`[DEBUG] Product name from manufacturing database: "${productName}"`);
       
       // Find matching product in our local database to determine reward points
       let pointsAwarded = 0;
@@ -1218,38 +1011,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (productName) {
         // Look up the product name in our local database
         localProduct = await storage.getLocalProductByName(productName);
-        
-        if (localProduct) {
-          logger.info('Found matching local product', {
-            productId: localProduct.id,
-            isActive: localProduct.isActive === 1
-          });
-        } else {
-          logger.info('No matching local product found for name');
-        }
+        console.log(`[DEBUG] Local product match:`, localProduct);
         
         if (localProduct && localProduct.isActive === 1) {
           // Use the reward points defined in our local database
           pointsAwarded = localProduct.rewardPoints;
-          logger.info('Awarding points for product scan', {
-            pointsAwarded,
-            productId: localProduct.id
-          });
+          console.log(`[DEBUG] Using custom reward points: ${pointsAwarded} for product: ${productName}`);
         } else {
-          logger.error('Product not eligible for rewards', {
-            reason: localProduct ? "Product is inactive" : "Product not found in rewards database"
-          });
+          console.log(`[DEBUG] No active local product match found for: "${productName}". Returning error.`);
           return res.status(400).json({ 
             success: false, 
             message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
             error_code: "INELIGIBLE_PRODUCT",
             details: { 
+              productName,
               reason: localProduct ? "Product is inactive" : "Product not found in rewards database"
             }
           });
         }
       } else {
-        logger.error('No product name found for scanned code');
+        console.log(`[DEBUG] No product name found. Returning error.`);
         return res.status(400).json({ 
           success: false, 
           message: "هذا المنتج غير مؤهل للحصول على نقاط المكافأة",
@@ -1259,11 +1040,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Save the scanned code to database with product reference if available
-      logger.info('Saving scanned code to database', {
-        userId,
-        hasProductId: !!localProduct?.id
-      });
-      
       const scannedCode = await storage.createScannedCode({
         uuid,
         scannedBy: userId, // Using the authenticated userId from session
@@ -1273,23 +1049,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // We already have the user from authentication check above
       // Now just update their points
-      logger.info('Updating user points balance', {
-        userId,
-        currentPoints: dbUser.points,
-        pointsToAdd: pointsAwarded
-      });
-      
       const updatedUser = await storage.updateUser(userId, {
         points: dbUser.points + pointsAwarded
       });
       
       // Create a transaction record with product metadata
-      logger.info('Creating transaction record', {
-        userId,
-        transactionType: TransactionType.EARNING,
-        pointsAwarded
-      });
-      
       await storage.createTransaction({
         userId: userId,
         type: TransactionType.EARNING,
@@ -1310,11 +1074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       ).length;
       
-      logger.info('Checking badge qualification', {
-        userId,
-        installationCount,
-        currentPoints: updatedUser?.points
-      });
+      console.log(`[DEBUG] After QR scan, user ${userId} has ${installationCount} installations and ${updatedUser?.points} points`);
       
       // Initialize badgeIds array if it doesn't exist
       if (updatedUser && (!updatedUser.badgeIds || !Array.isArray(updatedUser.badgeIds))) {
@@ -1328,10 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const badge of allBadges) {
         if (!updatedUser || !Array.isArray(updatedUser.badgeIds)) {
-          logger.error('Invalid user badge data, skipping badge checks', {
-            userId,
-            hasBadgeIds: !!updatedUser?.badgeIds
-          });
+          console.log(`[DEBUG] Updated user or badgeIds is not valid, skipping badge checks`);
           break;
         }
         
@@ -1346,11 +1103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (qualifies) {
           // If user qualifies for badge but doesn't have it yet, add it
           if (!alreadyHasBadge) {
-            logger.info('User qualifies for new badge', {
-              userId,
-              badgeId: badge.id,
-              badgeName: badge.name
-            });
+            console.log(`[DEBUG] User ${userId} qualifies for new badge ${badge.id} (${badge.name}) - adding to user badges`);
             updatedBadgeIds.push(badge.id);
             newBadges.push(badge);
             userBadgesUpdated = true;
@@ -1360,11 +1113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else if (alreadyHasBadge) {
           // User has badge but no longer qualifies - remove it
-          logger.info('User no longer qualifies for badge', {
-            userId,
-            badgeId: badge.id,
-            badgeName: badge.name
-          });
+          console.log(`[DEBUG] User ${userId} no longer qualifies for badge ${badge.id} (${badge.name}) - removing from user badges`);
           userBadgesUpdated = true;
           // Badge is not added to updatedBadgeIds, effectively removing it
         }

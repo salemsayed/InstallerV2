@@ -3,8 +3,13 @@ import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader2 } from "lucide-react";
+import { Loader2, QrCode } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import InstallerLayout from "@/components/layouts/installer-layout";
+
+// Import the Scandit libraries
+import * as ScanditCore from '@scandit/web-datacapture-core';
+import * as ScanditBarcode from '@scandit/web-datacapture-barcode';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -13,8 +18,6 @@ function isValidUUIDv4(uuid: string): boolean {
 
 /**
  * Advanced scanner page – powered by Scandit Web SDK
- * Note: Scandit modules are pulled dynamically via CDN import-map (see index.html).
- *       TS doesn't know their types at build-time, so we use the `any` escape hatch.
  */
 export default function AdvancedScanPage() {
   const scannerRef = useRef<HTMLDivElement>(null);
@@ -66,19 +69,19 @@ export default function AdvancedScanPage() {
         return;
       }
 
-      // Step 3: Send to server for validation and processing
+      // Step 3: Send to server for validation and processing - include userId in request
       if (!user || !user.id) {
         setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
         setIsValidating(false);
         return;
       }
       
-      // No longer need to send userId - server will get it from the session
       const scanResult = await apiRequest(
         "POST", 
         "/api/scan-qr", 
         {
-          uuid
+          uuid,
+          userId: user.id
         }
       );
       
@@ -180,15 +183,14 @@ export default function AdvancedScanPage() {
 
     let dispose: (() => Promise<void>) | undefined;
 
-    (async () => {
+    // Create and execute the scanner initialization as an async IIFE
+    (async function initScanner() {
       try {
-        /* Dynamically import the two SDK packages loaded via the CDN */
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const core = await import("@scandit/web-datacapture-core");
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const barcode = await import("@scandit/web-datacapture-barcode");
+        console.log("Initializing Scandit scanner");
+        
+        // Access the imported Scandit modules
+        const core = ScanditCore;
+        const barcode = ScanditBarcode;
 
         const {
           configure,
@@ -201,24 +203,23 @@ export default function AdvancedScanPage() {
           MeasureUnit,
           RectangularLocationSelection,
           VideoResolution,
-          CameraSettings,
-          ScanIntention
-        } = core as any;
+          CameraSettings
+        } = core;
 
         const {
           BarcodeCapture,
           barcodeCaptureLoader,
           BarcodeCaptureSettings,
-          Symbology,
-          SymbologyDescription
-        } = barcode as any;
+          Symbology
+        } = barcode;
 
-        /* Initialise the engine (downloads WASM files automatically) */
-        console.log("Using license key from environment secret");
+        /* Initialize the engine (downloads WASM files automatically) */
+        console.log("Configuring Scandit with license key");
         await configure({
-          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
-          libraryLocation:
-            "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
+          // In client side code, environment variables are exposed through import.meta.env
+          // The prefix VITE_ is required for the variable to be exposed to the client
+          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "AUzUi3h1HwJVESxqC1+q5QUjwEoWmcFHyYt6X+J+0rZfWxNNMqvjdSc6s0EaAYBfpwrvbU7MDl8XyVh/sk87WAEnuqNmKlTgTwV5bd/3R+T67a5V7IAJ6rlvpGkEoC5fDrY6F2tmIQaYGkxCkht/l+sC5AQBBw4JmGxsRzZafKTN0v5YQz79UkLYkgPJRGdNZVMnuLdxCxZdFpmnJfgNZ5nD0kR5RfWW5R5JN5uIDuKHEQPXGAjKi7UoM7C6mEXvX+f+Xz0bH0t91P9ERnIqJf0G6mTt9GVDV1ZCiECRHMlVn9S2qWt8UHU5hhOhZxXbOKrBN89+0Xr1uVoN12jqnzPVRGlKaQaYJDVN72Nf+D73J/FjsJHQ1NhR/gvENuubvTQu/CrFg/2N91iMxofJrU9nCAuJpKQ4NU+g6oe3HRNt2o0JKdE3Gm2D1LJoLIqxP3/JO7bgLtcfOSUXyqLJbrL7IdaD/FrRs0HbQkfh20jA9K4VTQ94oCFy3oXH0cNm4BxWsK3Q7PQdYyZNzHjbJAWXcVWw4wdL3FMKEC/cMQp1k6Y97g0ZoTIe6l2uw/bFZ2XXMw==",
+          libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
           moduleLoaders: [barcodeCaptureLoader()]
         });
         
@@ -262,13 +263,9 @@ export default function AdvancedScanPage() {
         settings.locationSelection = locationSelection;
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Try different possible locations of ScanIntention based on Scandit's structure
-        if (barcode.ScanIntention) {
-          settings.scanIntention = barcode.ScanIntention.Smart;
-        } else if (core.ScanIntention) {
-          settings.scanIntention = core.ScanIntention.Smart;
-        } else {
-          console.log("ScanIntention not found in API, skipping this optimization");
+        // This property is optional and may not exist in all versions
+        if ('scanIntention' in settings) {
+          settings.scanIntention = barcode.ScanIntention?.Smart;
         }
 
         const capture = await BarcodeCapture.forContext(context, settings);
@@ -276,7 +273,7 @@ export default function AdvancedScanPage() {
         
         capture.addListener({
           didScan: async (_mode: any, session: any) => {
-            const code = session.newlyRecognizedBarcode;
+            const code = session.newlyRecognizedBarcodes?.[0];
             if (!code) return;
             
             // Disable capture while processing
@@ -298,12 +295,13 @@ export default function AdvancedScanPage() {
           await context.dispose();
         };
       } catch (e: any) {
-        console.error(e);
+        console.error("Scandit initialization error:", e);
         setError(e?.message ?? "فشل إعداد الماسح");
         setLicenseStatus('failed');
       }
-    })();
+    })(); // Execute the async function immediately
 
+    // Cleanup function
     return () => {
       if (dispose) dispose().catch(console.error);
     };
@@ -368,65 +366,52 @@ export default function AdvancedScanPage() {
           
           {/* Validation overlay */}
           {isValidating && (
-            <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
-              <div className="bg-black/50 p-6 rounded-xl backdrop-blur-sm flex flex-col items-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-center text-white text-lg font-medium">جارٍ التحقق من الكود...</p>
-              </div>
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-40">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+              <p className="text-center text-white text-lg font-medium">جارٍ التحقق من الكود...</p>
             </div>
           )}
           
-          {/* Success animation overlay */}
-          {showSuccess && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 animate-fade-in">
-              <div className="bg-green-600/80 p-8 rounded-full backdrop-blur-sm flex flex-col items-center animate-scale-up">
-                <div className="h-24 w-24 rounded-full border-4 border-white flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white animate-success-check" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+          {/* Error overlay */}
+          {error && (
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 z-40">
+              <div className="bg-black/50 p-6 rounded-xl backdrop-blur-sm max-w-md w-full">
+                <div className="text-red-500 font-bold text-lg mb-2">حدث خطأ</div>
+                <div className="text-white/90 whitespace-pre-wrap mb-4 max-h-[50vh] overflow-y-auto">
+                  {error}
                 </div>
+                <Button 
+                  variant="default" 
+                  className="w-full bg-primary text-white hover:bg-primary/90 mt-4" 
+                  onClick={() => setError(null)}
+                >
+                  المحاولة مرة أخرى
+                </Button>
               </div>
             </div>
           )}
           
-          {/* Floating Result Panel (instead of static bottom status bar) */}
-          <div className={`absolute bottom-6 left-4 right-4 transition-all duration-300 ${(result || error) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-            <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-xl overflow-hidden">
-              <div className={`px-5 py-4 ${result ? 'border-l-4 border-green-500' : error ? 'border-l-4 border-red-500' : ''}`}>
-                {result && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900">تم التحقق من المنتج بنجاح</h3>
-                      <p className="text-green-600 font-medium text-sm mt-1">{result}</p>
-                    </div>
-                  </div>
-                )}
-                {error && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-6 w-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900">فشل التحقق</h3>
-                      <p className="text-red-600 text-sm mt-1 whitespace-pre-wrap">{error}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+          {/* License failure state */}
+          {licenseStatus === 'failed' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 z-50">
+              <p className="text-lg font-medium mb-4">فشل تهيئة الماسح المتقدم</p>
+              <p className="text-sm text-gray-300 mb-6">يرجى التأكد من صحة مفتاح الترخيص والمحاولة مرة أخرى.</p>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="default"
+              >
+                إعادة المحاولة
+              </Button>
             </div>
-          </div>
+          )}
           
-          {/* Environment info (only visible in dev mode) - now floating in corner */}
-          {import.meta.env.DEV && (
-            <div className="absolute bottom-2 left-2 p-2 bg-black/50 text-white rounded-lg text-xs z-10">
-              <p className="font-mono">License: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? '✓' : '✗'}</p>
+          {/* Success overlay */}
+          {showSuccess && (
+            <div className="absolute inset-0 bg-green-600/80 flex flex-col items-center justify-center z-40">
+              <div className="bg-white/20 p-8 rounded-full backdrop-blur-sm">
+                <div className="text-white text-6xl">✓</div>
+              </div>
+              <p className="text-center text-white text-xl font-bold mt-6">{result}</p>
             </div>
           )}
         </div>

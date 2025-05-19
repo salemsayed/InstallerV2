@@ -20,6 +20,34 @@
   <script async
           src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 
+  <!-- Preload and setup Scandit SDK -->
+  <script>
+    // Create a global container for Scandit SDK
+    window.ScanditSDK = {
+      core: null,
+      barcode: null,
+      loaded: false
+    };
+    
+    // Load Scandit SDK modules when page loads
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // Load Scandit SDK modules
+        const coreModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build/js/index.js');
+        const barcodeModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build/js/index.js');
+        
+        // Assign to global object
+        window.ScanditSDK.core = coreModule;
+        window.ScanditSDK.barcode = barcodeModule;
+        window.ScanditSDK.loaded = true;
+        
+        console.log("Scandit SDK modules loaded successfully");
+      } catch (error) {
+        console.error("Failed to load Scandit SDK modules:", error);
+      }
+    });
+  </script>
+
   <script type="importmap">
   {
     "imports": {

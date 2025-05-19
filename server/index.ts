@@ -1,52 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { pool } from "./db";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Configure secure session storage with PostgreSQL
-const configureSession = () => {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  
-  // Fail fast if SESSION_SECRET is not set in production
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET must be set in production environment');
-  }
-  
-  // In development, warn but allow fallback secret
-  const sessionSecret = process.env.SESSION_SECRET || 'bareeq-installer-dev-session-secret';
-  if (!process.env.SESSION_SECRET) {
-    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using a dev secret which is insecure for production.');
-  }
-  
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    pool,
-    createTableIfMissing: true,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
-  
-  return session({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: sessionTtl
-    }
-  });
-};
-
-// Apply session middleware
-app.use(configureSession());
 
 // List of fields that should be redacted in logs
 const SENSITIVE_FIELDS = [
@@ -64,7 +22,7 @@ const SENSITIVE_FIELDS = [
  * @param obj Object to be redacted
  * @returns Redacted object safe for logging
  */
-export function redactSensitiveInfo(obj: any): any {
+function redactSensitiveInfo(obj: any): any {
   if (!obj || typeof obj !== 'object') {
     return obj;
   }
@@ -116,8 +74,7 @@ app.use((req, res, next) => {
         if (capturedJsonResponse) {
           // For success responses, only log the structure, not the content
           if (res.statusCode >= 200 && res.statusCode < 400) {
-            const keys = capturedJsonResponse && typeof capturedJsonResponse === 'object' ? 
-              Object.keys(capturedJsonResponse as object) : [];
+            const keys = Object.keys(capturedJsonResponse);
             logLine += ` :: Keys: [${keys.join(', ')}]`;
           } 
           // For error responses, redact sensitive info but log more details
@@ -135,45 +92,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize the server without using async/await to avoid build issues
-function startServer() {
-  // Register all routes using promise chain
-  registerRoutes(app)
-    .then((server) => {
-      // Error handler middleware
-      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-        const status = err.status || err.statusCode || 500;
-        const message = err.message || "Internal Server Error";
-        res.status(status).json({ message });
-        console.error(err);
-      });
+(async () => {
+  const server = await registerRoutes(app);
 
-      // Setup front-end serving based on environment
-      if (app.get("env") === "development") {
-        // Handle Vite setup with promises
-        setupVite(app, server)
-          .then(() => {
-            // Start server after Vite is ready
-            startListening(server);
-          })
-          .catch((err) => {
-            console.error("Vite setup failed:", err);
-            process.exit(1);
-          });
-      } else {
-        // In production, just serve static files
-        serveStatic(app);
-        startListening(server);
-      }
-    })
-    .catch((error) => {
-      console.error("Failed to initialize server:", error);
-      process.exit(1);
-    });
-}
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-// Helper function to start the server listening
-function startListening(server: any) {
+    res.status(status).json({ message });
+    throw err;
+  });
+
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
   const port = 5000;
   server.listen({
     port,
@@ -182,14 +123,4 @@ function startListening(server: any) {
   }, () => {
     log(`serving on port ${port}`);
   });
-}
-
-// Use an IIFE to handle async initialization
-(async () => {
-  try {
-    await startServer();
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
 })();
