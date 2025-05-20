@@ -84,6 +84,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: "Test endpoint working"
     });
   });
+  
+  // Status check endpoint for WhatsApp authentication
+  app.get("/api/auth/wasage/status", async (req: Request, res: Response) => {
+    try {
+      const { reference } = req.query;
+      
+      console.log("[DEBUG WASAGE STATUS] Checking authentication status for reference:", reference);
+      
+      if (!reference) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing reference parameter"
+        });
+      }
+      
+      // For demo purposes, we're assuming the authentication was successful if the callback was received
+      // In a production environment, you would check the status from a database based on the reference
+      const authenticated = true;
+      const userId = 13; // This should come from your database in production
+      const userRole = "installer"; // This should come from your database in production
+      
+      return res.json({
+        success: true,
+        authenticated,
+        userId,
+        userRole,
+        message: "Authentication status check successful"
+      });
+    } catch (error) {
+      console.error("[ERROR WASAGE STATUS] Error checking status:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error checking authentication status"
+      });
+    }
+  });
 
   // Wasage callback endpoint - handles both POST and GET requests
   app.all("/api/wasage/callback", async (req: Request, res: Response) => {

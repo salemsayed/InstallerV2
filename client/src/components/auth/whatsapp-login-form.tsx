@@ -68,6 +68,45 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
     }, 100);
   };
 
+  // Function to check authentication status
+  const checkAuthStatus = async (reference: string) => {
+    try {
+      const response = await fetch(`/api/auth/wasage/status?reference=${reference}`);
+      const data = await response.json();
+      
+      if (data.success && data.authenticated) {
+        // If authenticated, call the onSuccess handler with the user info
+        onSuccess(data.userId, data.userRole);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+      return false;
+    }
+  };
+  
+  // Effect to poll for authentication status when QR code is displayed
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    if (wasageData) {
+      // Start polling for auth status every 3 seconds
+      pollInterval = setInterval(async () => {
+        const authenticated = await checkAuthStatus(wasageData.reference);
+        if (authenticated) {
+          // Clear interval when authenticated
+          if (pollInterval) clearInterval(pollInterval);
+        }
+      }, 3000);
+    }
+    
+    // Cleanup polling on unmount or when wasageData changes
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [wasageData]);
+
   // Effect to trigger WhatsApp login when tab is changed to whatsapp
   useEffect(() => {
     if (loginMethod === "whatsapp" && !wasageData && !isLoading) {
