@@ -100,8 +100,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the reference exists in our authentication results map
+      const storedReferences = Array.from(authenticationResults.keys());
       console.log(`[DEBUG WASAGE STATUS] Checking if reference "${reference}" is authenticated. Current references:`, 
-        Array.from(authenticationResults.keys()).map(ref => `"${ref}"`));
+        storedReferences.map(ref => `"${ref}"`));
+      
+      // Get latest error (if any) to pass to the current reference
+      // This helps with error propagation between different stages of authentication
+      let latestErrorReference = storedReferences.find(ref => {
+        const result = authenticationResults.get(ref);
+        return result && !result.success && result.errorCode === "USER_NOT_REGISTERED";
+      });
+      
+      if (latestErrorReference && !authenticationResults.has(reference)) {
+        console.log(`[DEBUG WASAGE STATUS] Found unregistered phone error, propagating to current reference: ${reference}`);
+        const errorInfo = authenticationResults.get(latestErrorReference);
+        if (errorInfo && !errorInfo.success) {
+          // Copy the error to the current reference
+          authenticationResults.set(reference, {
+            success: false,
+            errorCode: errorInfo.errorCode,
+            errorMessage: errorInfo.errorMessage
+          });
+        }
+      }
       
       // Try to find the reference in our map
       const authInfo = authenticationResults.get(reference);

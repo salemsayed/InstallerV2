@@ -76,6 +76,8 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       const response = await fetch(`/api/auth/wasage/status?reference=${reference}`);
       const data = await response.json();
       
+      console.log("WhatsApp auth status check:", data);
+      
       if (data.success && data.authenticated) {
         // If authenticated, call the onSuccess handler with the user info
         onSuccess(data.userId, data.userRole);
@@ -83,8 +85,9 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       }
       
       // Check if there's an error message from the server
-      if (data.errorCode === "USER_NOT_REGISTERED") {
-        setAuthError(data.message || "تعذر العثور على رقم الهاتف هذا. يرجى التواصل مع الدعم الفني.");
+      if (!data.authenticated && data.errorCode) {
+        console.log("WhatsApp auth error:", data.errorCode, data.message);
+        setAuthError(data.message || "حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة مرة أخرى.");
         return true; // Stop polling
       }
       
