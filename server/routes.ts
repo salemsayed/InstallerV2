@@ -980,5 +980,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Return the HTTP server (don't listen here, this will happen in index.ts)
-  return require('http').createServer(app);
+  const http = await import('node:http');
+  return http.createServer(app);
 }
