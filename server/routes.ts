@@ -23,6 +23,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
+  
+  // Store active sessions for management and monitoring
+  const activeSessions = new Map<string, {
+    userId: number;
+    userRole: string;
+    createdAt: string;
+    lastActive: string;
+    ipAddress: string;
+    userAgent: string;
+    expiresAt: string;
+  }>();
+  
+  // Session activity tracking middleware
+  app.use((req, res, next) => {
+    if (req.session && req.session.userId && req.session.sessionId) {
+      // Update last active timestamp
+      req.session.lastActive = new Date().toISOString();
+      
+      // Store in active sessions map if not already there
+      if (!activeSessions.has(req.session.sessionId)) {
+        activeSessions.set(req.session.sessionId, {
+          userId: req.session.userId,
+          userRole: req.session.userRole,
+          createdAt: req.session.createdAt,
+          lastActive: req.session.lastActive,
+          ipAddress: req.session.ipAddress || req.ip || req.socket.remoteAddress || 'unknown',
+          userAgent: req.session.userAgent || req.headers['user-agent'] || 'unknown',
+          expiresAt: new Date(Date.now() + (req.session.cookie.maxAge || 28800000)).toISOString()
+        });
+      } else {
+        // Just update the lastActive time
+        const session = activeSessions.get(req.session.sessionId);
+        if (session) {
+          session.lastActive = req.session.lastActive;
+          activeSessions.set(req.session.sessionId, session);
+        }
+      }
+    }
+    next();
+  });
 
   // AUTH ROUTES
   // WhatsApp Authentication with Wasage
@@ -209,13 +249,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create session for user (similar to existing login flow)
+      // Enhanced session management
       if (req.session) {
+        // Store essential user details
         req.session.userId = user.id;
         req.session.userRole = user.role;
         
+        // Add security-related metadata
+        req.session.createdAt = new Date().toISOString();
+        req.session.lastActive = new Date().toISOString();
+        req.session.ipAddress = req.ip || req.socket.remoteAddress;
+        req.session.userAgent = req.headers['user-agent'];
+        
+        // Generate a unique session ID for tracking and revocation
+        req.session.sessionId = `wasage_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        
+        // Set session expiration (8 hours)
+        req.session.cookie.maxAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+        
+        // Save session
         await req.session.save();
-        console.log(`[DEBUG WASAGE CALLBACK] Session created for user ${user.id}`);
+        console.log(`[DEBUG WASAGE CALLBACK] Enhanced session created for user ${user.id} with ID ${req.session.sessionId}`);
       }
       
       return res.json({ 
@@ -356,11 +410,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // USER ROUTES
 
-  // Legacy endpoint for the old auth system
+  // Session management endpoints
+  app.get("/api/auth/sessions", async (req: Request, res: Response) => {
+    // Get the userId from either the session or the query parameter for backward compatibility
+    const userId = req.session?.userId || parseInt(req.query.userId as string);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
+    // Collect all sessions for the current user
+    const userSessions = Array.from(activeSessions.entries())
+      .filter(([_, session]) => session.userId === userId)
+      .map(([sessionId, session]) => {
+        // Calculate if this is the current session
+        const isCurrentSession = req.session && req.session.sessionId === sessionId;
+        
+        return {
+          sessionId,
+          createdAt: session.createdAt,
+          lastActive: session.lastActive,
+          expiresAt: session.expiresAt,
+          ipAddress: session.ipAddress,
+          // Truncate user agent to just the essential info
+          device: parseUserAgent(session.userAgent),
+          isCurrentSession
+        };
+      });
+    
+    return res.json({
+      success: true,
+      sessions: userSessions
+    });
+  });
+  
+  app.delete("/api/auth/sessions/:sessionId", async (req: Request, res: Response) => {
+    // Get the userId from either the session or the query parameter for backward compatibility
+    const userId = req.session?.userId || parseInt(req.query.userId as string);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
+    const { sessionId } = req.params;
+    
+    // Check if session exists and belongs to the current user
+    const session = activeSessions.get(sessionId);
+    if (!session || session.userId !== userId) {
+      return res.status(404).json({ success: false, message: "الجلسة غير موجودة" });
+    }
+    
+    // If trying to delete current session, logout entirely
+    if (req.session && req.session.sessionId === sessionId) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Error destroying session:", err);
+          return res.status(500).json({ success: false, message: "فشل في إنهاء الجلسة" });
+        }
+        
+        // Remove from active sessions
+        activeSessions.delete(sessionId);
+        
+        return res.json({
+          success: true,
+          message: "تم إنهاء الجلسة الحالية، سيتم تسجيل خروجك"
+        });
+      });
+    } else {
+      // Just remove from active sessions
+      activeSessions.delete(sessionId);
+      
+      return res.json({
+        success: true,
+        message: "تم إنهاء الجلسة بنجاح"
+      });
+    }
+  });
+  
+  // Helper function to parse user agent
+  function parseUserAgent(userAgent: string): string {
+    if (!userAgent) return "جهاز غير معروف";
+    
+    // Simple parsing for demo purposes
+    if (userAgent.includes("iPhone") || userAgent.includes("iPad")) {
+      return "جهاز iOS";
+    } else if (userAgent.includes("Android")) {
+      return "جهاز Android";
+    } else if (userAgent.includes("Windows")) {
+      return "جهاز Windows";
+    } else if (userAgent.includes("Mac")) {
+      return "جهاز Mac";
+    } else if (userAgent.includes("Linux")) {
+      return "جهاز Linux";
+    } else {
+      return "جهاز آخر";
+    }
+  }
+
+  // Enhanced user information endpoint
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // This would typically check session/token
-    // For demo, we'll use a query param
-    const userId = parseInt(req.query.userId as string);
+    // Support both session-based auth and query param for backward compatibility
+    const userId = req.session?.userId || parseInt(req.query.userId as string);
     
     if (!userId) {
       return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
@@ -373,6 +523,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
+      // Get session information if available
+      let sessionInfo = null;
+      if (req.session?.sessionId) {
+        const currentSession = activeSessions.get(req.session.sessionId);
+        if (currentSession) {
+          sessionInfo = {
+            createdAt: currentSession.createdAt,
+            lastActive: currentSession.lastActive,
+            device: parseUserAgent(currentSession.userAgent),
+            ipAddress: currentSession.ipAddress
+          };
+        }
+      }
+      
       return res.status(200).json({
         user: {
           id: user.id,
@@ -383,7 +547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           level: user.level,
           region: user.region,
           badgeIds: user.badgeIds
-        }
+        },
+        session: sessionInfo
       });
       
     } catch (error: any) {
