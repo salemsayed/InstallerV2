@@ -179,7 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[ERROR WASAGE CALLBACK] User not found for phone: ${formattedPhone}`);
         return res.status(404).json({ 
           success: false, 
-          message: "User not found" 
+          message: "تعذر العثور على رقم الهاتف هذا. يرجى التواصل مع الدعم الفني على 0109990555 للمساعدة.",
+          errorCode: "USER_NOT_REGISTERED" 
         });
       }
       
