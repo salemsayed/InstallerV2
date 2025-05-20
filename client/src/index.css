@@ -1,6 +1,18 @@
+/* Import Google Material Icons */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* RTL support */
+.rtl {
+  direction: rtl;
+}
+
+.ltr {
+  direction: ltr;
+}
 
 @keyframes scanline {
   0% {

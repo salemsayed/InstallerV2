@@ -9,32 +9,40 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";
 
+// Define proper types for the API responses
+interface TransactionsResponse {
+  transactions: Transaction[];
+  totalCount: number;
+}
+
+interface BadgesResponse {
+  badges: Array<{ id: number; name: string; description: string; imageUrl: string; points: number; active: boolean }>;
+}
+
 export default function InstallerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch user's transactions with frequent refresh and higher limit
-  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+  const { data: transactionsData, isLoading: transactionsLoading } = useQuery<TransactionsResponse>({
     queryKey: [`/api/transactions?userId=${user?.id}&limit=100`],
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 2000 // Refresh every 2 seconds
+    refetchOnReconnect: true
   });
 
   // Fetch user's badges with frequent refresh
-  const { data: badgesData, isLoading: badgesLoading } = useQuery({
+  const { data: badgesData, isLoading: badgesLoading } = useQuery<BadgesResponse>({
     queryKey: ['/api/badges', user?.id],
     queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 2000 // Refresh every 2 seconds
+    refetchOnReconnect: true
   });
   
   // Keep user data fresh with frequent refresh
