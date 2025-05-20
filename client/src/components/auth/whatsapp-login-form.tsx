@@ -92,10 +92,25 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
         // If authenticated, call the onSuccess handler with the user info
         console.log("Authentication successful, calling onSuccess with:", data.userId, data.userRole);
         
-        // Use a slight delay to ensure proper state propagation
-        setTimeout(() => {
-          onSuccess(data.userId, data.userRole);
-        }, 300);
+        // Create a minimal user object to ensure dashboard loads properly
+        const minimalUser = {
+          id: data.userId,
+          role: data.userRole,
+          name: "المستخدم",
+          email: "",
+          phone: "",
+          status: "active",
+          points: 0,
+          level: 1,
+          createdAt: new Date().toISOString(),
+          region: ""
+        };
+        
+        // Store in localStorage immediately to ensure it's available during navigation
+        localStorage.setItem("user", JSON.stringify(minimalUser));
+        
+        // Call onSuccess with the user data
+        onSuccess(data.userId, data.userRole);
         
         return true;
       }
