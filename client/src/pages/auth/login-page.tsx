@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/auth-provider";
 import PhoneLoginForm from "@/components/auth/phone-login-form";
+import WhatsAppLoginForm from "@/components/auth/whatsapp-login-form";
 import AuthLayout from "@/components/layouts/auth-layout";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -57,10 +58,10 @@ export default function LoginPage() {
             تسجيل الدخول
           </h1>
           <p className="text-center text-gray-500 mb-8">
-            أدخل رقم الهاتف للوصول إلى حساب برنامج مكافات بريق
+            اختر طريقة تسجيل الدخول المفضلة
           </p>
           
-          <PhoneLoginForm onSuccess={handleLoginSuccess} />
+          <WhatsAppLoginForm onSuccess={handleLoginSuccess} />
         </div>
       </div>
 
