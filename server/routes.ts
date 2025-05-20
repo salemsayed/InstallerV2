@@ -28,8 +28,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Authentication with Wasage
   app.post("/api/auth/wasage/otp", async (req: Request, res: Response) => {
     try {
-      // Generate simple reference ID (one word, no special characters)
-      const reference = `webapp123`;
+      // Generate a unique reference ID as a single continuous word
+      const timestamp = Date.now();
+      const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const reference = `webapp${timestamp}${randomPart}`;
       
       console.log("[DEBUG WASAGE] Requesting OTP from Wasage API");
       
