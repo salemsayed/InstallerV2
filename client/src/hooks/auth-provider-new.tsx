@@ -32,35 +32,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on initial load
   useEffect(() => {
+    setIsLoading(true);
     const storedUser = localStorage.getItem("user");
+    
     if (storedUser) {
       try {
+        // Set the user from localStorage immediately
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        
-        // Verify the user is still valid from the server
-        // This would check a session or token in a real app
-        apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.user) {
-              setUser(data.user);
-            } else {
-              // If user is not valid, clear local storage
-              localStorage.removeItem("user");
-              setUser(null);
-            }
-          })
-          .catch(() => {
-            // If error, assume token expired
-            localStorage.removeItem("user");
-            setUser(null);
-          });
+        setIsLoading(false);
       } catch (e) {
         localStorage.removeItem("user");
+        setUser(null);
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = (userId: string, userRole: string) => {

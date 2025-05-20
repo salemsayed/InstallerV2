@@ -25,9 +25,24 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Console log for debugging
+  // Load user data from localStorage if not available in context
   useEffect(() => {
     console.log("Dashboard mounting, user:", user);
+    
+    // If no user in context but exists in localStorage, load it directly
+    if (!user) {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("Loading user from localStorage:", parsedUser);
+          // This will trigger a re-render with the user data
+          window.location.reload();
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+        }
+      }
+    }
   }, [user]);
 
   // Use default data if API calls fail

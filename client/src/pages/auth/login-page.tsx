@@ -24,20 +24,34 @@ export default function LoginPage() {
   }, [user, setLocation]);
 
   const handleLoginSuccess = (userId: number, userRole: string) => {
-    // First, call the login function which loads user data
+    console.log("Login success handler called with:", userId, userRole);
+    
+    // Create and store a minimal user object directly first
+    const minimalUser = {
+      id: userId,
+      role: userRole,
+      name: "المستخدم",
+      email: "",
+      phone: "",
+      status: "active",
+      points: 0,
+      level: 1
+    };
+    
+    // Store in localStorage immediately
+    localStorage.setItem("user", JSON.stringify(minimalUser));
+    
+    // Then call the login function
     login(userId.toString(), userRole);
     
-    // Add a delay to allow state to update properly before navigation
-    setTimeout(() => {
-      console.log("Redirecting user based on role:", userRole);
-      
-      // Force a redirect to the dashboard
-      if (userRole === "admin") {
-        window.location.href = "/admin/dashboard";
-      } else {
-        window.location.href = "/installer/dashboard";
-      }
-    }, 500);
+    console.log("Redirecting user based on role:", userRole);
+    
+    // Use direct navigation without delay
+    if (userRole === "admin") {
+      window.location.href = "/admin/dashboard";
+    } else {
+      window.location.href = "/installer/dashboard";
+    }
   };
 
   if (isLoading) {
