@@ -30,90 +30,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
-  // Check if user is logged in on initial load and prevent loops
+  // Check if user is logged in on initial load
   useEffect(() => {
-    setIsLoading(true);
-    
-    // Clear session storage check on initial auth provider load
-    // This will ensure we only try to reload once per session
-    sessionStorage.removeItem('hasCheckedUserStorage');
-    
-    // Get user from localStorage
     const storedUser = localStorage.getItem("user");
-    
     if (storedUser) {
       try {
-        // Set the user from localStorage immediately
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
-        // Verify with server but don't clear user if server fails
+        // Verify the user is still valid from the server
+        // This would check a session or token in a real app
         apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
           .then(res => res.json())
           .then(data => {
-            if (data && data.user) {
+            if (data.user) {
               setUser(data.user);
-              localStorage.setItem("user", JSON.stringify(data.user));
+            } else {
+              // If user is not valid, clear local storage
+              localStorage.removeItem("user");
+              setUser(null);
             }
           })
-          .catch(error => {
-            console.error("Error verifying user with server, using localStorage data", error);
-          })
-          .finally(() => {
-            setIsLoading(false);
+          .catch(() => {
+            // If error, assume token expired
+            localStorage.removeItem("user");
+            setUser(null);
           });
       } catch (e) {
         localStorage.removeItem("user");
-        setUser(null);
-        setIsLoading(false);
       }
-    } else {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, []);
 
   const login = (userId: string, userRole: string) => {
     setIsLoading(true);
     setError(null);
     
-    console.log("Logging in user:", userId, userRole);
-    
-    // Create a minimal user object to ensure navigation works immediately
-    const minimalUser = {
-      id: parseInt(userId),
-      role: userRole,
-      name: "مستخدم",
-      email: "",
-      phone: "",
-      status: "active",
-      points: 0,
-      level: 1,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Store minimal user info immediately to prevent navigation issues
-    setUser(minimalUser);
-    localStorage.setItem("user", JSON.stringify(minimalUser));
-    
-    // Then fetch complete user details
+    // Fetch user details
     apiRequest("GET", `/api/users/me?userId=${userId}`)
       .then(res => res.json())
       .then(data => {
-        console.log("User data fetched:", data);
-        if (data && data.user) {
-          // Save complete user to state and localStorage
-          const fullUser = data.user;
-          console.log("Setting full user data:", fullUser);
-          setUser(fullUser);
-          localStorage.setItem("user", JSON.stringify(fullUser));
+        if (data.user) {
+          // Save user to state and localStorage
+          setUser(data.user);
+          localStorage.setItem("user", JSON.stringify(data.user));
         } else {
-          console.log("User data not found in response, keeping minimal user");
-          // Keep using the minimal user if the API doesn't return proper data
+          setError("خطأ في جلب بيانات المستخدم");
         }
       })
       .catch(error => {
-        console.error("Error fetching user details:", error);
-        // Don't show error to user or clear current minimal user
+        setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
       })
       .finally(() => {
         setIsLoading(false);
