@@ -84,6 +84,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Endpoint to clear authentication errors
+  app.post("/api/auth/wasage/clear-error", async (req: Request, res: Response) => {
+    try {
+      console.log("[DEBUG WASAGE] Clearing all authentication errors");
+      
+      // Find and remove any error entries
+      const referencesToClear: string[] = [];
+      
+      authenticationResults.forEach((value, key) => {
+        if (!value.success && value.errorCode) {
+          referencesToClear.push(key);
+        }
+      });
+      
+      // Remove the entries
+      referencesToClear.forEach(ref => {
+        authenticationResults.delete(ref);
+      });
+      
+      console.log(`[DEBUG WASAGE] Cleared ${referencesToClear.length} error entries`);
+      
+      return res.json({
+        success: true,
+        message: "All errors cleared"
+      });
+    } catch (error) {
+      console.error("[ERROR WASAGE] Error clearing authentication errors:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error clearing authentication errors"
+      });
+    }
+  });
+  
   // Status check endpoint for WhatsApp authentication
   app.get("/api/auth/wasage/status", async (req: Request, res: Response) => {
     try {

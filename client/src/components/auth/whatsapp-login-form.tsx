@@ -62,6 +62,16 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
 
   const resetWhatsAppLogin = () => {
     setWasageData(null);
+    setAuthError(null);
+    
+    // Also clear the error from the server store
+    fetch('/api/auth/wasage/clear-error', {
+      method: 'POST',
+    }).catch(err => {
+      console.error("Failed to clear auth error:", err);
+      // Continue anyway
+    });
+    
     // Trigger the API call again after resetting
     setTimeout(() => {
       initiateWhatsAppLogin();
