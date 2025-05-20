@@ -88,7 +88,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Status check endpoint for WhatsApp authentication
   app.get("/api/auth/wasage/status", async (req: Request, res: Response) => {
     try {
-      const { reference } = req.query;
+      // Get and trim reference to ensure consistent matching
+      const reference = req.query.reference ? String(req.query.reference).trim() : null;
       
       console.log("[DEBUG WASAGE STATUS] Checking authentication status for reference:", reference);
       
@@ -100,10 +101,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the reference exists in our authenticated references map
-      console.log(`[DEBUG WASAGE STATUS] Checking if reference ${reference} is authenticated. Current authenticated references:`, 
-        Array.from(authenticatedReferences.keys()));
+      console.log(`[DEBUG WASAGE STATUS] Checking if reference "${reference}" is authenticated. Current authenticated references:`, 
+        Array.from(authenticatedReferences.keys()).map(ref => `"${ref}"`));
       
-      const authInfo = authenticatedReferences.get(String(reference));
+      // Try to find the reference in our map
+      const authInfo = authenticatedReferences.get(reference);
       
       // If the reference exists and has been authenticated through the callback, return the user info
       if (authInfo) {
@@ -186,11 +188,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Extract the reference from the request if available
-      const callbackReference = req.query.Reference || req.body.reference;
+      let callbackReference = req.query.Reference || req.body.reference;
       
+      // Trim any whitespace from the reference for consistency
       if (callbackReference) {
+        callbackReference = String(callbackReference).trim();
+        console.log(`[DEBUG WASAGE CALLBACK] Trimmed reference: "${callbackReference}"`);
+        
         // Store the authenticated reference with user information
-        authenticatedReferences.set(String(callbackReference), {
+        authenticatedReferences.set(callbackReference, {
           userId: user.id,
           userRole: user.role
         });
