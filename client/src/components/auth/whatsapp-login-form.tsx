@@ -90,7 +90,13 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       
       if (data.success && data.authenticated) {
         // If authenticated, call the onSuccess handler with the user info
-        onSuccess(data.userId, data.userRole);
+        console.log("Authentication successful, calling onSuccess with:", data.userId, data.userRole);
+        
+        // Use a slight delay to ensure proper state propagation
+        setTimeout(() => {
+          onSuccess(data.userId, data.userRole);
+        }, 300);
+        
         return true;
       }
       

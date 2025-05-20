@@ -27,15 +27,17 @@ export default function LoginPage() {
     // First, call the login function which loads user data
     login(userId.toString(), userRole);
     
-    // Add a small delay to allow state to update properly before navigation
+    // Add a delay to allow state to update properly before navigation
     setTimeout(() => {
       console.log("Redirecting user based on role:", userRole);
+      
+      // Force a redirect to the dashboard
       if (userRole === "admin") {
-        setLocation("/admin/dashboard");
+        window.location.href = "/admin/dashboard";
       } else {
-        setLocation("/installer/dashboard");
+        window.location.href = "/installer/dashboard";
       }
-    }, 200);
+    }, 500);
   };
 
   if (isLoading) {

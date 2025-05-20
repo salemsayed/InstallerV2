@@ -65,8 +65,27 @@ export default function InstallerDashboard() {
     refetchOnReconnect: true
   });
 
-  // Show message if user is not authenticated
+  // Check for authenticated user and handle loading state
   if (!user) {
+    // Check if user might be in local storage but not yet in state
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        // If we have a stored user but it's not in state yet, show loading
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-600">جاري تحميل البيانات...</p>
+            </div>
+          </div>
+        );
+      } catch (e) {
+        // If parsing fails, show login button
+      }
+    }
+    
+    // If no stored user, show login message
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
         <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md">
