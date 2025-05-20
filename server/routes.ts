@@ -219,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[ERROR WASAGE CALLBACK] User not found for phone: ${formattedPhone}`);
         return res.status(404).json({ 
           success: false, 
-          message: "User not found" 
+          message: "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك." 
         });
       }
       
