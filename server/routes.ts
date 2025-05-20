@@ -20,8 +20,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Import OpenAI functions
   const { generateInsight, generateAnalyticsSummary } = await import('./openai');
+  
+  // API base URLs
+  const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
 
   // AUTH ROUTES
+  // WhatsApp Authentication with Wasage
+  app.post("/api/auth/wasage/otp", async (req: Request, res: Response) => {
+    try {
+      // Generate unique reference ID
+      const reference = `login_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      
+      console.log("[DEBUG WASAGE] Requesting OTP from Wasage API");
+      
+      // Call Wasage API to request OTP
+      const wasageResponse = await fetch(WASAGE_API_BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          Username: process.env.WASAGE_USER,
+          Password: process.env.WASAGE_PASS,
+          Reference: "BAREEQ",
+          Message: "Welcome to BAREEQ Installers. Need help? 0109990555"
+        })
+      });
+      
+      // Parse response from Wasage
+      const responseData = await wasageResponse.json();
+      console.log("[DEBUG WASAGE] Response:", responseData);
+      
+      // Check if Wasage request was successful
+      if (responseData.code === "5500") {
+        return res.json({
+          success: true,
+          qrImageUrl: responseData.imageUrl,
+          clickableUrl: responseData.clickableUrl,
+          otp: responseData.otp,
+          reference: reference
+        });
+      } else {
+        console.error("[ERROR WASAGE] Failed to generate OTP:", responseData);
+        return res.status(400).json({
+          success: false,
+          message: "فشل في إنشاء رمز تحقق واتساب، يرجى المحاولة مرة أخرى"
+        });
+      }
+    } catch (error) {
+      console.error("[ERROR WASAGE] Exception:", error);
+      return res.status(500).json({
+        success: false,
+        message: "حدث خطأ في الخادم، يرجى المحاولة مرة أخرى"
+      });
+    }
+  });
+  
+  // Wasage callback endpoint
+  app.post("/api/wasage/callback", async (req: Request, res: Response) => {
+    try {
+      console.log("[DEBUG WASAGE] Callback received:", req.body);
+      
+      // Extract and validate callback data
+      const { phoneNumber, otp, reference } = req.body;
+      
+      if (!phoneNumber) {
+        console.error("[ERROR WASAGE] Missing phone number in callback");
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing phone number"
+        });
+      }
+      
+      // Format phone number (ensure consistent format with DB)
+      let formattedPhone = phoneNumber;
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = '+' + formattedPhone;
+      }
+      
+      // Find user by phone number
+      const user = await storage.getUserByPhone(formattedPhone);
+      
+      if (!user) {
+        console.error(`[ERROR WASAGE] User not found for phone: ${formattedPhone}`);
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+      
+      console.log(`[DEBUG WASAGE] User found:`, {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      });
+      
+      // Create session for user (similar to existing login flow)
+      if (req.session) {
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+        
+        await req.session.save();
+        console.log(`[DEBUG WASAGE] Session created for user ${user.id}`);
+      }
+      
+      return res.json({ 
+        success: true,
+        userId: user.id,
+        userRole: user.role,
+        message: "Authentication successful" 
+      });
+    } catch (error) {
+      console.error("[ERROR WASAGE] Callback processing error:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Internal server error" 
+      });
+    }
+  });
+  
   // Request OTP for login/registration
   app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
     try {
