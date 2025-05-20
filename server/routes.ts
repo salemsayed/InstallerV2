@@ -202,6 +202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store authentication errors in memory (in a real app, this would be in a database)
   const authenticationErrors = new Map<string, { message: string; phoneNumber?: string }>();
   
+  // Function to clear authentication data after timeout
+  const clearAuthenticationData = (reference: string) => {
+    setTimeout(() => {
+      authenticatedReferences.delete(reference);
+      authenticationErrors.delete(reference);
+    }, 1000 * 60 * 30); // Clear after 30 minutes
+  };
+  
   app.all("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
       // Log both query parameters and body for debugging
@@ -240,6 +248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
             phoneNumber: formattedPhone
           });
+          
+          // Set up cleanup
+          clearAuthenticationData(reference);
         }
         
         return res.status(404).json({ 

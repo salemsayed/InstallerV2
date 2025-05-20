@@ -101,21 +101,44 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
   // Effect to poll for authentication status when QR code is displayed
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
+    let authFailureTimeout: NodeJS.Timeout | null = null;
     
     if (wasageData) {
       // Start polling for auth status every 3 seconds
       pollInterval = setInterval(async () => {
         const authenticated = await checkAuthStatus(wasageData.reference);
         if (authenticated) {
-          // Clear interval when authenticated
+          // Clear interval when authenticated or error is received
           if (pollInterval) clearInterval(pollInterval);
         }
       }, 3000);
+      
+      // Set a timeout to automatically check for phone number not found errors
+      // This is a fallback in case the polling doesn't catch it
+      authFailureTimeout = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/auth/wasage/status?reference=${wasageData.reference}`);
+          const data = await response.json();
+          
+          // If there's an error flag in the response, show it and reset the form
+          if (data.error) {
+            toast({
+              title: "خطأ في تسجيل الدخول",
+              description: data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
+              variant: "destructive",
+            });
+            setWasageData(null);
+          }
+        } catch (error) {
+          console.error("Error checking auth failure:", error);
+        }
+      }, 8000); // Check after 8 seconds - by then we should have received callback if the phone number is invalid
     }
     
-    // Cleanup polling on unmount or when wasageData changes
+    // Cleanup polling and timeout on unmount or when wasageData changes
     return () => {
       if (pollInterval) clearInterval(pollInterval);
+      if (authFailureTimeout) clearTimeout(authFailureTimeout);
     };
   }, [wasageData]);
 
