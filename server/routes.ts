@@ -102,14 +102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByPhone(formattedPhone);
       
       if (!user) {
-        console.error(`[ERROR WASAGE] User not found for phone: ${formattedPhone}`);
+        console.error(`[ERROR WASAGE CALLBACK] User not found for phone: ${formattedPhone}`);
         return res.status(404).json({ 
           success: false, 
           message: "User not found" 
         });
       }
       
-      console.log(`[DEBUG WASAGE] User found:`, {
+      console.log(`[DEBUG WASAGE CALLBACK] User found:`, {
         id: user.id,
         name: user.name,
         role: user.role
