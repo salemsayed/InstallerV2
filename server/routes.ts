@@ -76,6 +76,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Test endpoint for Wasage callback
+  app.get("/api/wasage/test", async (req: Request, res: Response) => {
+    console.log("[DEBUG WASAGE TEST] Test endpoint called with query:", req.query);
+    return res.json({
+      success: true,
+      message: "Test endpoint working"
+    });
+  });
+
   // Wasage callback endpoint - handles both POST and GET requests
   app.all("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
@@ -136,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Authentication successful" 
       });
     } catch (error) {
-      console.error("[ERROR WASAGE] Callback processing error:", error);
+      console.error("[ERROR WASAGE CALLBACK] Processing error:", error);
       return res.status(500).json({ 
         success: false, 
         message: "Internal server error" 
