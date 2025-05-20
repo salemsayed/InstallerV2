@@ -22,6 +22,7 @@ function Router() {
       <Route path="/installer/dashboard" component={InstallerDashboard} />
       <Route path="/installer/stats" component={InstallerStats} />
       <Route path="/installer/profile" component={InstallerProfile} />
+      <Route path="/installer/settings" component={InstallerSettings} />
       <Route path="/installer/advanced-scan" component={AdvancedScanPage} />
       
       {/* Admin Routes */}

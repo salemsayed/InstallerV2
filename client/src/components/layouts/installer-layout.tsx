@@ -27,6 +27,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
     if (location.includes('dashboard')) return 'dashboard';
     if (location.includes('stats')) return 'stats';
     if (location.includes('profile')) return 'profile';
+    if (location.includes('settings')) return 'settings';
     if (location.includes('advanced-scan')) return 'advanced-scan';
     return 'dashboard';
   })();
@@ -79,7 +80,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/dashboard">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -91,7 +92,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
           </Link>
         </div>
         
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/stats">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -103,7 +104,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
           </Link>
         </div>
         
-        <div className="w-1/3">
+        <div className="w-1/4">
           <Link href="/installer/profile">
             <div className={cn(
               "flex flex-col items-center cursor-pointer",
@@ -111,6 +112,18 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
             )}>
               <span className="material-icons">person</span>
               <span className="text-xs mt-1">الملف الشخصي</span>
+            </div>
+          </Link>
+        </div>
+        
+        <div className="w-1/4">
+          <Link href="/installer/settings">
+            <div className={cn(
+              "flex flex-col items-center cursor-pointer",
+              currentTab === "settings" ? "text-primary" : "text-neutral-500"
+            )}>
+              <span className="material-icons">settings</span>
+              <span className="text-xs mt-1">الإعدادات</span>
             </div>
           </Link>
         </div>
