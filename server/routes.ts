@@ -76,13 +76,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Wasage callback endpoint
-  app.post("/api/wasage/callback", async (req: Request, res: Response) => {
+  // Wasage callback endpoint - handles both POST and GET requests
+  app.all("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
+      // Log both query parameters and body for debugging
+      console.log("[DEBUG WASAGE CALLBACK] Received callback request with query:", req.query);
       console.log("[DEBUG WASAGE CALLBACK] Received callback request with body:", req.body);
       
-      // Extract and validate callback data
-      const { phoneNumber, otp, reference } = req.body;
+      // Extract data from either query parameters (GET) or request body (POST)
+      // Based on the example URL format: /api/wasage/callback?OTP=xxx&Mobile=xxx&Reference=xxx&Secret=xxx
+      const otp = req.query.OTP || req.body.otp;
+      const phoneNumber = req.query.Mobile || req.body.phoneNumber;
+      const reference = req.query.Reference || req.body.reference;
       
       if (!phoneNumber) {
         console.error("[ERROR WASAGE CALLBACK] Missing phone number in callback");
