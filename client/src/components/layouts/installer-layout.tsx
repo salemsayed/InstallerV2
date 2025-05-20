@@ -22,6 +22,9 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
   const { user, logout } = useAuth();
   const [location] = useLocation();
   
+  // Add console log for debugging
+  console.log("InstallerLayout rendering with user:", user);
+  
   // If activeTab is not provided, determine it from the location
   const currentTab = activeTab || (() => {
     if (location.includes('dashboard')) return 'dashboard';

@@ -9,6 +9,7 @@ import TransactionsList from "@/components/installer/transactions-list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@shared/schema";
+import arOnlyLogo from "@assets/AR-Only.png"; // Import the logo
 
 // Define proper types for the API responses
 interface TransactionsResponse {
@@ -94,19 +95,101 @@ export default function InstallerDashboard() {
     refetchOnReconnect: true
   });
 
-  // Show a simple loading state instead of an error message
-  // This avoids a flash of unauthorized message during state initialization
+  // Try to use stored user data if user context is not available
+  // This happens when auth provider hasn't fully initialized
   if (!user) {
-    // Check if we have a stored user (indicates we're in the process of loading)
+    // Check sessionStorage for just logged in flag
+    const justLoggedIn = sessionStorage.getItem("justLoggedIn");
+    
+    // Check for user data in localStorage 
     const storedUser = localStorage.getItem("user");
     
-    // Always show loading screen instead of error
+    // If we have stored user data, use it directly to render the page
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        
+        // Use the stored user data directly for this render
+        console.log("Using stored user data directly:", parsedUser);
+        
+        // Render the dashboard directly with the local user data
+        return (
+          <div className="min-h-screen bg-neutral-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm">
+              <div className="px-4 py-5 flex justify-between items-center">
+                <img src={arOnlyLogo} alt="بريق" className="h-10" />
+                
+                {/* Profile Button */}
+                <div className="rounded-full w-10 h-10 bg-neutral-100 flex items-center justify-center">
+                  <span className="material-icons">person</span>
+                </div>
+              </div>
+            </header>
+            
+            {/* Main Content */}
+            <main className="pb-20">
+              {/* Welcome Section */}
+              <section className="px-4 py-6">
+                <h1 className="text-2xl font-bold mb-1">{parsedUser.name || "مرحباً"}</h1>
+                <p className="text-neutral-600">مرحباً بك في برنامج مكافآت بريق</p>
+              </section>
+
+              {/* Points Card */}
+              <section className="px-4 mb-8">
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-lg font-medium mb-2">رصيد النقاط</h2>
+                  <div className="flex items-center">
+                    <span className="text-3xl font-bold text-primary">{parsedUser.points || 0}</span>
+                    <span className="text-neutral-500 mr-2">نقطة</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Loading Message */}
+              <section className="px-4 mb-8 text-center py-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">جاري تحميل البيانات...</p>
+              </section>
+            </main>
+            
+            {/* Bottom Navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
+              <div className="w-1/3">
+                <div className="flex flex-col items-center cursor-pointer text-primary">
+                  <span className="material-icons">home</span>
+                  <span className="text-xs mt-1">الرئيسية</span>
+                </div>
+              </div>
+              
+              <div className="w-1/3">
+                <div className="flex flex-col items-center cursor-pointer text-neutral-500">
+                  <span className="material-icons">insights</span>
+                  <span className="text-xs mt-1">الإحصائيات</span>
+                </div>
+              </div>
+              
+              <div className="w-1/3">
+                <div className="flex flex-col items-center cursor-pointer text-neutral-500">
+                  <span className="material-icons">person</span>
+                  <span className="text-xs mt-1">الملف الشخصي</span>
+                </div>
+              </div>
+            </nav>
+          </div>
+        );
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
+      }
+    }
+    
+    // Show loading screen
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
         <div className="text-center p-6 shadow-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">{storedUser ? "جاري تحميل البيانات..." : "يرجى الانتظار..."}</p>
-          {!storedUser && (
+          <p className="text-gray-600">{storedUser || justLoggedIn ? "جاري تحميل البيانات..." : "يرجى الانتظار..."}</p>
+          {!storedUser && !justLoggedIn && (
             <a href="/auth/login" className="inline-block mt-4 text-primary underline">
               العودة لصفحة تسجيل الدخول
             </a>

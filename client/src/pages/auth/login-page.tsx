@@ -26,7 +26,12 @@ export default function LoginPage() {
   const handleLoginSuccess = (userId: number, userRole: string) => {
     console.log("Login success handler called with:", userId, userRole);
     
-    // Create and store a minimal user object directly first
+    // Store the user ID and role directly in session storage for immediate use
+    sessionStorage.setItem("justLoggedIn", "true");
+    sessionStorage.setItem("userId", userId.toString());
+    sessionStorage.setItem("userRole", userRole);
+    
+    // Create and store a minimal but complete user object for the dashboard
     const minimalUser = {
       id: userId,
       role: userRole,
@@ -35,7 +40,9 @@ export default function LoginPage() {
       phone: "",
       status: "active",
       points: 0,
-      level: 1
+      level: 1,
+      createdAt: new Date().toISOString(),
+      region: ""
     };
     
     // Store in localStorage immediately
