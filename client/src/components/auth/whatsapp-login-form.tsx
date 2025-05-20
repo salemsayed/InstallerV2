@@ -78,6 +78,18 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
         // If authenticated, call the onSuccess handler with the user info
         onSuccess(data.userId, data.userRole);
         return true;
+      } 
+      // Check if there was an authentication error (e.g., phone number not found)
+      else if (data.error) {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
+          variant: "destructive",
+        });
+        // Reset the login form to allow retrying
+        setWasageData(null);
+        // Return true to stop polling
+        return true;
       }
       return false;
     } catch (error) {

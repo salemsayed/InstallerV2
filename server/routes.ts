@@ -146,7 +146,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[DEBUG WASAGE STATUS] Checking if reference "${reference}" is authenticated. Current authenticated references:`, 
         Array.from(authenticatedReferences.keys()).map(ref => `"${ref}"`));
       
-      // Try to find the reference in our map
+      // Check if there's an error for this reference in our errors map
+      if (authenticationErrors.has(reference)) {
+        const errorInfo = authenticationErrors.get(reference);
+        console.log(`[DEBUG WASAGE STATUS] Reference ${reference} has an error:`, errorInfo);
+        
+        // Return error information to client
+        return res.json({
+          success: false,
+          authenticated: false,
+          error: true,
+          message: errorInfo?.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك."
+        });
+      }
+      
+      // Try to find the reference in our successful authentications map
       const authInfo = authenticatedReferences.get(reference);
       
       // If the reference exists and has been authenticated through the callback, return the user info
@@ -185,6 +199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Wasage callback endpoint - handles both POST and GET requests
   // Store authenticated references in memory (in a real app, this would be in a database)
   const authenticatedReferences = new Map<string, { userId: number; userRole: string }>();
+  // Store authentication errors in memory (in a real app, this would be in a database)
+  const authenticationErrors = new Map<string, { message: string; phoneNumber?: string }>();
   
   app.all("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
@@ -217,6 +233,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         console.error(`[ERROR WASAGE CALLBACK] User not found for phone: ${formattedPhone}`);
+        
+        // Store error information for the reference so status check can report it to the client
+        if (reference) {
+          authenticationErrors.set(reference, {
+            message: "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
+            phoneNumber: formattedPhone
+          });
+        }
+        
         return res.status(404).json({ 
           success: false, 
           message: "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك." 
