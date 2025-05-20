@@ -68,6 +68,9 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
     }, 100);
   };
 
+  // State to track authentication errors
+  const [authError, setAuthError] = useState<string | null>(null);
+
   // Function to check authentication status
   const checkAuthStatus = async (reference: string) => {
     try {
@@ -81,13 +84,14 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       } 
       // Check if there was an authentication error (e.g., phone number not found)
       else if (data.error) {
+        // Set error message to display in UI instead of automatically resetting
+        setAuthError(data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.");
+        // Show a toast notification
         toast({
           title: "خطأ في تسجيل الدخول",
           description: data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
           variant: "destructive",
         });
-        // Reset the login form to allow retrying
-        setWasageData(null);
         // Return true to stop polling
         return true;
       }
@@ -120,14 +124,15 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
           const response = await fetch(`/api/auth/wasage/status?reference=${wasageData.reference}`);
           const data = await response.json();
           
-          // If there's an error flag in the response, show it and reset the form
+          // If there's an error flag in the response, show it and display error UI
           if (data.error) {
             toast({
               title: "خطأ في تسجيل الدخول",
               description: data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.",
               variant: "destructive",
             });
-            setWasageData(null);
+            // Set error message in state to display in UI instead of resetting form
+            setAuthError(data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.");
           }
         } catch (error) {
           console.error("Error checking auth failure:", error);
@@ -165,13 +170,41 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       </TabsContent>
 
       <TabsContent value="whatsapp">
-        {!wasageData ? (
+        {!wasageData && !authError ? (
           <div className="flex flex-col items-center space-y-4">
             <p className="text-center text-gray-600 mb-4">
               جاري تحضير تسجيل الدخول عبر واتساب...
             </p>
             <div className="w-full flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          </div>
+        ) : authError ? (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 w-full">
+              <div className="flex flex-col items-center gap-3 mb-2">
+                <svg className="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="text-center">
+                  <h4 className="font-medium text-red-700 text-lg mb-1">خطأ في تسجيل الدخول</h4>
+                  <p className="text-sm text-gray-700 mb-4">{authError}</p>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={() => {
+                  setAuthError(null);
+                  setWasageData(null);
+                  // Wait a moment before initiating a new login attempt
+                  setTimeout(() => {
+                    initiateWhatsAppLogin();
+                  }, 500);
+                }}
+                className="w-full"
+              >
+                إعادة المحاولة
+              </Button>
             </div>
           </div>
         ) : (
