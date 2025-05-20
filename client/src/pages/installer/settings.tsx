@@ -5,7 +5,7 @@ import { SessionManagement } from "@/components/account/session-management";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Shield, User } from "lucide-react";
-import { useStore } from "@/store";
+import { useStore } from "../../store";
 import { Redirect } from "wouter";
 
 export default function SettingsPage() {
@@ -17,6 +17,9 @@ export default function SettingsPage() {
     queryKey: ['/api/users/me'],
     enabled: !!user,
   });
+  
+  // Type safety for user data
+  const userInfo = userData?.user || {};
 
   useEffect(() => {
     // Set page title
@@ -51,28 +54,28 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {userData && (
+              {Object.keys(userInfo).length > 0 && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium mb-1">الاسم</p>
-                      <p className="text-sm text-muted-foreground">{userData.name}</p>
+                      <p className="text-sm text-muted-foreground">{userInfo.name}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium mb-1">رقم الهاتف</p>
-                      <p className="text-sm text-muted-foreground" dir="ltr">{userData.phone}</p>
+                      <p className="text-sm text-muted-foreground" dir="ltr">{userInfo.phone}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium mb-1">المنطقة</p>
-                      <p className="text-sm text-muted-foreground">{userData.region}</p>
+                      <p className="text-sm text-muted-foreground">{userInfo.region}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium mb-1">نوع الحساب</p>
                       <p className="text-sm text-muted-foreground">
-                        {userData.role === "installer" ? "فني تركيب" : 
-                         userData.role === "admin" ? "مسؤول" : userData.role}
+                        {userInfo.role === "installer" ? "فني تركيب" : 
+                         userInfo.role === "admin" ? "مسؤول" : userInfo.role}
                       </p>
                     </div>
                   </div>

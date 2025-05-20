@@ -30,7 +30,7 @@ export function SessionManagement() {
   });
 
   // Extract sessions from the response
-  const sessions = data?.sessions || [];
+  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
 
   // Mutation to delete a session
   const deleteSessionMutation = useMutation({
