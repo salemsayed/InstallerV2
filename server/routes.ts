@@ -79,13 +79,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Wasage callback endpoint
   app.post("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
-      console.log("[DEBUG WASAGE] Callback received:", req.body);
+      console.log("[DEBUG WASAGE CALLBACK] Received callback request with body:", req.body);
       
       // Extract and validate callback data
       const { phoneNumber, otp, reference } = req.body;
       
       if (!phoneNumber) {
-        console.error("[ERROR WASAGE] Missing phone number in callback");
+        console.error("[ERROR WASAGE CALLBACK] Missing phone number in callback");
         return res.status(400).json({ 
           success: false, 
           message: "Missing phone number"
