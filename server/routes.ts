@@ -380,8 +380,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create a JWT or session token here if needed
-      // For simplicity, we'll just return the user object
+      // Enhanced session management - same as WhatsApp authentication
+      if (req.session) {
+        // Store essential user details
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+        
+        // Add security-related metadata
+        req.session.createdAt = new Date().toISOString();
+        req.session.lastActive = new Date().toISOString();
+        req.session.ipAddress = req.ip || req.socket.remoteAddress;
+        req.session.userAgent = req.headers['user-agent'];
+        
+        // Generate a unique session ID for tracking and revocation
+        req.session.sessionId = `sms_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        
+        // Set session expiration (8 hours)
+        req.session.cookie.maxAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+        
+        // Save session
+        await req.session.save();
+        console.log(`[DEBUG SMS AUTH] Enhanced session created for user ${user.id} with ID ${req.session.sessionId}`);
+      }
       
       return res.json({
         success: true,
