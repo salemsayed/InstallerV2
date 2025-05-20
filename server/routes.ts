@@ -171,8 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract data from either query parameters (GET) or request body (POST)
       // Based on the example URL format: /api/wasage/callback?OTP=xxx&Mobile=xxx&Reference=xxx&Secret=xxx
       const otp = req.query.OTP || req.body.otp;
-      let phoneNumber = req.query.Mobile || req.body.phoneNumber;
-      let callbackReference = req.query.Reference || req.body.reference;
+      const phoneNumber = req.query.Mobile || req.body.phoneNumber;
+      const callbackReference = req.query.Reference || req.body.reference;
       
       if (!phoneNumber) {
         console.error("[ERROR WASAGE CALLBACK] Missing phone number in callback");
@@ -198,6 +198,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (callbackReference) {
           const trimmedReference = String(callbackReference).trim();
           console.log(`[DEBUG WASAGE CALLBACK] Storing error for reference: "${trimmedReference}"`);
+          
+          // Also store the error for the current reference being checked
+          // This allows the polling system to find the error
+          const referencesArray = Array.from(authenticationResults.keys());
+          console.log(`[DEBUG WASAGE CALLBACK] Current references in system: ${referencesArray.length} references`);
+          
+          // Store error for each active reference (in a real system we'd store this in a database)
+          if (referencesArray.length > 0) {
+            const lastReference = referencesArray[referencesArray.length - 1];
+            console.log(`[DEBUG WASAGE CALLBACK] Also storing error for active reference: "${lastReference}"`);
+            
+            authenticationResults.set(lastReference, {
+              success: false,
+              errorCode: "USER_NOT_REGISTERED",
+              errorMessage: "تعذر العثور على رقم الهاتف هذا. يرجى التواصل مع الدعم الفني على 0109990555 للمساعدة."
+            });
+          }
           
           authenticationResults.set(trimmedReference, {
             success: false,
@@ -962,7 +979,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await setupAuth(app);
   }
 
-  return app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
-    console.log(`Server listening on port ${process.env.PORT || 5000}`);
-  });
+  // Return the HTTP server (don't listen here, this will happen in index.ts)
+  return require('http').createServer(app);
 }
