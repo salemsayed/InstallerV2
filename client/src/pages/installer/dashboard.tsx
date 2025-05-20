@@ -25,22 +25,36 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load user data from localStorage if not available in context
+  // Check if user exists in local state
   useEffect(() => {
     console.log("Dashboard mounting, user:", user);
     
-    // If no user in context but exists in localStorage, load it directly
-    if (!user) {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          console.log("Loading user from localStorage:", parsedUser);
-          // This will trigger a re-render with the user data
-          window.location.reload();
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-        }
+    // Don't do anything if user already exists
+    if (user) {
+      console.log("User is already loaded, no need to reload");
+      return;
+    }
+    
+    // Otherwise, check localStorage once
+    const hasCheckedStorage = sessionStorage.getItem('hasCheckedUserStorage');
+    if (hasCheckedStorage === 'true') {
+      console.log("Already checked localStorage once, won't check again");
+      return;
+    }
+    
+    // Mark that we've checked localStorage
+    sessionStorage.setItem('hasCheckedUserStorage', 'true');
+    
+    // Check if user exists in localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log("Found user in localStorage:", parsedUser);
+        // Reload once to load the user from localStorage
+        window.location.reload();
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
       }
     }
   }, [user]);
@@ -80,36 +94,23 @@ export default function InstallerDashboard() {
     refetchOnReconnect: true
   });
 
-  // Check for authenticated user and handle loading state
+  // Show a simple loading state instead of an error message
+  // This avoids a flash of unauthorized message during state initialization
   if (!user) {
-    // Check if user might be in local storage but not yet in state
+    // Check if we have a stored user (indicates we're in the process of loading)
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        // If we have a stored user but it's not in state yet, show loading
-        return (
-          <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-600">جاري تحميل البيانات...</p>
-            </div>
-          </div>
-        );
-      } catch (e) {
-        // If parsing fails, show login button
-      }
-    }
     
-    // If no stored user, show login message
+    // Always show loading screen instead of error
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="text-center p-6 bg-white rounded-lg shadow-sm max-w-md">
-          <span className="material-icons text-4xl text-primary mb-2">account_circle</span>
-          <h1 className="text-xl font-semibold mb-2">جلسة غير مصرح بها</h1>
-          <p className="text-gray-600 mb-4">يرجى تسجيل الدخول لعرض لوحة التحكم الخاصة بك</p>
-          <a href="/auth/login" className="inline-block bg-primary text-white px-6 py-2 rounded-md">
-            تسجيل الدخول
-          </a>
+        <div className="text-center p-6 shadow-sm">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">{storedUser ? "جاري تحميل البيانات..." : "يرجى الانتظار..."}</p>
+          {!storedUser && (
+            <a href="/auth/login" className="inline-block mt-4 text-primary underline">
+              العودة لصفحة تسجيل الدخول
+            </a>
+          )}
         </div>
       </div>
     );

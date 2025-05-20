@@ -30,9 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
-  // Check if user is logged in on initial load
+  // Check if user is logged in on initial load and prevent loops
   useEffect(() => {
     setIsLoading(true);
+    
+    // Clear session storage check on initial auth provider load
+    // This will ensure we only try to reload once per session
+    sessionStorage.removeItem('hasCheckedUserStorage');
+    
+    // Get user from localStorage
     const storedUser = localStorage.getItem("user");
     
     if (storedUser) {
@@ -40,7 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Set the user from localStorage immediately
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        setIsLoading(false);
+        
+        // Verify with server but don't clear user if server fails
+        apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.user) {
+              setUser(data.user);
+              localStorage.setItem("user", JSON.stringify(data.user));
+            }
+          })
+          .catch(error => {
+            console.error("Error verifying user with server, using localStorage data", error);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
       } catch (e) {
         localStorage.removeItem("user");
         setUser(null);
