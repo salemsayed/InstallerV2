@@ -28,8 +28,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Authentication with Wasage
   app.post("/api/auth/wasage/otp", async (req: Request, res: Response) => {
     try {
-      // Generate unique reference ID
-      const reference = `login_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      // Generate simple reference ID (one word, no special characters)
+      const reference = `webapp123`;
       
       console.log("[DEBUG WASAGE] Requesting OTP from Wasage API");
       
@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: JSON.stringify({
           Username: process.env.WASAGE_USER,
           Password: process.env.WASAGE_PASS,
-          Reference: "BAREEQ",
+          Reference: reference,
           Message: "Welcome to BAREEQ Installers. Need help? 0109990555"
         })
       });
