@@ -52,12 +52,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[DEBUG WASAGE] Response:", responseData);
       
       // Check if Wasage request was successful
-      if (responseData.code === "5500") {
+      if (responseData.Code === "5500") {
         return res.json({
           success: true,
-          qrImageUrl: responseData.imageUrl,
-          clickableUrl: responseData.clickableUrl,
-          otp: responseData.otp,
+          qrImageUrl: responseData.QR,
+          clickableUrl: responseData.Clickable,
+          otp: responseData.OTP,
           reference: reference
         });
       } else {
