@@ -62,6 +62,10 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
 
   const resetWhatsAppLogin = () => {
     setWasageData(null);
+    // Trigger the API call again after resetting
+    setTimeout(() => {
+      initiateWhatsAppLogin();
+    }, 100);
   };
 
   // Effect to trigger WhatsApp login when tab is changed to whatsapp
