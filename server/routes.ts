@@ -228,6 +228,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const otp = req.query.OTP || req.body.otp;
       const phoneNumber = req.query.Mobile || req.body.phoneNumber;
       const callbackReference = req.query.Reference || req.body.reference;
+      const secretKey = req.query.Secret || req.body.secret;
+      
+      // Validate the secret key to ensure the request is legitimate
+      const expectedSecret = process.env.WASAGE_SECRET;
+      if (expectedSecret && secretKey !== expectedSecret) {
+        console.error("[ERROR WASAGE CALLBACK] Invalid secret key");
+        return res.status(403).json({ 
+          success: false, 
+          message: "Invalid secret key" 
+        });
+      }
       
       if (!phoneNumber) {
         console.error("[ERROR WASAGE CALLBACK] Missing phone number in callback");
