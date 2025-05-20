@@ -99,11 +99,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // For demo purposes, we're assuming the authentication was successful if the callback was received
-      // In a production environment, you would check the status from a database based on the reference
-      const authenticated = true;
-      const userId = 13; // This should come from your database in production
-      const userRole = "installer"; // This should come from your database in production
+      // Check if the reference exists in our authenticated references map
+      console.log(`[DEBUG WASAGE STATUS] Checking if reference ${reference} is authenticated. Current authenticated references:`, 
+        Array.from(authenticatedReferences.keys()));
+      
+      const authInfo = authenticatedReferences.get(String(reference));
+      
+      // If the reference exists and has been authenticated through the callback, return the user info
+      if (authInfo) {
+        console.log(`[DEBUG WASAGE STATUS] Reference ${reference} is authenticated with user:`, authInfo);
+        return res.json({
+          success: true,
+          authenticated: true,
+          userId: authInfo.userId,
+          userRole: authInfo.userRole,
+          message: "Authentication successful"
+        });
+      }
+      
+      // By default, not authenticated until callback is received
+      const authenticated = false;
+      const userId = undefined;
+      const userRole = undefined;
       
       return res.json({
         success: true,
@@ -122,6 +139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Wasage callback endpoint - handles both POST and GET requests
+  // Store authenticated references in memory (in a real app, this would be in a database)
+  const authenticatedReferences = new Map<string, { userId: number; userRole: string }>();
+  
   app.all("/api/wasage/callback", async (req: Request, res: Response) => {
     try {
       // Log both query parameters and body for debugging
@@ -165,13 +185,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role
       });
       
+      // Extract the reference from the request if available
+      const callbackReference = req.query.Reference || req.body.reference;
+      
+      if (callbackReference) {
+        // Store the authenticated reference with user information
+        authenticatedReferences.set(String(callbackReference), {
+          userId: user.id,
+          userRole: user.role
+        });
+        
+        console.log(`[DEBUG WASAGE CALLBACK] Stored authenticated reference: ${callbackReference} for user:`, {
+          userId: user.id,
+          userRole: user.role
+        });
+      }
+      
       // Create session for user (similar to existing login flow)
       if (req.session) {
         req.session.userId = user.id;
         req.session.userRole = user.role;
         
         await req.session.save();
-        console.log(`[DEBUG WASAGE] Session created for user ${user.id}`);
+        console.log(`[DEBUG WASAGE CALLBACK] Session created for user ${user.id}`);
       }
       
       return res.json({ 
