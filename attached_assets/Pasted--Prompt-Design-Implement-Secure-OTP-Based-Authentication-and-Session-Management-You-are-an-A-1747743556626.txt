@@ -1,0 +1,77 @@
+## Prompt: Design & Implement Secure OTP-Based Authentication and Session Management
+
+You are an AI agent working on a **modern web application** that authenticates users exclusively through **one-time passwords (OTP) delivered via SMS or WhatsApp**. Your goal is to implement a rock-solid authentication and session-management subsystem that is secure, performant, and user-friendly.
+
+---
+
+### 1. Core Objectives
+1. **Verify user identity** using short-lived OTP codes delivered over trusted channels (SMS/WhatsApp).  
+2. **Establish and maintain sessions** that remain secure for their lifetime and are easy to revoke.  
+3. **Prevent abuse & maintain integrity** through rate limiting, replay protection, and strong crypto.  
+4. **Log and monitor** all auth-related events for anomaly detection and audit trails.
+
+---
+
+### 2. Authentication Flow Requirements
+| Step | What Must Happen | Things to Check/Enforce |
+|------|------------------|-------------------------|
+| **2.1 Collect Identifier** | Accept phone number (E.164 format). | • Validate & normalize number. <br>• Enforce CAPTCHA / proof-of-work to deter bots. |
+| **2.2 Issue OTP** | Generate cryptographically secure, random 6–8 digit code. | • Use CSPRNG (e.g., `crypto.randomInt`).<br>• Store *hashed* OTP (PBKDF2/Argon2) with strict TTL (≤ 5 min).<br>• Rate-limit sends (e.g., max 3 / 10 min & exponential back-off). |
+| **2.3 Deliver OTP** | Send via SMS or WhatsApp Business API. | • Sign API requests; verify delivery callbacks where possible.<br>• Fallback path if one channel fails.<br>• Obfuscate OTP in any user-visible logs. |
+| **2.4 Verify OTP** | User posts code + phone number. | • Constant-time compare against hash.<br>• Expire OTP on first successful use (single-use).<br>• Lock account or require step-up if N failed attempts (e.g., 5). |
+| **2.5 Issue Session** | Create signed, encrypted session token (JWT or server-stored ID). | • Include `sub`, `iat`, `exp`, `jti`, and device fingerprint claims.<br>• Sign with asymmetric key (RS256/EdDSA).<br>• Separate **access token** (short, 15 min) & **refresh token** (longer, 30 d). |
+
+---
+
+### 3. Session Management Must-Haves
+1. **Secure cookie flags**  
+   - `Secure`, `HttpOnly`, `SameSite=Lax|Strict`; domain scoped tightly.  
+2. **Rotation & revocation**  
+   - Rotate refresh tokens at every use (sliding sessions).  
+   - Maintain deny-list (store `jti` or revocation timestamp in DB/Redis).  
+3. **CSRF protection**  
+   - Double-submit token or SameSite cookies + `XSRF-TOKEN` header.  
+4. **Idle & absolute timeouts**  
+   - Auto-logout after inactivity (e.g., 15 min) and after max lifespan (e.g., 8 h).  
+5. **Device awareness**  
+   - Bind session to user-agent hash + IP range; trigger re-verification when they change drastically.  
+6. **Session termination endpoints**  
+   - Allow user to list active sessions & revoke individually.  
+
+---
+
+### 4. Security Checklist for the AI Agent
+- [ ] All secrets (signing keys, SMS API keys) stored in vault/KMS with least privilege.  
+- [ ] OTP length ≥ 6 digits; entropy ≥ 20 bits.  
+- [ ] Transport only over TLS 1.3; enforce HSTS & ALPN.  
+- [ ] Rate limiting at **IP**, **phone number**, and **user agent** levels.  
+- [ ] Protect against SIM-swap & SS7 attacks: display last login, optional email push, optional backup codes.  
+- [ ] Brute-force protection: exponential back-off + temporary bans.  
+- [ ] Audit logs: who, what, when, where (IP/UA), status (success/fail), correlation IDs.  
+- [ ] Automated anomaly alerts (e.g., impossible travel, rapid device switching).  
+- [ ] GDPR/CCPA compliance: provide data export & deletion hooks.  
+- [ ] Regular pen-tests and dependency vulnerability scans (SCA/SAST).  
+
+---
+
+### 5. Non-Functional Requirements
+- **Latency**: OTP delivery < 5 s in 95th percentile regions.  
+- **Scalability**: 10× current MAU without re-architecture (horizontally scale stateless components).  
+- **Observability**: Metrics (OTP issued/verified, failure rates), traces, structured logs.  
+- **Accessibility & i18n**: Screen-reader friendly forms, RTL support, SMS code hints localized.  
+- **Disaster recovery**: Backup key rotation strategy; runbook for compromised SMS provider.  
+
+---
+
+### 6. Deliverables
+1. **Design doc** (markdown) covering flow diagrams, DB schema, threat model.  
+2. **Infrastructure-as-Code** scripts (Terraform/CDK) for secrets, queues, SMS gateways.  
+3. **Backend module** implementing OTP issuance/verification, session issuance, and rotation.  
+4. **Unit & integration tests** including edge cases (expired OTP, replay, concurrent logins).  
+5. **Runbooks & playbooks** for on-call engineers (incident response steps).  
+
+---
+
+Follow industry best practices (NIST SP 800-63B, OWASP ASVS v4.0). Use defensive coding techniques and document every assumption. Ensure that the implementation is extensible to add **magic-link email** or **passkeys/WebAuthn** in future iterations.
+
+*End of prompt.*
