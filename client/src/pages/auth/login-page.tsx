@@ -24,13 +24,18 @@ export default function LoginPage() {
   }, [user, setLocation]);
 
   const handleLoginSuccess = (userId: number, userRole: string) => {
+    // First, call the login function which loads user data
     login(userId.toString(), userRole);
     
-    if (userRole === "admin") {
-      setLocation("/admin/dashboard");
-    } else {
-      setLocation("/installer/dashboard");
-    }
+    // Add a small delay to allow state to update properly before navigation
+    setTimeout(() => {
+      console.log("Redirecting user based on role:", userRole);
+      if (userRole === "admin") {
+        setLocation("/admin/dashboard");
+      } else {
+        setLocation("/installer/dashboard");
+      }
+    }, 200);
   };
 
   if (isLoading) {

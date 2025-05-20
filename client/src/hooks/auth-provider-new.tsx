@@ -67,20 +67,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     
-    // Fetch user details
+    console.log("Logging in user:", userId, userRole);
+    
+    // Create a minimal user object to ensure navigation works
+    const minimalUser = {
+      id: parseInt(userId),
+      role: userRole,
+      name: "مستخدم",
+      email: "",
+      points: 0,
+      level: 1
+    };
+    
+    // Store minimal user info immediately to prevent navigation issues
+    setUser(minimalUser);
+    localStorage.setItem("user", JSON.stringify(minimalUser));
+    
+    // Then fetch complete user details
     apiRequest("GET", `/api/users/me?userId=${userId}`)
       .then(res => res.json())
       .then(data => {
-        if (data.user) {
-          // Save user to state and localStorage
-          setUser(data.user);
-          localStorage.setItem("user", JSON.stringify(data.user));
-        } else {
-          setError("خطأ في جلب بيانات المستخدم");
+        console.log("User data fetched:", data);
+        if (data) {
+          // Save complete user to state and localStorage
+          const fullUser = data;
+          setUser(fullUser);
+          localStorage.setItem("user", JSON.stringify(fullUser));
         }
       })
       .catch(error => {
-        setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+        console.error("Error fetching user details:", error);
+        setError(error.message || "حدث خطأ أثناء جلب بيانات المستخدم");
+        // Don't clear user - we already have minimal data
       })
       .finally(() => {
         setIsLoading(false);
