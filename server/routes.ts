@@ -33,10 +33,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("[DEBUG WASAGE] Requesting OTP from Wasage API");
       
-      // Generate the callback URL for Wasage to call when authentication is complete
-      const callbackUrl = `${req.protocol}://${req.get('host')}/api/wasage/callback`;
-      console.log("[DEBUG WASAGE] Callback URL configured as:", callbackUrl);
-      
       // Call Wasage API to request OTP
       const wasageResponse = await fetch(WASAGE_API_BASE_URL, {
         method: "POST",
@@ -46,9 +42,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: JSON.stringify({
           Username: process.env.WASAGE_USER,
           Password: process.env.WASAGE_PASS,
-          Reference: reference,
-          Message: "Welcome to BAREEQ Installers. Need help? 0109990555",
-          CallbackUrl: callbackUrl // Add callback URL to the request
+          Reference: "BAREEQ",
+          Message: "Welcome to BAREEQ Installers. Need help? 0109990555"
         })
       });
       
