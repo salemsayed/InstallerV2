@@ -98,21 +98,25 @@ export default function AdminLayout({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem>
-                  <a 
-                    href="/?force_logout=true" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      // Clear all local storage first
+                  <button 
+                    onClick={() => {
+                      // First clear client storage
                       localStorage.clear();
                       sessionStorage.clear();
-                      // Then navigate directly to server logout endpoint
-                      window.location.href = "/auth/logout?t=" + Date.now();
+                      
+                      // Use the auth context's logout function
+                      logout();
+                      
+                      // As a fallback, also try direct navigation to logout page
+                      setTimeout(() => {
+                        window.location.href = "/auth/logout?t=" + Date.now();
+                      }, 500);
                     }}
                     className="flex items-center w-full"
                   >
                     <span className="material-icons ml-2">logout</span>
                     <span>تسجيل الخروج</span>
-                  </a>
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
