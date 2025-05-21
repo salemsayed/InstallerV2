@@ -1,0 +1,117 @@
+# Product Requirements Document: Application Versioning System
+
+## 1. Introduction
+
+This document outlines the requirements for implementing a versioning system for the Bareeq Installer Rewards web application. The primary goal is to track changes made to the application, especially those implemented by the Replit agent, and to make the current application version visible to all users within the UI. This will aid in support, debugging, and maintaining a clear record of application iterations.
+
+## 2. Goals
+
+* **Track Application Iterations**: Provide a clear and simple way to identify the specific version of the application currently running.
+* **Improve Debugging & Support**: Enable support staff, developers, and users to quickly ascertain the application version when reporting or diagnosing issues.
+* **Enhance Transparency**: Inform users (Admins and Installers) about the current version of the software they are using.
+* **Automate Version Increment**: Ensure that any code modification deployed by the Replit agent automatically triggers an update to the version number.
+
+## 3. User Stories
+
+* **As an Admin**, I want to see the application version displayed in my admin dashboard, so I can easily reference it when communicating with support or developers.
+* **As an Installer**, I want to see the application version in my interface, so I can confirm I'm using an up-to-date version and provide it if I encounter problems.
+* **As a Developer/Support Agent**, I want the application's version number to be automatically incremented whenever the Replit agent deploys new changes, ensuring an accurate history of modifications tied to a version.
+* **As a Developer**, I want the application version to be easily accessible in the frontend code, for potential logging or display purposes.
+
+## 4. Requirements
+
+### 4.1. Functional Requirements
+
+#### 4.1.1. Version Numbering Scheme
+* The application shall use a Semantic Versioning-like scheme: `vMAJOR.MINOR.PATCH` (e.g., `v1.0.0`).
+* The `PATCH` component of the version shall be automatically incremented by `1` upon any set of changes deployed by the Replit agent.
+* `MAJOR` and `MINOR` components will be updated manually by human developers to signify more substantial changes (e.g., new features, breaking changes) when appropriate.
+
+#### 4.1.2. Version Storage
+* The definitive application version shall be stored in the `version` field of the `package.json` file, located at the root of the project.
+    * Example in `package.json`: `"version": "1.0.0"`
+
+#### 4.1.3. Automatic Version Increment
+* A script must be created that, when executed, increments the `PATCH` number of the version in `package.json`.
+* **Trigger**: The Replit agent must be instructed to execute this version increment script *after* it has successfully applied its codebase changes and *before* the application is rebuilt/re-deployed.
+    * An npm script, named `version:increment`, will be added to `package.json` to facilitate this.
+    * This script will call a Node.js script (e.g., `scripts/increment-version.js`).
+
+#### 4.1.4. Version Display in UI
+* The current application version (read from `package.json` at build time) must be displayed consistently and unobtrusively in the user interface.
+* **Admin Interface**: The version number should be visible within the `AdminLayout`. A common location is a small text in the footer of the layout.
+* **Installer Interface**: The version number should be visible within the `InstallerLayout`. Given the existing fixed bottom navigation and floating scan button, the version could be displayed in a thin bar fixed at the very bottom of the screen, below the navigation bar.
+* **Authentication Pages**: The version number should also be visible on pages using the `AuthLayout` (e.g., Login Page), perhaps in a corner.
+* The display format should be clear, e.g., "App Version: v1.0.1".
+
+### 4.2. Non-Functional Requirements
+
+* **Performance**: The version display and the increment mechanism should have a negligible impact on application build times and runtime performance.
+* **Reliability**: The version increment process must be reliably executed by the Replit agent as part of its update workflow.
+* **Readability**: The displayed version number in the UI must be easily readable.
+
+## 5. Technical Implementation Details
+
+### 5.1. Create Version Increment Script
+* **File**: `scripts/increment-version.js`
+* **Functionality**: This Node.js script will:
+    1.  Read the `package.json` file.
+    2.  Parse the `version` string.
+    3.  Increment the `PATCH` number. If the version format is incorrect, log an error and exit.
+    4.  Write the updated `package.json` content back to the file.
+    5.  Log the new version to the console.
+
+```javascript
+// File: scripts/increment-version.js
+import fs from 'fs';
+import path from 'path';
+
+const packageJsonPath = path.resolve(process.cwd(), 'package.json');
+let packageJsonContent;
+
+try {
+  packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
+} catch (error) {
+  console.error(`Error reading package.json at ${packageJsonPath}:`, error);
+  process.exit(1);
+}
+
+let packageJson;
+try {
+  packageJson = JSON.parse(packageJsonContent);
+} catch (error) {
+  console.error(`Error parsing package.json content:`, error);
+  process.exit(1);
+}
+
+if (!packageJson.version || typeof packageJson.version !== 'string') {
+  console.error('No valid version field found in package.json. Initializing to v0.1.0');
+  packageJson.version = '0.1.0'; // Initialize if not present or invalid
+}
+
+const versionParts = packageJson.version.replace(/^v/, '').split('.');
+if (versionParts.length !== 3) {
+  console.error(`Invalid version format in package.json: "${packageJson.version}". Expected MAJOR.MINOR.PATCH. Resetting PATCH to 0.`);
+  versionParts[0] = versionParts[0] || '0';
+  versionParts[1] = versionParts[1] || '1';
+  versionParts[2] = '0'; // Reset patch if format is wrong
+}
+
+let major = parseInt(versionParts[0], 10);
+let minor = parseInt(versionParts[1], 10);
+let patch = parseInt(versionParts[2], 10);
+
+if (isNaN(major)) major = 0;
+if (isNaN(minor)) minor = 1;
+if (isNaN(patch)) patch = -1; // Will be incremented to 0
+
+patch++;
+packageJson.version = `v${major}.${minor}.${patch}`;
+
+try {
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  console.log(`Application version incremented to ${packageJson.version}`);
+} catch (error) {
+  console.error(`Error writing updated package.json at ${packageJsonPath}:`, error);
+  process.exit(1);
+}
