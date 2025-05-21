@@ -11,19 +11,17 @@ interface RequireAuthProps {
 }
 
 export function RequireAuth({ children, role }: RequireAuthProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Force a refresh of user data when the component mounts
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   // Check if user is authenticated and has the required role (if specified)
   const isAuthenticated = !!user;
   const hasRequiredRole = role ? user?.role === role : true;
-  
-  // Redirect to login page if not authenticated or lacking required role
-  useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !hasRequiredRole)) {
-      // We don't redirect here immediately to show the error message
-    }
-  }, [isLoading, isAuthenticated, hasRequiredRole, setLocation]);
 
   // If still loading, show a loading spinner
   if (isLoading) {
