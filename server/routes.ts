@@ -24,21 +24,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
-  // Enhanced logout endpoint with comprehensive session termination
+  // Ultra-reliable enhanced logout endpoint that uses our specialized logout utility
   app.post("/api/auth/logout", (req, res) => {
-    console.log("[LOGOUT] Logout request received", {
-      hasSession: !!req.session,
-      sessionId: req.session?.sessionId || 'none',
-      userId: req.session?.userId || 'none'
-    });
-    
-    // Get environment info for proper cookie clearing
-    const isReplit = !!process.env.REPLIT_DOMAINS;
-    const sameSite = isReplit ? 'none' : 'lax';
-    const secure = isReplit;
-    
-    // Log environment for debugging
-    console.log(`[LOGOUT] Environment: isReplit=${isReplit}, sameSite=${sameSite}, secure=${secure}`);
+    console.log("[LOGOUT] Logout request received, delegating to enhanced logout utility");
     
     // If we have an active session in our tracking map, remove it
     if (req.session?.sessionId && activeSessions.has(req.session.sessionId)) {
@@ -46,121 +34,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       activeSessions.delete(req.session.sessionId);
     }
     
-    // Handle case where session doesn't exist
-    if (!req.session) {
-      console.log("[LOGOUT] No session to destroy");
+    // Import and use the specialized logout utility
+    import('./logout-util').then(module => {
+      // Call the enhanced logout function that handles all edge cases
+      module.performEnhancedLogout(req, res);
+    }).catch(err => {
+      console.error("[LOGOUT] Error importing logout utility:", err);
       
-      // Clear cookies anyway in case they're orphaned
-      clearAllCookies();
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "No active session",
-        timestamp: Date.now()
-      });
-    }
-    
-    // Store session data for logging purposes
-    const sessionInfo = {
-      id: req.session?.sessionId || 'unknown',
-      userId: req.session?.userId || 'unknown'
-    };
-    
-    // Force session regeneration to ensure proper cleanup
-    if (req.session.regenerate) {
-      req.session.regenerate((err) => {
-        if (err) {
-          console.error("[LOGOUT] Session regeneration error:", err);
+      // Fallback to a simple logout approach if import fails
+      if (req.session) {
+        req.session.destroy(err => {
+          if (err) console.error("[LOGOUT] Session destroy error:", err);
           
-          // Even on regeneration error, continue with destroy
-          destroySession();
-        } else {
-          console.log("[LOGOUT] Session regenerated before destruction");
-          destroySession();
-        }
-      });
-    } else {
-      // If regenerate isn't available, go straight to destroy
-      destroySession();
-    }
-    
-    // Helper function to destroy the session
-    function destroySession() {
-      // Destroy the session completely
-      req.session.destroy((err) => {
-        if (err) {
-          console.error("[LOGOUT ERROR]", err);
+          // Clear the main cookie at minimum
+          res.clearCookie('sid', { path: '/' });
           
-          // Even if destroy fails, clear cookies
-          clearAllCookies();
-          
-          return res.status(500).json({ 
-            success: false, 
-            message: "Session destroy error, but cookies cleared",
+          res.status(200).json({
+            success: true,
+            message: "Basic logout completed (fallback mode)",
             timestamp: Date.now()
           });
-        }
-        
-        // Always clear cookies
-        clearAllCookies();
-        
-        console.log(`[LOGOUT] Session ${sessionInfo.id} destroyed and cookies cleared`);
-        
-        // Set headers to prevent caching
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        
-        return res.status(200).json({ 
-          success: true, 
-          message: "Logged out successfully",
-          timestamp: Date.now() // Add timestamp to prevent response caching
         });
-      });
+      } else {
+        res.clearCookie('sid', { path: '/' });
+        
+        res.status(200).json({
+          success: true,
+          message: "No session to clear (fallback mode)",
+          timestamp: Date.now()
+        });
+      }
+    });
+  });
+  
+  // Add a special HTML logout endpoint for direct browser access
+  app.get("/auth/logout", (req, res) => {
+    console.log("[LOGOUT] HTML logout page requested");
+    
+    // If we have an active session in our tracking map, remove it
+    if (req.session?.sessionId && activeSessions.has(req.session.sessionId)) {
+      activeSessions.delete(req.session.sessionId);
     }
     
-    // Helper function to clear all cookies with the correct settings
-    function clearAllCookies() {
-      // Clear all possible cookie names with all possible settings
-      const cookieNames = ['sid', 'connect.sid', 'bareeq.sid', 'express.sid', 'express:sess', 'express:sess.sig'];
-      
-      // All paths that might have cookies
-      const paths = ['/', '/api', '/auth', '/api/auth', '/installer', '/admin', ''];
-      
-      // Clear cookies with the most reliable approaches
-      cookieNames.forEach(name => {
-        // Method 1: Use clearCookie with the correct path and security settings
-        res.clearCookie(name, {
-          path: '/',
-          httpOnly: true,
-          secure: secure,
-          sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined
-        });
+    // First, destroy the session
+    if (req.session) {
+      req.session.destroy(err => {
+        if (err) console.error("[LOGOUT] HTML logout session destroy error:", err);
         
-        // Method 2: For each possible path, set an expired cookie
-        paths.forEach(path => {
-          // Standard clearing without domain (most reliable)
-          res.cookie(name, '', {
-            path: path,
-            httpOnly: true,
-            secure: secure,
-            sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined,
-            expires: new Date(0),
-            maxAge: 0
-          });
-          
-          // For session cookies that might not have httpOnly
-          res.cookie(name, '', {
-            path: path,
-            secure: secure,
-            sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined,
-            expires: new Date(0),
-            maxAge: 0
-          });
-        });
+        // Clear primary cookies
+        res.clearCookie('sid', { path: '/' });
+        res.clearCookie('connect.sid', { path: '/' });
         
-        console.log(`[LOGOUT] Cleared cookie: ${name}`);
+        // Redirect to the login page with cache-busting parameter
+        res.redirect(`/?logout=true&t=${Date.now()}`);
       });
+    } else {
+      // No session to destroy, just redirect
+      res.redirect(`/?logout=true&t=${Date.now()}`);
     }
   });
   
