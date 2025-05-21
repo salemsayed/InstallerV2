@@ -30,7 +30,7 @@ export default function AdminDashboard() {
   } = useQuery({
     queryKey: [`/api/admin/users`],
     queryFn: () => apiRequest('GET', '/api/admin/users').then(res => res.json()),
-    enabled: !!user?.id && user.role === "admin",
+    enabled: user?.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 

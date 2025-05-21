@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Verify the user is still valid from the server
         // This would check a session or token in a real app
-        apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
+        apiRequest("GET", `/api/users/me`)
           .then(res => res.json())
           .then(data => {
             if (data.user) {
