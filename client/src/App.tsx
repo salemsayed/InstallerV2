@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
 import LoginPage from "@/pages/auth/login-page";
+import LogoutPage from "@/pages/auth/logout-page";
 import InstallerDashboard from "@/pages/installer/dashboard";
 import InstallerStats from "@/pages/installer/stats";
 import InstallerProfile from "@/pages/installer/profile";
@@ -67,6 +68,7 @@ function Router() {
     <Switch>
       <Route path="/" component={LoginPage} />
       <Route path="/auth/login" component={LoginPage} />
+      <Route path="/auth/logout" component={LogoutPage} />
       
       {/* Installer Routes */}
       <Route path="/installer/home" component={ProtectedInstallerDashboard} />
