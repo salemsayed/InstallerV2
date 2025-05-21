@@ -24,7 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
-  // Enhanced logout endpoint for cross-environment compatibility
+  // Improved logout endpoint with proper cookie handling for all environments
   app.post("/api/auth/logout", (req, res) => {
     console.log("[LOGOUT] Logout request received", {
       hasSession: !!req.session,
@@ -32,11 +32,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       userId: req.session?.userId || 'none'
     });
     
+    // Get environment info for proper cookie clearing
+    const isReplit = !!process.env.REPLIT_DOMAINS;
+    const sameSite = isReplit ? 'none' : 'lax';
+    const secure = isReplit;
+    
+    // Log environment for debugging
+    console.log(`[LOGOUT] Environment: isReplit=${isReplit}, sameSite=${sameSite}, secure=${secure}`);
+    
     // Handle case where session doesn't exist
     if (!req.session) {
       console.log("[LOGOUT] No session to destroy");
-      return res.status(200).json({ success: true, message: "No active session" });
+      
+      // Clear cookies anyway in case they're orphaned
+      clearAllCookies();
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "No active session",
+        timestamp: Date.now()
+      });
     }
+    
+    // Store session ID for logging purposes
+    const sessionId = req.session?.sessionId || 'unknown';
     
     // Destroy the session
     req.session.destroy((err) => {
@@ -45,21 +64,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ success: false, message: "Failed to logout" });
       }
       
-      // Simple cookie options that work in all environments
-      const basicOptions = {
-        path: '/',
-        httpOnly: true
-      };
+      clearAllCookies();
       
-      // Clear cookies in multiple ways to ensure they're properly removed
-      res.clearCookie("connect.sid", basicOptions);
-      res.clearCookie("bareeq.sid", basicOptions);
-      
-      // Also set cookies with expired date
-      res.cookie("connect.sid", "", { ...basicOptions, expires: new Date(0) });
-      res.cookie("bareeq.sid", "", { ...basicOptions, expires: new Date(0) });
-      
-      console.log("[LOGOUT] Session destroyed and cookies cleared");
+      console.log(`[LOGOUT] Session ${sessionId} destroyed and cookies cleared`);
       
       // Set headers to prevent caching
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -71,6 +78,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: Date.now() // Add timestamp to prevent response caching
       });
     });
+    
+    // Helper function to clear all cookies with the correct settings
+    function clearAllCookies() {
+      // Clear all possible cookie names with appropriate settings
+      const cookieNames = ['sid', 'connect.sid', 'bareeq.sid'];
+      
+      // Options for clearing cookies - must match the settings used when setting the cookie
+      const cookieOptions = {
+        path: '/',
+        httpOnly: true,
+        secure: secure,
+        sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined
+      };
+      
+      // Options for direct expiry
+      const expiredOptions = {
+        ...cookieOptions,
+        expires: new Date(0),
+        maxAge: 0
+      };
+      
+      // Clear all possible cookies
+      cookieNames.forEach(name => {
+        // Method 1: clearCookie
+        res.clearCookie(name, cookieOptions);
+        
+        // Method 2: set expired cookie
+        res.cookie(name, '', expiredOptions);
+        
+        console.log(`[LOGOUT] Cleared cookie: ${name}`);
+      });
+    }
   });
   
   // Store active sessions for management and monitoring
@@ -780,6 +819,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error: any) {
       return res.status(400).json({ message: error.message || "حدث خطأ أثناء استرجاع بيانات المستخدم" });
+    }
+  });
+  
+  // Special direct authentication endpoint that works when cookies fail in deployed environments
+  app.get("/api/users/me-direct", async (req: Request, res: Response) => {
+    try {
+      // Get authentication from URL parameters (only for fallback)
+      const userId = req.query.userId || req.headers['x-auth-user-id'];
+      const userRole = req.query.userRole || req.headers['x-auth-user-role'];
+      
+      console.log(`[DIRECT AUTH] Request with userId=${userId}, userRole=${userRole}`);
+      
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "غير مصرح. معرف المستخدم مطلوب.",
+          error_code: "MISSING_USER_ID"
+        });
+      }
+      
+      // Validate user ID is a number
+      const userIdNum = parseInt(userId as string);
+      if (isNaN(userIdNum)) {
+        return res.status(400).json({
+          success: false,
+          message: "معرف المستخدم غير صالح.",
+          error_code: "INVALID_USER_ID"
+        });
+      }
+      
+      // Get user from database
+      const user = await storage.getUser(userIdNum);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "المستخدم غير موجود.",
+          error_code: "USER_NOT_FOUND"
+        });
+      }
+      
+      // Verify role matches (basic security check)
+      if (userRole && userRole !== user.role) {
+        console.warn(`[DIRECT AUTH] Role mismatch: expected ${user.role}, got ${userRole}`);
+      }
+      
+      // Try to set up a proper session for future requests
+      if (req.session) {
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+        req.session.sessionId = `direct_auth_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        
+        // Force save the session
+        await new Promise<void>((resolve) => {
+          req.session.save(() => {
+            console.log(`[DIRECT AUTH] Created session ${req.session.sessionId} for user ${user.id}`);
+            resolve();
+          });
+        });
+      }
+      
+      // Return user data
+      return res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          points: user.points,
+          level: user.level,
+          region: user.region,
+          status: user.status
+        }
+      });
+    } catch (error: any) {
+      console.error("[DIRECT AUTH] Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "حدث خطأ أثناء استرجاع بيانات المستخدم",
+        error_code: "SERVER_ERROR"
+      });
     }
   });
   

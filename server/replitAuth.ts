@@ -24,17 +24,17 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  // Fixed session TTL - 1 week in minutes
+  // Fixed session TTL - 1 week in minutes (7 days)
   const sessionTtlMinutes = 7 * 24 * 60;
   const isDevelopment = process.env.NODE_ENV === 'development';
   
-  // Get the domain for cookie configuration
-  const domain = process.env.REPLIT_DOMAINS ? 
-    process.env.REPLIT_DOMAINS.split(',')[0] : undefined;
+  // Get the domain settings from Replit environment variables
+  const isReplit = !!process.env.REPLIT_DOMAINS;
+  const replitDomain = isReplit ? process.env.REPLIT_DOMAINS.split(',')[0] : null;
   
   // Use a consistent secret
   const sessionSecret = process.env.SESSION_SECRET || 
-    (isDevelopment ? 'bareeq-dev-secret-key-do-not-use-in-production' : '');
+    (isDevelopment ? 'bareeq-dev-secret-key-do-not-use-in-production' : 'bareeq-prod-fallback-key');
     
   if (!process.env.SESSION_SECRET) {
     console.warn('⚠️ WARNING: SESSION_SECRET not set. Using fallback key which is insecure.');
@@ -47,30 +47,39 @@ export function getSession() {
     createTableIfMissing: true,
     ttl: sessionTtlMinutes,
     tableName: "sessions",
+    pruneSessionInterval: 60 // Clean up expired sessions every minute
   });
+  
+  // Determine cookie settings based on environment
+  const sameSite = isReplit ? 'none' : 'lax'; // 'none' is required for cross-site cookies in production
+  const secure = isReplit; // Secure must be true when sameSite is 'none'
 
   // Log session configuration for debugging
   console.log('[SESSION CONFIG] Environment:', process.env.NODE_ENV);
-  if (domain) console.log('[SESSION CONFIG] Domain:', domain);
-  console.log('[SESSION CONFIG] Cookie secure: false'); // False for both environments
-  console.log('[SESSION CONFIG] Cookie sameSite: lax'); // Lax is more compatible
+  console.log('[SESSION CONFIG] IsReplit:', isReplit);
+  if (replitDomain) console.log('[SESSION CONFIG] Replit Domain:', replitDomain);
+  console.log('[SESSION CONFIG] Cookie secure:', secure);
+  console.log('[SESSION CONFIG] Cookie sameSite:', sameSite);
   console.log('[SESSION CONFIG] Session TTL:', sessionTtlMinutes, 'minutes');
 
+  // Create session middleware with appropriate settings
   return session({
     secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'bareeq.sid',
+    name: 'sid', // Simplified name to avoid potential issues
     cookie: {
       httpOnly: true,
-      secure: false, // Set to false for both environments to ensure cookies work properly
-      sameSite: 'lax', // Using lax for better browser compatibility
+      secure: secure, // True in Replit environment, false in development
+      sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined,
       maxAge: sessionTtlMinutes * 60 * 1000, // Convert minutes to milliseconds
       path: '/',
+      // Domain setting is critical for Replit - do not set it in development
+      domain: isReplit ? undefined : undefined // Let the browser set the appropriate domain
     },
-    // Essential for Replit's environment
-    proxy: true, // Trust reverse proxies
+    // Important for proper operation in Replit
+    proxy: true, // Trust the reverse proxy
     rolling: true, // Refresh cookie expiration on each request
   });
 }

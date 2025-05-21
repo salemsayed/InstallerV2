@@ -107,10 +107,15 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
     }
   };
 
-  // Handle OTP form submission
+  // Handle OTP form submission with enhanced auth fallback
   const onOTPSubmit = async (data: z.infer<typeof otpSchema>) => {
     setIsLoading(true);
     try {
+      // Store auth credentials in localStorage (temporary)
+      localStorage.setItem("auth_phone", phoneNumber);
+      localStorage.setItem("auth_otp", data.otp);
+      localStorage.setItem("auth_timestamp", Date.now().toString());
+      
       const response = await apiRequest("POST", "/api/auth/verify-otp", {
         phone: phoneNumber,
         otp: data.otp,
@@ -119,13 +124,29 @@ export default function PhoneLoginForm({ onSuccess }: PhoneLoginFormProps) {
       const result = await response.json();
       
       if (result.success && result.user) {
+        // Store full user data for direct URL authentication fallback
+        localStorage.setItem("auth_user_data", JSON.stringify({
+          id: result.user.id,
+          name: result.user.name,
+          role: result.user.role,
+          phone: phoneNumber,
+          timestamp: Date.now()
+        }));
+        
         toast({
           title: "تم تسجيل الدخول بنجاح",
           description: `مرحباً ${result.user.name}`,
           variant: "default",
         });
+        
+        // Trigger success callback with auth params
         onSuccess(result.user.id, result.user.role);
       } else {
+        localStorage.removeItem("auth_phone");
+        localStorage.removeItem("auth_otp");
+        localStorage.removeItem("auth_timestamp");
+        localStorage.removeItem("auth_user_data");
+        
         toast({
           title: "خطأ",
           description: result.message || "رمز التحقق غير صحيح أو منتهي الصلاحية",

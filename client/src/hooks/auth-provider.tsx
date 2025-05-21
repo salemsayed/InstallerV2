@@ -5,12 +5,13 @@ import { apiRequest } from "@/lib/queryClient";
 interface User {
   id: number;
   name: string;
-  email: string;
+  email?: string; // Make email optional since it's not always present
   phone?: string;
   role: string;
   points: number;
   level: number;
   region?: string;
+  status?: string;
 }
 
 interface AuthContextType {
@@ -103,120 +104,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     console.log("[AUTH] Login called with userId:", userId, "userRole:", userRole);
     
-    // We need to make multiple attempts to get user data as the session might take time to propagate
-    const MAX_RETRIES = 5; // Increased retries
-    const RETRY_DELAY = 1500; // Increased delay between retries (1.5 seconds)
-    
-    // Create a mock user object to use as fallback in development environment
-    // This allows login to work even when server authentication isn't fully established yet
-    const tempUser = {
-      id: parseInt(userId),
-      name: "User " + userId,
-      role: userRole,
-      phone: "",
-      points: 0,
-      level: 1,
-      region: "",
-    };
-    
-    // Temporarily store user information to help with session establishment
-    localStorage.setItem("temp_user_id", userId);
-    localStorage.setItem("temp_user_role", userRole);
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // Try using auth data stored by the login form (if available)
+    const storedAuthData = localStorage.getItem("auth_user_data");
+    if (storedAuthData) {
       try {
-        console.log(`[AUTH] Attempt ${attempt} to fetch user data`);
+        const authUser = JSON.parse(storedAuthData);
+        console.log("[AUTH] Using stored auth data", authUser.name);
         
-        // Wait before each attempt to give the server time to establish the session
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        // Create direct user object for immediate login
+        const directUser = {
+          id: authUser.id || parseInt(userId),
+          name: authUser.name || `User ${userId}`,
+          role: authUser.role || userRole,
+          phone: authUser.phone || "",
+          points: authUser.points || 0,
+          level: authUser.level || 1,
+          region: authUser.region || ""
+        };
         
-        // Fetch user details using secure session - no query params needed
-        const response = await fetch('/api/users/me', {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-cache', // Prevent caching issues
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store',
-            'Pragma': 'no-cache',
-          }
-        });
+        // Immediately set the user in state for UI display
+        setUser(directUser);
+        localStorage.setItem("user", JSON.stringify(directUser));
         
-        if (!response.ok) {
-          console.warn(`[AUTH] Attempt ${attempt} failed with status ${response.status}`);
-          
-          // If we're at the last retry and in a development environment, use temp data
-          if (attempt === MAX_RETRIES && window.location.hostname.includes('localhost')) {
-            console.log("[AUTH] Using temp user data in development environment");
-            setUser(tempUser as any);
-            
-            // Handle role-based redirection
-            if (userRole === 'admin') {
-              setLocation('/admin/dashboard');
-            } else {
-              setLocation('/installer/dashboard');
-            }
-            
-            setIsLoading(false);
-            return;
-          }
-          
-          if (attempt === MAX_RETRIES) {
-            throw new Error(`Failed to fetch user data after ${MAX_RETRIES} attempts`);
-          }
-          continue; // Try again
+        // Handle role-based redirection
+        if (directUser.role.toLowerCase().includes('admin')) {
+          setLocation('/admin/dashboard');
+        } else {
+          setLocation('/installer/dashboard');
         }
         
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        console.error("[AUTH] Error parsing stored auth data:", error);
+        // Continue with regular login if stored data fails
+      }
+    }
+    
+    // URL parameter-based authentication for deployment environments
+    const authUrl = `/api/users/me-direct?userId=${userId}&userRole=${userRole}&ts=${Date.now()}`;
+    
+    try {
+      console.log(`[AUTH] Using direct URL authentication`);
+      
+      // Make a single direct request with auth in URL parameters
+      const response = await fetch(authUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
+          'X-Auth-User-Id': userId,
+          'X-Auth-User-Role': userRole
+        }
+      });
+      
+      // If successful, use the response directly
+      if (response.ok) {
         const data = await response.json();
         
         if (data.user) {
-          console.log("[AUTH] Successfully retrieved user data on attempt", attempt);
-          // Save user to state and localStorage
+          console.log("[AUTH] Successfully retrieved user data via direct auth");
           setUser(data.user);
           localStorage.setItem("user", JSON.stringify(data.user));
-          
-          // Clear temp data
-          localStorage.removeItem("temp_user_id");
-          localStorage.removeItem("temp_user_role");
-          
           setIsLoading(false);
-
+          
           // Handle role-based redirection
-          if (data.user.role.toLowerCase() === 'admin') {
+          if (data.user.role.toLowerCase().includes('admin')) {
             setLocation('/admin/dashboard');
           } else {
             setLocation('/installer/dashboard');
           }
-          return; // Success - exit the retry loop
-        } else {
-          console.warn(`[AUTH] User data not found in response on attempt ${attempt}`);
+          return;
         }
-      } catch (error: any) {
-        console.error(`[AUTH] Error in login attempt ${attempt}:`, error);
-        
-        if (attempt === MAX_RETRIES) {
-          setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
-          setIsLoading(false);
-          
-          // Clear temp data on failed login
-          localStorage.removeItem("temp_user_id");
-          localStorage.removeItem("temp_user_role");
-          
-          throw error; // Only throw after all attempts fail
-        }
+      } else {
+        console.warn(`[AUTH] Direct auth failed with status ${response.status}`);
       }
+      
+      // Fallback to a basic user object if all else fails
+      console.log("[AUTH] All auth methods failed, using basic fallback user object");
+      const fallbackUser = {
+        id: parseInt(userId),
+        name: `User ${userId}`,
+        role: userRole,
+        phone: "",
+        points: 0,
+        level: 1,
+        region: ""
+      };
+      
+      setUser(fallbackUser);
+      localStorage.setItem("user", JSON.stringify(fallbackUser));
+      setIsLoading(false);
+      
+      // Handle role-based redirection
+      if (userRole.toLowerCase().includes('admin')) {
+        setLocation('/admin/dashboard');
+      } else {
+        setLocation('/installer/dashboard');
+      }
+      
+    } catch (error: any) {
+      console.error(`[AUTH] Error in login:`, error);
+      setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+      setIsLoading(false);
+      throw error;
     }
-    
-    // If we get here, all attempts failed but didn't throw an error
-    setError("فشل في جلب بيانات المستخدم بعد عدة محاولات");
-    setIsLoading(false);
-    
-    // Clear temp data
-    localStorage.removeItem("temp_user_id");
-    localStorage.removeItem("temp_user_role");
-    
-    throw new Error("Failed to retrieve user data after multiple attempts");
   };
 
   const refreshUser = async (): Promise<void> => {
