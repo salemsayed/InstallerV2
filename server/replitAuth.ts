@@ -172,13 +172,21 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
+  
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    return res.status(401).json({ 
+      success: false,
+      message: "غير مصرح. يرجى تسجيل الدخول." 
+    });
   }
 
   const user = req.user as any;
   if (!user?.claims) {
-    return res.status(401).json({ message: "جلسة غير صالحة. يرجى إعادة تسجيل الدخول." });
+    return res.status(401).json({ 
+      success: false,
+      message: "جلسة غير صالحة. يرجى إعادة تسجيل الدخول." 
+    });
   }
 
   try {

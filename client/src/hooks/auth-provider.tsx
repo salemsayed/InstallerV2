@@ -37,9 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // First check if we're already authenticated with Replit
         const authResponse = await fetch('/api/auth/check', { credentials: 'include' });
-        const authData = await authResponse.json();
+        let authData;
+        try {
+          authData = await authResponse.json();
+        } catch (e) {
+          console.error('[auth] Failed to parse auth check response:', e);
+          setIsLoading(false);
+          return;
+        }
         
-        if (!authData.authenticated) {
+        if (!authData?.authenticated) {
+          console.log('[auth] Not authenticated');
           setIsLoading(false);
           return;
         }
