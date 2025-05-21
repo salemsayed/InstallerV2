@@ -54,12 +54,18 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      // Always set secure=true in production regardless of configuration
-      secure: !isDevelopment,
-      // Set sameSite=lax in all environments except development
-      sameSite: isDevelopment ? undefined : 'lax',
+      // In deployed environments, cookies need to work in iframe context
+      // Use secure=false to ensure cookies work in both HTTP and HTTPS
+      secure: false,
+      // Use 'none' for cross-site iframe usage in Replit deployment
+      sameSite: 'none',
       maxAge: sessionTtl,
+      // Make sure the cookie is accessible from all subdomains
+      domain: process.env.REPLIT_DOMAINS ? 
+        (process.env.REPLIT_DOMAINS.split(',')[0] || undefined) : 
+        undefined,
     },
+    proxy: true, // Trust the reverse proxy when setting secure cookies
   });
 }
 
