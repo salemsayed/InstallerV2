@@ -506,14 +506,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // USER ROUTES
 
-  // Session management endpoints
-  app.get("/api/auth/sessions", async (req: Request, res: Response) => {
-    // Get the userId from either the session or the query parameter for backward compatibility
-    const userId = req.session?.userId || parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+  // Session management endpoints - secured with session-based auth
+  app.get("/api/auth/sessions", secureUserAuth, async (req: Request, res: Response) => {
+    // Only use userId from the session for security
+    const userId = req.session.userId as number;
     
     // Collect all sessions for the current user
     const userSessions = Array.from(activeSessions.entries())
@@ -649,20 +645,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ADMIN ROUTES
-  app.post("/api/admin/users", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
-    
+  app.post("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
-      }
+      // Admin auth is already validated through the middleware
       
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
@@ -706,20 +691,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/admin/users", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
-    
+  app.get("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
-      }
+      // Admin auth is already validated through the middleware
       
       // Get all users
       const users = await storage.listUsers();
@@ -751,21 +725,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update user
-  app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
+  // Update user - secured with admin authentication
+  app.patch("/api/admin/users/:userId", adminAuth, async (req: Request, res: Response) => {
     const targetUserId = parseInt(req.params.userId);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+    const adminId = req.session.userId as number; // Get admin ID from session for logging
     
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
-      }
+      // Admin auth is already validated through the middleware
       
       // Validate input data
       let { name, phone, region, status, points } = req.body;
@@ -1337,28 +1303,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
   });
 
-  // QR code scanning endpoint - secured with basic authentication
-  app.post("/api/scan-qr", async (req: Request, res: Response) => {
+  // QR code scanning endpoint - secured with session-based authentication
+  app.post("/api/scan-qr", secureUserAuth, async (req: Request, res: Response) => {
     try {
       console.log("[DEBUG QR-SCAN] Request received:", {
-        query: req.query,
         body: req.body,
         headers: req.headers['user-agent']
       });
       
-      // Get user ID from query parameters (this should be updated to use session authentication in production)
-      const userId = parseInt(req.query.userId as string);
+      // Get user ID from session instead of query parameters for better security
+      const userId = req.session.userId as number;
       
-      console.log("[DEBUG QR-SCAN] UserId from query:", userId);
-      
-      if (!userId) {
-        console.log("[DEBUG QR-SCAN] No userId provided in query parameters");
-        return res.status(401).json({ 
-          success: false, 
-          message: "غير مصرح. يرجى تسجيل الدخول.",
-          error_code: "UNAUTHORIZED" 
-        });
-      }
+      console.log("[DEBUG QR-SCAN] UserId from session:", userId);
       
       // Validate the request body
       const validation = scanQrSchema.safeParse(req.body);
