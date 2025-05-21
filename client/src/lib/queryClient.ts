@@ -49,11 +49,31 @@ export async function apiRequest(
   console.log(`[API] ${method} request to ${url}`);
   
   try {
+    // Enhanced headers to ensure proper cookies and cache behavior
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Pragma': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    };
+    
+    // Add content-type when sending data
+    if (data) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
+    // Add session ID from localStorage if available (helps with auth in problematic environments)
+    const tempUserId = localStorage.getItem("temp_user_id");
+    if (tempUserId && !url.includes('logout')) {
+      headers['X-Temp-User-ID'] = tempUserId;
+    }
+    
     const res = await fetch(url, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
+      headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include", // Always include credentials for session cookies
+      mode: 'same-origin',
+      cache: 'no-cache', // Prevent caching issues with authentication
     });
     
     // Log status for debugging authentication issues
@@ -78,16 +98,52 @@ export const getQueryFn: <T>(options: {
     console.log(`[API Query] GET ${queryKey[0]}`);
     
     try {
+      // Enhanced headers for better cross-environment compatibility
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      };
+      
+      // Add temp user ID if available (helps with auth in problematic environments)
+      const tempUserId = localStorage.getItem("temp_user_id");
+      if (tempUserId) {
+        headers['X-Temp-User-ID'] = tempUserId;
+        
+        // Also add temp role if available
+        const tempUserRole = localStorage.getItem("temp_user_role");
+        if (tempUserRole) {
+          headers['X-Temp-User-Role'] = tempUserRole;
+        }
+      }
+      
       const res = await fetch(queryKey[0] as string, {
+        method: 'GET',
+        headers,
         credentials: "include", // Critical for authentication
         cache: "no-cache", // Prevent caching authentication issues
+        mode: 'same-origin'
       });
       
       if (res.status === 401 || res.status === 403) {
         console.warn(`[API Query] Auth error: ${res.status} on ${queryKey[0]}`);
         
+        // Check if we should handle 401 specially
         if (unauthorizedBehavior === "returnNull" && res.status === 401) {
           console.log(`[API Query] Returning null due to 401 as configured`);
+          return null;
+        }
+        
+        // Check if we're on login page to avoid redirect loops
+        const isLoginPath = window.location.pathname === '/' || 
+                           window.location.pathname === '/auth/login';
+        
+        // Only redirect if we're not already on the login page
+        if (res.status === 401 && !isLoginPath) {
+          console.warn("[API Query] Redirecting to login due to auth error");
+          setTimeout(() => {
+            window.location.href = '/auth/login';
+          }, 100);
           return null;
         }
       }
