@@ -147,27 +147,23 @@ export class DatabaseStorage implements IStorage {
 
   async getTransactionsByUserId(userId: number, limit = 1000000): Promise<Transaction[]> {
     // Use 1 million as default limit to handle extremely high transaction volumes
-    console.log(`[STORAGE] Fetching transactions for user ${userId} with limit ${limit}`);
     const result = await db
       .select()
       .from(transactions)
       .where(eq(transactions.userId, userId))
       .orderBy(desc(transactions.createdAt))
       .limit(limit);
-    console.log(`[STORAGE] Found ${result.length} transactions for user ${userId}`);
     return result;
   }
   
   async getAllTransactions(limit = 1000000): Promise<Transaction[]> {
     // For admin dashboard - get all transactions across all users
     // Use 1 million as default limit to handle extremely high transaction volumes
-    console.log(`[STORAGE] Fetching all transactions with limit ${limit}`);
     const result = await db
       .select()
       .from(transactions)
       .orderBy(desc(transactions.createdAt))
       .limit(limit);
-    console.log(`[STORAGE] Found ${result.length} total transactions`);
     return result;
   }
   

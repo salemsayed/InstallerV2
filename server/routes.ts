@@ -1298,10 +1298,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
-      // Get user transactions with a very high limit to ensure we get all transactions
-      console.log(`[TRANSACTIONS] Fetching transactions for user ${userId} with limit ${limit}`);
+      // Get all transactions for this user with a high limit
       const transactions = await storage.getTransactionsByUserId(userId, limit);
-      console.log(`[TRANSACTIONS] Found ${transactions.length} transactions for user ${userId}`);
       
       return res.status(200).json({ 
         transactions,
