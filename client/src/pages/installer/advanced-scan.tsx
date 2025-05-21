@@ -259,7 +259,7 @@ export default function AdvancedScanPage() {
         
         // Optimization 3: Camera Settings
         const cameraSettings = new CameraSettings();
-        cameraSettings.preferredResolution = VideoResolution.FullHD; // 1920 × 1080
+        cameraSettings.preferredResolution = VideoResolution.Auto; // Let device choose optimal resolution
         cameraSettings.zoomFactor = 1.3; // Helpful for small QR codes
         await camera.applySettings(cameraSettings);
         
