@@ -1,0 +1,216 @@
+index-DqH6GGyn.js:48 [AUTH] Initializing auth state
+index-DqH6GGyn.js:48 [AUTH] Checking server session
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 ()
+index-DqH6GGyn.js:48 [AUTH] No authentication found
+(index):44 Scandit SDK modules loaded successfully
+Iura6YBj_oCad4k1nzGBC5xM.woff2:1 
+            
+            
+           Failed to load resource: the server responded with a status of 404 ()
+index-DqH6GGyn.js:48 [API] POST request to /api/auth/request-otp
+index-DqH6GGyn.js:48 [API] POST request to /api/auth/verify-otp
+index-DqH6GGyn.js:188 [LOGIN PAGE] Login success handler called with userId: 13 userRole: installer
+index-DqH6GGyn.js:48 [AUTH] Login called with userId: 13 userRole: installer
+index-DqH6GGyn.js:48 [AUTH] Attempt 1 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 ()
+index-DqH6GGyn.js:48 [AUTH] Attempt 1 failed with status 401
+l @ index-DqH6GGyn.js:48
+index-DqH6GGyn.js:48 [AUTH] Attempt 2 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 ()
+index-DqH6GGyn.js:48 [AUTH] Attempt 2 failed with status 401
+l @ index-DqH6GGyn.js:48
+index-DqH6GGyn.js:48 [AUTH] Attempt 3 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 ()
+index-DqH6GGyn.js:48 [AUTH] Attempt 3 failed with status 401
+l @ index-DqH6GGyn.js:48
+index-DqH6GGyn.js:48 [AUTH] Error in login attempt 3: Error: Failed to fetch user data after 3 attempts
+    at l (index-DqH6GGyn.js:48:46229)
+    at async i (index-DqH6GGyn.js:188:102351)
+l @ index-DqH6GGyn.js:48
+index-DqH6GGyn.js:188 [LOGIN PAGE] Error in login success handler: Error: Failed to fetch user data after 3 attempts
+    at l (index-DqH6GGyn.js:48:46229)
+    at async i (index-DqH6GGyn.js:188:102351)
+i @ index-DqH6GGyn.js:188
+index-DqH6GGyn.js:48 [API] POST request to /api/auth/request-otp
+index-DqH6GGyn.js:48 [API] POST request to /api/auth/verify-otp
+index-DqH6GGyn.js:188 [LOGIN PAGE] Login success handler called with userId: 13 userRole: installer
+index-DqH6GGyn.js:48 [AUTH] Login called with userId: 13 userRole: installer
+index-DqH6GGyn.js:48 [AUTH] Attempt 1 to fetch user data
+index-DqH6GGyn.js:48 
+            
+            
+           GET https://bareeq-salem.replit.app/api/users/me 401 (Unauthorized)
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Attempt 1 failed with status 401
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Attempt 2 to fetch user data
+index-DqH6GGyn.js:48 
+            
+            
+           GET https://bareeq-salem.replit.app/api/users/me 401 (Unauthorized)
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Attempt 2 failed with status 401
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Attempt 3 to fetch user data
+index-DqH6GGyn.js:48 
+            
+            
+           GET https://bareeq-salem.replit.app/api/users/me 401 (Unauthorized)
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Attempt 3 failed with status 401
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:48 [AUTH] Error in login attempt 3: Error: Failed to fetch user data after 3 attempts
+    at l (index-DqH6GGyn.js:48:46229)
+    at async i (index-DqH6GGyn.js:188:102351)
+l @ index-DqH6GGyn.js:48
+await in l
+i @ index-DqH6GGyn.js:188
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
+index-DqH6GGyn.js:188 [LOGIN PAGE] Error in login success handler: Error: Failed to fetch user data after 3 attempts
+    at l (index-DqH6GGyn.js:48:46229)
+    at async i (index-DqH6GGyn.js:188:102351)
+i @ index-DqH6GGyn.js:188
+await in i
+f @ index-DqH6GGyn.js:188
+await in f
+(anonymous) @ index-DqH6GGyn.js:188
+await in (anonymous)
+p9 @ index-DqH6GGyn.js:37
+v9 @ index-DqH6GGyn.js:37
+g9 @ index-DqH6GGyn.js:37
+aO @ index-DqH6GGyn.js:37
+_$ @ index-DqH6GGyn.js:37
+(anonymous) @ index-DqH6GGyn.js:37
+WS @ index-DqH6GGyn.js:40
+KD @ index-DqH6GGyn.js:37
+Lx @ index-DqH6GGyn.js:37
+gS @ index-DqH6GGyn.js:37
+M9 @ index-DqH6GGyn.js:37
