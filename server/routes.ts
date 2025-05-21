@@ -24,13 +24,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
-  // Add a logout endpoint
+  // Enhanced logout endpoint for cross-environment compatibility
   app.post("/api/auth/logout", (req, res) => {
     console.log("[LOGOUT] Logout request received", {
       hasSession: !!req.session,
       sessionId: req.session?.sessionId || 'none',
       userId: req.session?.userId || 'none'
     });
+    
+    // Handle case where session doesn't exist
+    if (!req.session) {
+      console.log("[LOGOUT] No session to destroy");
+      return res.status(200).json({ success: true, message: "No active session" });
+    }
     
     // Destroy the session
     req.session.destroy((err) => {
@@ -39,22 +45,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ success: false, message: "Failed to logout" });
       }
       
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const cookieOptions = {
-        httpOnly: true,
-        secure: !isDevelopment,
-        sameSite: 'lax' as const,
+      // Simple cookie options that work in all environments
+      const basicOptions = {
         path: '/',
-        domain: process.env.REPLIT_DOMAINS ? 
-          `.${process.env.REPLIT_DOMAINS.split(',')[0]}` : // Add dot prefix for subdomain support
-          undefined
+        httpOnly: true
       };
       
-      res.clearCookie("connect.sid", cookieOptions);
-      res.clearCookie("bareeq.sid", cookieOptions);
+      // Clear cookies in multiple ways to ensure they're properly removed
+      res.clearCookie("connect.sid", basicOptions);
+      res.clearCookie("bareeq.sid", basicOptions);
+      
+      // Also set cookies with expired date
+      res.cookie("connect.sid", "", { ...basicOptions, expires: new Date(0) });
+      res.cookie("bareeq.sid", "", { ...basicOptions, expires: new Date(0) });
       
       console.log("[LOGOUT] Session destroyed and cookies cleared");
-      return res.status(200).json({ success: true, message: "Logged out successfully" });
+      
+      // Set headers to prevent caching
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Logged out successfully",
+        timestamp: Date.now() // Add timestamp to prevent response caching
+      });
     });
   });
   

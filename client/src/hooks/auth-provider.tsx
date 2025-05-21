@@ -209,48 +209,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[AUTH] Logout initiated");
       
-      // Stop the auto-refresh interval first
-      if (window._authRefreshInterval) {
-        clearInterval(window._authRefreshInterval);
-        window._authRefreshInterval = null;
-      }
-      
-      // Call the server to invalidate the session and wait for it to complete
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-cache",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache"
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to logout on server");
-      }
-      
-      // Wait for a short delay to ensure session is invalidated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Clear all client-side state
+      // Clear client-side state first to prevent any further authenticated requests
       setUser(null);
-      localStorage.clear();
+      localStorage.removeItem("user");
       sessionStorage.clear();
       
-      // Clear cookies with matching path and domain
-      const domain = window.location.hostname;
-      ["connect.sid", "bareeq.sid"].forEach(cookieName => {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}; secure; samesite=none`;
-      });
+      // Stop the auto-refresh interval
+      const win = window as any; // Type assertion for custom property
+      if (win._authRefreshInterval) {
+        clearInterval(win._authRefreshInterval);
+        win._authRefreshInterval = null;
+      }
       
-      setLocation("/auth/login");
+      // Call the server to invalidate the session
+      try {
+        const response = await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+          cache: "no-cache",
+        });
+        
+        if (response.ok) {
+          console.log("[AUTH] Server session invalidated successfully");
+        } else {
+          console.warn("[AUTH] Server logout returned status:", response.status);
+        }
+      } catch (fetchError) {
+        console.error("[AUTH] Error calling logout endpoint:", fetchError);
+      }
+      
+      // Try to clear cookies every way possible to ensure they're gone
+      // Clear for root path
+      document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "bareeq.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      
+      // Force navigation to login page after a delay to ensure everything is cleared
+      console.log("[AUTH] Redirecting to login page");
+      setTimeout(() => {
+        window.location.href = "/auth/login";
+      }, 200);
+      
     } catch (error) {
-      console.error("[AUTH] Error during logout:", error);
-      // Even if server logout fails, force client-side logout
+      console.error("[AUTH] Unexpected error during logout:", error);
+      
+      // Even on error, force logout by clearing everything and redirecting
       setUser(null);
-      localStorage.clear();
-      setLocation("/auth/login");
+      localStorage.removeItem("user");
+      window.location.href = "/auth/login";
     }
   };
 
