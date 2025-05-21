@@ -1351,84 +1351,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
 
-  // Helper function to check and update user badges (lifetime achievements)
-  async function checkAndUpdateUserBadges(userId: number): Promise<{badges: any[], userUpdated: boolean}> {
+  // Robust helper function to accurately check badge qualifications and update user badges
+  // This is the single source of truth for badge qualifications
+  async function calculateUserBadgeQualifications(userId: number, forceUpdate = false): Promise<{
+    badges: any[], 
+    userUpdated: boolean,
+    qualifiedBadgeIds: number[],
+    installationCount: number,
+    pointsBalance: number
+  }> {
     try {
-      const user = await storage.getUser(userId);
+      console.log(`[BADGE SYSTEM] Calculating badge qualifications for user ${userId}, forceUpdate=${forceUpdate}`);
       
+      // Get user data
+      const user = await storage.getUser(userId);
       if (!user) {
         throw new Error("User not found");
       }
       
-      // Get all badges
+      // Get all active badges
       const allBadges = await storage.listBadges(true);
+      console.log(`[BADGE SYSTEM] Found ${allBadges.length} active badges to check`);
       
-      // Get user's installation count from all transactions
-      const transactions = await storage.getTransactionsByUserId(userId, 1000);
+      // Get all user transactions with a high limit to ensure we have complete data
+      const transactions = await storage.getTransactionsByUserId(userId, 10000);
+      console.log(`[BADGE SYSTEM] Retrieved ${transactions.length} transactions for user ${userId}`);
       
-      // Count installations - use case-insensitive matching for transaction types
-      const installationTransactions = transactions.filter(t => 
-        (t.type.toLowerCase() === 'earning') && 
-        (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
-      );
+      // CRITICAL: Accurately count installations with case-insensitive type matching
+      const installationTransactions = transactions.filter(t => {
+        const isEarningType = t.type && typeof t.type === 'string' && t.type.toLowerCase() === 'earning';
+        const isInstallation = t.description && typeof t.description === 'string' && 
+                             (t.description.includes("تم تركيب منتج") || 
+                              t.description.includes("تركيب منتج جديد"));
+        return isEarningType && isInstallation;
+      });
       
-      // Count total installations (lifetime achievement)
+      // Count total lifetime installations
       const installationCount = installationTransactions.length;
+      console.log(`[BADGE SYSTEM] User ${userId} has completed ${installationCount} total installations`);
       
-      // Initialize badgeIds array if it doesn't exist
-      if (!user.badgeIds) {
-        user.badgeIds = [];
-      } else if (!Array.isArray(user.badgeIds)) {
-        user.badgeIds = [];
+      // Calculate accurate points balance from transactions
+      const earningTransactions = transactions.filter(t => 
+        t.type && typeof t.type === 'string' && t.type.toLowerCase() === 'earning');
+      const redemptionTransactions = transactions.filter(t => 
+        t.type && typeof t.type === 'string' && t.type.toLowerCase() === 'redemption');
+      
+      const totalEarnings = earningTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const pointsBalance = totalEarnings - totalRedemptions;
+      
+      console.log(`[BADGE SYSTEM] User ${userId} has ${pointsBalance} points balance (${totalEarnings} earned, ${totalRedemptions} redeemed)`);
+      
+      // Initialize clean badge arrays
+      const currentBadgeIds = Array.isArray(user.badgeIds) ? [...user.badgeIds] : [];
+      let qualifiedBadgeIds: number[] = [];
+      
+      // Check each badge qualification independently based on current criteria
+      for (const badge of allBadges) {
+        // Calculate if user meets badge requirements
+        const meetsPointsRequirement = !badge.requiredPoints || pointsBalance >= badge.requiredPoints;
+        const meetsInstallationRequirement = !badge.minInstallations || installationCount >= badge.minInstallations;
+        
+        // Both requirements must be met to qualify
+        const qualifies = meetsPointsRequirement && meetsInstallationRequirement;
+        
+        if (qualifies) {
+          qualifiedBadgeIds.push(badge.id);
+          console.log(`[BADGE SYSTEM] User ${userId} qualifies for badge ${badge.id} (${badge.name})`);
+          
+          if (!currentBadgeIds.includes(badge.id)) {
+            console.log(`[BADGE SYSTEM] Badge ${badge.id} (${badge.name}) is newly qualified`);
+          }
+        } else {
+          // Log detailed qualification failure reasons for debugging
+          if (!meetsPointsRequirement) {
+            console.log(`[BADGE SYSTEM] User ${userId} does not meet points requirement (${pointsBalance}/${badge.requiredPoints}) for badge ${badge.id} (${badge.name})`);
+          }
+          if (!meetsInstallationRequirement) {
+            console.log(`[BADGE SYSTEM] User ${userId} does not meet installation requirement (${installationCount}/${badge.minInstallations}) for badge ${badge.id} (${badge.name})`);
+          }
+        }
       }
       
-      // Calculate total points
-      const earningTransactions = transactions.filter(t => t.type.toLowerCase() === 'earning');
-      const redemptionTransactions = transactions.filter(t => t.type.toLowerCase() === 'redemption');
-      const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);
-      const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + t.amount, 0);
-      const actualPoints = totalEarnings - totalRedemptions;
-      
-      // Check each badge to see if user qualifies
-      let userBadgesUpdated = false;
-      const currentBadgeIds = Array.isArray(user.badgeIds) ? [...user.badgeIds] : [];
-      let updatedBadgeIds = [...currentBadgeIds]; // Start with existing badges (preserve earned badges)
-      
-      for (const badge of allBadges) {
-        const alreadyHasBadge = currentBadgeIds.includes(badge.id);
+      // Helper function to check if badge arrays are different (using Set for efficiency)
+      function areBadgeArraysDifferent(arr1: number[], arr2: number[]): boolean {
+        if (arr1.length !== arr2.length) return true;
         
-        // Check qualification - using actual calculated points instead of user.points for accuracy
-        const qualifies = (
-          (badge.requiredPoints === null || badge.requiredPoints === undefined || actualPoints >= badge.requiredPoints) &&
-          (badge.minInstallations === null || badge.minInstallations === undefined || installationCount >= badge.minInstallations)
-        );
-        
-        // If user qualifies for a badge they don't have yet, add it
-        if (qualifies && !alreadyHasBadge) {
-          console.log(`[DEBUG] User ${userId} newly qualifies for badge ${badge.id} (${badge.name}) - adding to user badges`);
-          updatedBadgeIds.push(badge.id);
-          userBadgesUpdated = true;
+        const set1 = new Set(arr1);
+        for (const id of arr2) {
+          if (!set1.has(id)) return true;
         }
         
-        // We never remove badges once earned (lifetime achievements)
+        return false;
       }
       
-      // Update user's badges in database if new badges were earned
+      // Determine if an update is needed
+      const badgesChanged = areBadgeArraysDifferent(currentBadgeIds, qualifiedBadgeIds);
+      const userBadgesUpdated = badgesChanged || forceUpdate;
+      
+      // Update user's badges in database if new badges were earned or force update requested
       if (userBadgesUpdated) {
-        console.log(`[DEBUG] Updating user ${userId} badges in database:`, updatedBadgeIds);
-        await storage.updateUser(userId, { badgeIds: updatedBadgeIds });
+        console.log(`[BADGE SYSTEM] Updating user ${userId} badges in database. Old: [${currentBadgeIds}], New: [${qualifiedBadgeIds}]`);
+        await storage.updateUser(userId, { badgeIds: qualifiedBadgeIds });
+      } else {
+        console.log(`[BADGE SYSTEM] No badge changes for user ${userId}`);
       }
       
-      // Mark which badges the user has earned
-      const badges = allBadges.map(badge => ({
+      // Mark which badges the user has now qualified for
+      const badgesWithEarnedStatus = allBadges.map(badge => ({
         ...badge,
-        earned: updatedBadgeIds.includes(badge.id)
+        earned: qualifiedBadgeIds.includes(badge.id)
       }));
       
+      // Return complete badge qualification data
       return {
-        badges,
-        userUpdated: userBadgesUpdated
+        badges: badgesWithEarnedStatus,
+        userUpdated: userBadgesUpdated,
+        qualifiedBadgeIds,
+        installationCount,
+        pointsBalance
       };
+    
+    // Helper function moved outside the try block to fix syntax error
+    return {
+      badges: badgesWithEarnedStatus,
+      userUpdated: userBadgesUpdated,
+      qualifiedBadgeIds,
+      installationCount,
+      pointsBalance
+    };
     } catch (error) {
       console.error(`[ERROR] Failed to check badges for user ${userId}:`, error);
       throw error;
@@ -1448,10 +1499,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = req.session.userId;
     
     try {
-      // Use the helper function to check and update badges with lifetime achievement logic
-      const result = await checkAndUpdateUserBadges(userId);
+      // Use the new robust badge calculation system
+      // This recalculates qualifications based on current badge criteria and user achievements
+      const result = await calculateUserBadgeQualifications(userId);
       
-      return res.status(200).json({ badges: result.badges });
+      // Return badges with earned status to client
+      return res.status(200).json({ 
+        badges: result.badges,
+        installationCount: result.installationCount,
+        pointsBalance: result.pointsBalance
+      });
     } catch (error: any) {
       console.error(`[ERROR] Badge API error for user ${userId}:`, error);
       return res.status(400).json({ 
@@ -1932,27 +1989,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Check if user qualifies for any new badges after earning these points
-      // Use our helper function to check and update badges with lifetime achievement logic
-      console.log(`[DEBUG] After QR scan, checking badges for user ${userId} with points ${updatedUser?.points}`);
+      console.log(`[BADGE SYSTEM] After QR scan, checking badges for user ${userId} with updated points ${updatedUser?.points}`);
       
-      // Get badge updates using the new helper function that preserves lifetime achievements
-      const badgeResult = await checkAndUpdateUserBadges(userId);
+      // Get badge updates using our robust badge qualification system
+      const badgeResult = await calculateUserBadgeQualifications(userId);
       
-      // Find new badges that were just earned in this scan
+      // Find newly earned badges in this scan
       let newBadges = [];
       
-      if (badgeResult.userUpdated && updatedUser && Array.isArray(updatedUser.badgeIds)) {
-        // Find badges that are in the updated list but weren't in the user's original list
-        const originalBadgeIds = Array.isArray(dbUser.badgeIds) ? dbUser.badgeIds : [];
-        
-        // Find badges that the user just earned
+      // Get the original badge IDs before this scan
+      const originalBadgeIds = Array.isArray(dbUser.badgeIds) ? dbUser.badgeIds : [];
+      
+      // Find badges that the user just earned in this scan
+      if (badgeResult.userUpdated) {
+        // Get all active badges
         const allBadges = await storage.listBadges(true);
+        
+        // A badge is newly earned if it's in the qualified list but wasn't in the original list
         newBadges = allBadges.filter(badge => 
-          !originalBadgeIds.includes(badge.id) && 
-          badgeResult.badges.some(b => b.id === badge.id && b.earned)
+          badgeResult.qualifiedBadgeIds.includes(badge.id) && 
+          !originalBadgeIds.includes(badge.id)
         );
         
-        console.log(`[DEBUG] User ${userId} earned ${newBadges.length} new badges in this scan`);
+        console.log(`[BADGE SYSTEM] User ${userId} earned ${newBadges.length} new badges in this scan`);
+        newBadges.forEach(badge => {
+          console.log(`[BADGE SYSTEM] - New badge earned: ${badge.id} (${badge.name})`);
+        });
       }
       
       return res.status(200).json({
