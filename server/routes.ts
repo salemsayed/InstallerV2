@@ -468,12 +468,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Session management endpoints
   app.get("/api/auth/sessions", async (req: Request, res: Response) => {
-    // Get the userId from either the session or the query parameter for backward compatibility
-    const userId = req.session?.userId || parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get the userId from secure session only - removing query parameter for security
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const userId = req.session.userId;
     
     // Collect all sessions for the current user
     const userSessions = Array.from(activeSessions.entries())
@@ -857,12 +861,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.post("/api/admin/points", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
     
     try {
       const admin = await storage.getUser(adminId);
