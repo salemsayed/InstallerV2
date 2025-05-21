@@ -161,8 +161,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // Use secure session-based authentication - no query params needed
-      const response = await apiRequest("GET", `/api/users/me`);
+      console.log("[AUTH] Refreshing user data");
+      
+      // Use fetch directly with proper options for session authentication
+      const response = await fetch('/api/users/me', {
+        credentials: 'include',
+        cache: 'no-cache', // Always get fresh data
+      });
+      
+      if (!response.ok) {
+        console.warn(`[AUTH] Refresh failed with status ${response.status}`);
+        
+        // If we get an auth error during refresh, the session may be invalid
+        if (response.status === 401 || response.status === 403) {
+          console.error("[AUTH] Session invalid during refresh, logging out");
+          // Clear local state but don't redirect yet
+          localStorage.removeItem("user");
+          setUser(null);
+        }
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.user) {
@@ -170,10 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Also update localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
-        console.log("User data refreshed:", data.user);
+        console.log("[AUTH] User data refreshed successfully");
+      } else {
+        console.warn("[AUTH] User data missing in refresh response");
       }
     } catch (error) {
-      console.error("Error refreshing user data:", error);
+      console.error("[AUTH] Error refreshing user data:", error);
     }
   };
 
