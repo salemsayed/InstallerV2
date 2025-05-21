@@ -202,43 +202,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[AUTH] Logout initiated");
       
-      // Important: First clear all client-side state to prevent any auth loops
-      setUser(null);
-      localStorage.removeItem("user");
-      
-      // Stop the auto-refresh interval to prevent further auth checks
+      // Stop the auto-refresh interval first
       if (window._authRefreshInterval) {
         clearInterval(window._authRefreshInterval);
         window._authRefreshInterval = null;
       }
       
-      // Call the server to invalidate the session - use fetch directly
+      // Call the server to invalidate the session
       const response = await fetch("/api/auth/logout", {
         method: "POST",
-        credentials: "include", // Include cookies for session
-        cache: "no-cache", // Prevent caching of the logout request
+        credentials: "include",
+        cache: "no-cache",
+        headers: {
+          "Cache-Control": "no-cache, no-store"
+        }
       });
       
-      if (response.ok) {
-        console.log("[AUTH] Server session invalidated successfully");
-      } else {
-        console.error("[AUTH] Error invalidating server session:", await response.text());
+      if (!response.ok) {
+        throw new Error("Failed to logout on server");
       }
       
-      // Extra safety - clear any cookies by setting expired cookies
-      document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "bareeq.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Clear all client-side state
+      setUser(null);
+      localStorage.clear();
+      sessionStorage.clear();
       
+      // Clear cookies with matching path and domain
+      const domain = window.location.hostname;
+      ["connect.sid", "bareeq.sid"].forEach(cookieName => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}`;
+      });
+      
+      // Force a hard redirect to login page
+      window.location.href = "/auth/login";
     } catch (error) {
       console.error("[AUTH] Error during logout:", error);
-    } finally {
-      // Delay redirection slightly to ensure all cleanup is complete
-      setTimeout(() => {
-        console.log("[AUTH] Redirecting to login page after logout");
-        
-        // Force a full page reload to clear all state and JS memory
-        window.location.replace("/");
-      }, 300);
+      // Even if server logout fails, force client-side logout
+      setUser(null);
+      localStorage.clear();
+      window.location.href = "/auth/login";
     }
   };
 

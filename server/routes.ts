@@ -39,9 +39,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ success: false, message: "Failed to logout" });
       }
       
-      // Clear both the old and new cookie names
-      res.clearCookie("connect.sid");
-      res.clearCookie("bareeq.sid");
+      // Clear cookies with proper options to match session cookie settings
+      const cookieOptions = {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'none' as const,
+        path: '/',
+        domain: process.env.REPLIT_DOMAINS ? 
+          (process.env.REPLIT_DOMAINS.split(',')[0] || undefined) : 
+          undefined
+      };
+      
+      res.clearCookie("connect.sid", cookieOptions);
+      res.clearCookie("bareeq.sid", cookieOptions);
       
       console.log("[LOGOUT] Session destroyed and cookies cleared");
       return res.status(200).json({ success: true, message: "Logged out successfully" });
