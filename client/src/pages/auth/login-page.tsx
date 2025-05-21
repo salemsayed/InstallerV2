@@ -7,6 +7,7 @@ import AuthLayout from "@/components/layouts/auth-layout";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import logoPath from "@assets/AR-Only.png";
+import { VersionDisplay } from "@/components/version-display";
 
 export default function LoginPage() {
   const { user, login, isLoading } = useAuth();
@@ -132,6 +133,11 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Version display at the bottom of the page */}
+      <div className="fixed bottom-2 left-0 right-0 text-center">
+        <VersionDisplay className="font-medium" />
       </div>
     </div>
   );
