@@ -13,16 +13,40 @@ export function LogoutButton({
   const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setIsLoggingOut(true);
     try {
-      // Bypass the auth provider's logout and go straight to logout page
-      // This is more reliable as it ensures a complete new page load
-      window.location.href = "/auth/logout?t=" + Date.now();
+      // Most basic, direct approach possible:
+      // 1. Clear client storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // 2. Create an invisible form to POST to logout
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/auth/logout';
+      form.style.display = 'none';
+      
+      // Add a timestamp to prevent caching
+      const timeField = document.createElement('input');
+      timeField.type = 'hidden';
+      timeField.name = 'timestamp';
+      timeField.value = Date.now().toString();
+      form.appendChild(timeField);
+      
+      // Append to body and submit
+      document.body.appendChild(form);
+      form.submit();
+      
+      // This is the most reliable approach because:
+      // - It performs a full page submission, not an AJAX request
+      // - It causes a complete page reload after server processes logout
+      // - It avoids any CORS/credentials issues that can occur with fetch
     } catch (error) {
-      console.error("Logout navigation failed:", error);
-      // Fallback to direct URL manipulation as last resort
-      window.location.replace("/auth/logout?t=" + Date.now());
+      console.error("Basic logout failed:", error);
+      
+      // Extreme fallback - just go to login
+      window.location.href = "/?force=1&t=" + Date.now();
     }
   };
   

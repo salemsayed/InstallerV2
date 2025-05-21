@@ -24,9 +24,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
-  // Ultra-reliable enhanced logout endpoint that uses our specialized logout utility
+  // Direct, simplified logout endpoint that handles all cases
   app.post("/api/auth/logout", (req, res) => {
-    console.log("[LOGOUT] Logout request received, delegating to enhanced logout utility");
+    console.log("[LOGOUT] Logout request received with direct implementation");
     
     // If we have an active session in our tracking map, remove it
     if (req.session?.sessionId && activeSessions.has(req.session.sessionId)) {
@@ -34,42 +34,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       activeSessions.delete(req.session.sessionId);
     }
     
-    // Import and use the specialized logout utility
-    import('./logout-util').then(module => {
-      // Call the enhanced logout function that handles all edge cases
-      module.performEnhancedLogout(req, res);
-    }).catch(err => {
-      console.error("[LOGOUT] Error importing logout utility:", err);
+    // Get environment info for proper cookie clearing
+    const isReplit = !!process.env.REPLIT_DOMAINS;
+    const sameSite = isReplit ? 'none' : 'lax';
+    const secure = isReplit;
+    
+    // Clear all cookies directly - most important step
+    const cookieNames = ['sid', 'connect.sid', 'bareeq.sid'];
+    const paths = ['/', '/api', '/auth'];
+    
+    cookieNames.forEach(name => {
+      // Clear for root path
+      res.clearCookie(name, {
+        path: '/',
+        httpOnly: true,
+        secure: secure,
+        sameSite: sameSite as 'lax' | 'strict' | 'none',
+        expires: new Date(0)
+      });
       
-      // Fallback to a simple logout approach if import fails
-      if (req.session) {
-        req.session.destroy(err => {
-          if (err) console.error("[LOGOUT] Session destroy error:", err);
-          
-          // Clear the main cookie at minimum
-          res.clearCookie('sid', { path: '/' });
-          
-          res.status(200).json({
-            success: true,
-            message: "Basic logout completed (fallback mode)",
-            timestamp: Date.now()
+      // Also clear for all other possible paths
+      paths.forEach(path => {
+        if (path !== '/') {
+          res.clearCookie(name, {
+            path,
+            httpOnly: true,
+            secure: secure,
+            sameSite: sameSite as 'lax' | 'strict' | 'none',
+            expires: new Date(0)
           });
-        });
-      } else {
-        res.clearCookie('sid', { path: '/' });
+        }
+      });
+      
+      console.log(`[LOGOUT] Cleared cookie: ${name}`);
+    });
+    
+    // If there is a session, destroy it
+    if (req.session) {
+      const sessionId = req.session.sessionId;
+      
+      req.session.destroy(err => {
+        if (err) {
+          console.error("[LOGOUT] Session destroy error:", err);
+        } else {
+          console.log(`[LOGOUT] Session ${sessionId} destroyed successfully`);
+        }
         
+        // Always respond with success, even if session destroy fails
         res.status(200).json({
           success: true,
-          message: "No session to clear (fallback mode)",
+          message: "Logged out successfully",
           timestamp: Date.now()
         });
-      }
-    });
+      });
+    } else {
+      // No session to destroy
+      res.status(200).json({
+        success: true,
+        message: "No active session to logout",
+        timestamp: Date.now()
+      });
+    }
   });
   
   // Add a special HTML logout endpoint for direct browser access
   app.get("/auth/logout", (req, res) => {
-    console.log("[LOGOUT] HTML logout page requested");
+    console.log("[LOGOUT] HTML logout page requested - sending HTML with auto-redirect");
     
     // If we have an active session in our tracking map, remove it
     if (req.session?.sessionId && activeSessions.has(req.session.sessionId)) {
@@ -80,17 +110,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.session) {
       req.session.destroy(err => {
         if (err) console.error("[LOGOUT] HTML logout session destroy error:", err);
-        
-        // Clear primary cookies
-        res.clearCookie('sid', { path: '/' });
-        res.clearCookie('connect.sid', { path: '/' });
-        
-        // Redirect to the login page with cache-busting parameter
-        res.redirect(`/?logout=true&t=${Date.now()}`);
+        sendLogoutPage();
       });
     } else {
-      // No session to destroy, just redirect
-      res.redirect(`/?logout=true&t=${Date.now()}`);
+      // No session to destroy
+      sendLogoutPage();
+    }
+    
+    // Helper function to send HTML that includes client-side clearing
+    function sendLogoutPage() {
+      // Clear primary cookies
+      res.clearCookie('sid', { path: '/' });
+      res.clearCookie('connect.sid', { path: '/' });
+      res.clearCookie('bareeq.sid', { path: '/' });
+      
+      // Send special HTML page that clears everything and redirects
+      res.setHeader('Content-Type', 'text/html');
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>تسجيل الخروج</title>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              text-align: center;
+              padding-top: 100px;
+              background-color: #f7f7f7;
+              direction: rtl;
+            }
+            .spinner {
+              width: 40px;
+              height: 40px;
+              border: 4px solid #f3f3f3;
+              border-top: 4px solid #3498db;
+              border-radius: 50%;
+              margin: 20px auto;
+              animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
+          <script>
+            // Clear all browser storage
+            window.onload = function() {
+              // Clear storage
+              try {
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear all cookies
+                document.cookie.split(";").forEach(function(c) {
+                  document.cookie = c.replace(/^ +/, "")
+                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+                
+                console.log("All local data cleared");
+                
+                // Redirect after a short delay
+                setTimeout(function() {
+                  window.location.replace("/?t=" + Date.now());
+                }, 1500);
+              } catch(e) {
+                console.error("Error during logout cleanup:", e);
+                // Force redirect even on error
+                window.location.replace("/?t=" + Date.now());
+              }
+            };
+          </script>
+        </head>
+        <body>
+          <h2>جاري تسجيل الخروج...</h2>
+          <p>سيتم توجيهك إلى صفحة تسجيل الدخول خلال لحظات</p>
+          <div class="spinner"></div>
+        </body>
+        </html>
+      `);
     }
   });
   
