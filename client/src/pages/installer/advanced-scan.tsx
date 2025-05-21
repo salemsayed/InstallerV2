@@ -66,7 +66,8 @@ export default function AdvancedScanPage() {
         return;
       }
 
-      // Step 3: Send to server for validation and processing - including userId in query parameters
+      // Step 3: Send to server for validation and processing - using secure session for user identification
+      // No need to manually include userId as it will be derived from session on the server
       if (!user || !user.id) {
         setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
         setIsValidating(false);
@@ -74,14 +75,14 @@ export default function AdvancedScanPage() {
       }
       
       console.log("Sending QR scan request with:", {
-        endpoint: `/api/scan-qr?userId=${user.id}`,
+        endpoint: `/api/scan-qr`,
         user: user,
         uuid: uuid
       });
       
       const scanResult = await apiRequest(
         "POST", 
-        `/api/scan-qr?userId=${user.id}`, 
+        `/api/scan-qr`, 
         {
           uuid
         }

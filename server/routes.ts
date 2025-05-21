@@ -884,12 +884,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // INSTALLER ROUTES
   app.get("/api/transactions", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const userId = req.session.userId;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     
     try {
       const user = await storage.getUser(userId);
@@ -948,11 +953,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   
   app.get("/api/badges", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const userId = req.session.userId;
     
     try {
       const user = await storage.getUser(userId);

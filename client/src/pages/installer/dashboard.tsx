@@ -14,9 +14,9 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions with frequent refresh and higher limit
+  // Fetch user's transactions with frequent refresh and higher limit - using secure session auth
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?userId=${user?.id}&limit=100`],
+    queryKey: [`/api/transactions?limit=100`],
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
@@ -25,10 +25,10 @@ export default function InstallerDashboard() {
     refetchInterval: 2000 // Refresh every 2 seconds
   });
 
-  // Fetch user's badges with frequent refresh
+  // Fetch user's badges with frequent refresh - using secure session authentication
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
-    queryKey: ['/api/badges', user?.id],
-    queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
+    queryKey: ['/api/badges'],
+    queryFn: () => apiRequest('GET', `/api/badges`).then(res => res.json()),
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
