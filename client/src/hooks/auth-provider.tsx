@@ -40,22 +40,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache',
+            'X-Requested-With': 'XMLHttpRequest'
           }
         });
 
-        if (!authResponse.ok) {
-          console.error('[auth] Auth check failed:', authResponse.status);
+        let authData;
+        try {
+          const text = await authResponse.text();
+          try {
+            authData = JSON.parse(text);
+          } catch (e) {
+            console.error('[auth] Response was not JSON:', text.substring(0, 100));
+            throw new Error('Invalid JSON response');
+          }
+        } catch (e) {
+          console.error('[auth] Failed to parse auth check response:', e);
           setIsLoading(false);
           setUser(null);
           return;
         }
 
-        let authData;
-        try {
-          authData = await authResponse.json();
-        } catch (e) {
-          console.error('[auth] Failed to parse auth check response:', e);
+        if (!authResponse.ok || !authData.authenticated) {
+          console.error('[auth] Auth check failed:', authResponse.status, authData);
           setIsLoading(false);
           setUser(null);
           return;

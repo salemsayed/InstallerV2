@@ -151,17 +151,32 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/auth/check", (req, res) => {
+    if (!req.headers.accept?.includes('application/json')) {
+      return res.status(400).json({ error: "Require JSON requests" });
+    }
+    
     res.setHeader('Content-Type', 'application/json');
     try {
       const authenticated = req.isAuthenticated();
       if (!authenticated) {
-        return res.json({ authenticated: false });
+        return res.status(401).json({ 
+          authenticated: false,
+          error: "Not authenticated"
+        });
       }
+
       const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({
+          authenticated: false,
+          error: "No user data"
+        });
+      }
+
       res.json({ 
         authenticated: true,
-        userId: user?.id,
-        claims: user?.claims
+        userId: user.id,
+        claims: user.claims
       });
     } catch (error) {
       console.error('[auth] Check error:', error);
