@@ -1,0 +1,172 @@
+Okay, here's a Product Requirements Document (PRD) for an AI coding agent to address the issue of using `userId` from query parameters for sensitive operations.
+
+-----
+
+## PRD: Secure User ID Handling in API Endpoints
+
+**Version**: 1.0
+**Date**: May 21, 2025
+**Author**: Gemini AI Assistant
+**Status**: Proposed
+
+### 1\. Introduction
+
+This document outlines the requirements for refactoring specific API endpoints within the application to enhance security. Currently, several endpoints accept a `userId` from client-side query parameters or request bodies to identify the user for data fetching or modification operations. This practice can lead to potential Insecure Direct Object Reference (IDOR) vulnerabilities if authorization checks are not perfectly implemented or are inadvertently missed.
+
+The goal is to modify these endpoints to derive the `userId` **exclusively** from the authenticated server-side session (`req.session.userId`) for all non-admin, user-specific operations. This change will strengthen the security posture by ensuring that users can only access or modify data belonging to them, as identified by their active session.
+
+### 2\. Goals 🎯
+
+  * Eliminate the reliance on client-sent `userId` in query parameters or request bodies for identifying the user in sensitive, user-specific, non-admin operations.
+  * Ensure all targeted endpoints use the `userId` from the server-side session (`req.session.userId`) for data access and modification.
+  * Prevent potential IDOR vulnerabilities associated with user-supplied `userId` parameters.
+  * Maintain existing functionality for admin users who may need to access data for any user (this will still require its own robust authorization check, but the primary user identification for *their own* non-admin actions should come from their session).
+  * Ensure client-side API calls are updated to remove the `userId` parameter where it's no longer needed by the refactored endpoints.
+
+### 3\. Background
+
+Relying on a `userId` passed from the client (e.g., `/api/transactions?userId=123`) for operations that should be scoped to the currently logged-in user introduces a security risk. If an attacker can change this `userId` and the backend authorization is flawed, they might be able to access or modify data belonging to other users.
+
+By deriving the `userId` directly from the server-side session, which is established securely during authentication, we create a more reliable and secure way to identify the current user. The session `userId` is not directly manipulatable by the client in the same way a query parameter is.
+
+### 4\. Targeted Endpoints & Files 📂
+
+The AI agent should analyze and refactor the following types of endpoints and their corresponding handler functions in `server/routes.ts`. The agent should also inspect client-side code making calls to these endpoints to remove the unnecessary `userId` parameter.
+
+**Primary focus in `server/routes.ts`:**
+
+  * **`/api/users/me`**:
+      * **Current**: `const userId = req.session?.userId || parseInt(req.query.userId as string);` [cite: 1911]
+      * **Desired**: Should *only* use `req.session.userId`. If no session `userId`, it's an unauthorized request for this specific endpoint's purpose (getting *my* user info).
+  * **`/api/transactions`** (for non-admin, installer context):
+      * **Current**: `const userId = parseInt(req.query.userId as string);` [cite: 1951]
+      * **Desired**: Should use `req.session.userId`. If no session `userId`, return 401.
+  * **`/api/badges`** (for non-admin, installer context):
+      * **Current**: `const userId = parseInt(req.query.userId as string);` [cite: 1959]
+      * **Desired**: Should use `req.session.userId`. If no session `userId`, return 401.
+  * **`/api/scan-qr`**:
+      * **Current**: `const userId = parseInt(req.query.userId as string);` [cite: 2030]
+      * **Desired**: Should use `req.session.userId`. If no session `userId`, return 401.
+  * **`/api/scanned-products`**:
+      * **Current**: `const userId = parseInt(req.query.userId as string);` [cite: 2078]
+      * **Desired**: Should use `req.session.userId`. If no session `userId`, return 401.
+  * **`/api/rewards/redeem`** (though this one already seems to use `userId` in the path or body, ensure it's validated against session):
+      * Review and ensure any `userId` in the body/path for redemption is validated against `req.session.userId`. The call in `RewardsModal.tsx` is `/api/rewards/redeem?userId=${userId}`[cite: 771]. This needs to change.
+
+**Client-side files to check for `userId` in API calls:**
+
+  * `client/src/components/account/session-management.tsx` (e.g., `apiRequest(\`/api/auth/sessions/${sessionId}\`, 'DELETE');`- this is for deleting a specific session, but also check`/api/auth/sessions\` GET request).
+  * `client/src/hooks/auth-provider-new.tsx` and `client/src/hooks/auth-provider.tsx` (e.g., `apiRequest("GET", \`/api/users/me?userId=${parsedUser.id}\`)\`).
+  * `client/src/pages/installer/advanced-scan.tsx` (e.g., `/api/scan-qr?userId=${user.id}`).
+  * `client/src/pages/installer/dashboard.tsx` (e.g., `/api/transactions?userId=${user?.id}&limit=100`, `/api/badges?userId=${user?.id}`).
+  * `client/src/pages/installer/profile.tsx` (e.g., `/api/badges?userId=${user.id}`, `/api/transactions?userId=${user?.id}`).
+  * `client/src/pages/installer/settings.tsx` (e.g., queryKey: `['/api/users/me']` implicitly uses the old auth provider logic).
+  * `client/src/pages/installer/stats.tsx` (e.g., `/api/transactions?userId=${user?.id}&limit=1000`).
+  * `client/src/components/installer/rewards-modal.tsx` (e.g., `/api/rewards/redeem?userId=${userId}`).
+
+**Note on Admin Endpoints**:
+Admin endpoints (e.g., `/api/admin/*`) that use `userId` in the query parameter or body to specify *which* user the admin is operating on (e.g., an admin fetching transactions for a *specific installer*) are generally acceptable *IF AND ONLY IF* the endpoint robustly verifies that the requester (`req.session.userId`) is indeed an admin. The task here is **not** to remove the target `userId` from these admin-specific operational endpoints but to ensure that when an endpoint is meant for "the currently logged-in user's data," it uses the session `userId`.
+
+### 5\. Requirements 🛠️
+
+#### 5.1. Server-Side (Node.js/Express in `server/routes.ts`)
+
+1.  **Identify `userId` Source**:
+
+      * For each targeted endpoint intended for non-admin, user-specific data:
+          * Remove any code that reads `userId` from `req.query` or `req.body` for the purpose of identifying the acting user.
+          * Modify the code to exclusively use `req.session.userId` as the identifier for the currently authenticated user.
+
+2.  **Session Check**:
+
+      * Before processing any user-specific logic, check if `req.session` and `req.session.userId` exist.
+      * If `req.session.userId` is not present, the endpoint should return an HTTP `401 Unauthorized` status with a JSON error message: `{"success": false, "message": "Authentication required. Please log in."}`.
+
+3.  **Example Refactoring (Conceptual for `/api/transactions`)**:
+
+      * **Current (Simplified)**:
+
+        ```typescript
+        // server/routes.ts
+        app.get("/api/transactions", async (req: Request, res: Response) => {
+          const userId = parseInt(req.query.userId as string); // <--- PROBLEM
+          if (!userId) {
+            return res.status(401).json({ message: "User ID required." });
+          }
+          // ... logic to fetch transactions for 'userId'
+        });
+        ```
+
+      * **New (Conceptual)**:
+
+        ```typescript
+        // server/routes.ts
+        app.get("/api/transactions", async (req: Request, res: Response) => {
+          if (!req.session || !req.session.userId) {
+            return res.status(401).json({ success: false, message: "Authentication required. Please log in." });
+          }
+          const userId = req.session.userId; // <--- CORRECT
+          // ... logic to fetch transactions for 'userId'
+        });
+        ```
+
+4.  **Impact on Admin Functionality**:
+
+      * This refactoring specifically targets how the *acting user* is identified for their *own* data.
+      * Admin endpoints that allow admins to manage/view other users (e.g., `/api/admin/users/:userIdToManage`) will still need to identify the *target user* (e.g., `userIdToManage` from `req.params`). However, the check that `req.session.userId` belongs to an admin must remain robust. This PRD does *not* change how admins target other users, only how users access their own data.
+
+#### 5.2. Client-Side (React/TypeScript)
+
+1.  **Identify API Calls**:
+
+      * Locate all client-side API calls (typically using `apiRequest` or direct `Workspace` in files listed under "Targeted Endpoints & Files") that currently send a `userId` as a query parameter to the refactored non-admin endpoints.
+
+2.  **Remove `userId` Parameter**:
+
+      * Modify these client-side calls to remove the `userId` query parameter. The server will now derive this from the session.
+
+3.  **Example Client-Side Refactoring (Conceptual for fetching transactions)**:
+
+      * **Current (Simplified in `client/src/pages/installer/dashboard.tsx`)**:
+
+        ```typescript
+        // client/src/pages/installer/dashboard.tsx
+        useQuery({
+          queryKey: [`/api/transactions?userId=${user?.id}&limit=100`], // <--- PROBLEM (userId in query)
+          enabled: !!user?.id,
+          // ...
+        });
+        ```
+
+      * **New (Conceptual)**:
+
+        ```typescript
+        // client/src/pages/installer/dashboard.tsx
+        useQuery({
+          queryKey: [`/api/transactions?limit=100`], // <--- CORRECT (userId removed)
+          enabled: !!user?.id, // Still useful to enable query only when user is known client-side
+          // ...
+        });
+        ```
+
+      * **Note**: The `auth-provider.tsx` already uses `/api/users/me?userId=${parsedUser.id}`. This specific call in `auth-provider.tsx` to `/api/users/me` during initial load or login *might* be an exception if the session isn't fully established yet on the *very first* request after a potential redirect or if it's used as a way to prime the session with `userId`. However, once a session is active, subsequent calls to `/api/users/me` from client components should not need to send `userId`. The agent should carefully analyze this. The primary goal is that user-initiated actions from within the app rely on the server session.
+
+### 6\. Success Criteria ✅
+
+  * All targeted non-admin, user-specific API endpoints successfully use `req.session.userId` to identify the user.
+  * Attempts to access these endpoints without an active session (or missing `req.session.userId`) result in an HTTP 401 error.
+  * Client-side calls to these refactored endpoints no longer send the `userId` as a query parameter.
+  * Application functionality for both regular users and admin users remains intact after the changes.
+      * Regular users can only access/modify their own data.
+      * Admin users can still perform administrative actions (which may involve specifying a target `userId` for *other* users, after being authorized as an admin via their own session).
+  * Automated tests (if any exist for these endpoints) pass after the refactoring.
+  * Manual testing confirms correct behavior and data scoping.
+
+### 7\. Out of Scope ❌
+
+  * Changing the authentication mechanism itself (e.g., moving away from sessions).
+  * Refactoring admin-specific endpoints where `userId` is intentionally used to target *another* user's data (provided the admin's authorization is already verified via their session).
+  * Implementing new authorization logic beyond ensuring the correct source of `userId`.
+  * Adding new API endpoints.
+
+-----
