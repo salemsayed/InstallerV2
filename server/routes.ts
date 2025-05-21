@@ -1288,7 +1288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const userId = req.session.userId;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    // Use 10000 as default limit (effectively no limit) unless explicitly specified
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10000;
     
     try {
       const user = await storage.getUser(userId);
@@ -1297,8 +1298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "المستخدم غير موجود." });
       }
       
-      // Get user transactions with a higher limit
+      // Get user transactions with a very high limit to ensure we get all transactions
+      console.log(`[TRANSACTIONS] Fetching transactions for user ${userId} with limit ${limit}`);
       const transactions = await storage.getTransactionsByUserId(userId, limit);
+      console.log(`[TRANSACTIONS] Found ${transactions.length} transactions for user ${userId}`);
       
       return res.status(200).json({ 
         transactions,
