@@ -18,10 +18,12 @@ export default function InstallerStats() {
     enabled: !!user?.id,
   });
   
-  // Filter transactions by type
+  // Filter transactions by type - case insensitive match
   const transactions = transactionsData?.transactions || [];
-  const earningTransactions = transactions.filter((t: Transaction) => t.type === 'earning');
-  const redemptionTransactions = transactions.filter((t: Transaction) => t.type === 'redemption');
+  const earningTransactions = transactions.filter((t: Transaction) => 
+    t.type.toLowerCase() === 'earning');
+  const redemptionTransactions = transactions.filter((t: Transaction) => 
+    t.type.toLowerCase() === 'redemption');
   
   // Calculate total earnings and redemptions
   const totalEarnings = earningTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
