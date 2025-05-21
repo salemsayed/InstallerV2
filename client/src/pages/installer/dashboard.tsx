@@ -14,9 +14,9 @@ export default function InstallerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's transactions with frequent refresh and higher limit - using secure session auth
+  // Fetch user's transactions with frequent refresh and much higher limit - using secure session auth
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: [`/api/transactions?limit=100`],
+    queryKey: [`/api/transactions?limit=1000`], // Increase limit to 1000 to get all transactions
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
