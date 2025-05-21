@@ -8,15 +8,13 @@ import AdvancedScanPage from "@/pages/installer/advanced-scan";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
-import LandingPage from "@/pages/landing/landing-page";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
-      <Route path="/landing" component={LandingPage} />
+      <Route path="/" component={LoginPage} />
       <Route path="/auth/login" component={LoginPage} />
       
       {/* Installer Routes */}
