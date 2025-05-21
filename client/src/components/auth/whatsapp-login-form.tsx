@@ -74,16 +74,25 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
   // Function to check authentication status
   const checkAuthStatus = async (reference: string) => {
     try {
-      const response = await fetch(`/api/auth/wasage/status?reference=${reference}`);
+      console.log("[WHATSAPP AUTH] Checking auth status for reference:", reference);
+      const response = await fetch(`/api/auth/wasage/status?reference=${reference}`, {
+        credentials: "include", // Critical to include cookies for authenticated requests
+      });
       const data = await response.json();
       
+      console.log("[WHATSAPP AUTH] Status response:", data);
+      
       if (data.success && data.authenticated) {
+        console.log("[WHATSAPP AUTH] Authentication successful, userId:", data.userId);
+        // Add a delay before calling onSuccess to ensure server session is fully established
+        await new Promise(resolve => setTimeout(resolve, 1000));
         // If authenticated, call the onSuccess handler with the user info
         onSuccess(data.userId, data.userRole);
         return true;
       } 
       // Check if there was an authentication error (e.g., phone number not found)
       else if (data.error) {
+        console.error("[WHATSAPP AUTH] Error in status check:", data.message);
         // Set error message to display in UI instead of automatically resetting
         setAuthError(data.message || "رقم الهاتف غير مسجل في النظام. يرجى التواصل مع المسؤول لإضافة حسابك.");
         // Show a toast notification
@@ -97,7 +106,7 @@ export default function WhatsAppLoginForm({ onSuccess }: WhatsAppLoginFormProps)
       }
       return false;
     } catch (error) {
-      console.error("Error checking auth status:", error);
+      console.error("[WHATSAPP AUTH] Error checking auth status:", error);
       return false;
     }
   };

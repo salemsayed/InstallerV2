@@ -32,69 +32,129 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    console.log("[AUTH] Initializing auth state");
+    
+    // Always check server-side session first
+    const checkServerSession = async () => {
+      setIsLoading(true);
+      
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        console.log("[AUTH] Checking server session");
+        const response = await fetch('/api/users/me', {
+          credentials: 'include', // Critical for session cookies
+        });
         
-        // Verify the user is still valid from the server using secure session
-        // The server will use the session cookie instead of query parameters
-        apiRequest("GET", `/api/users/me`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.user) {
-              setUser(data.user);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            console.log("[AUTH] Valid session found:", data.user.name);
+            setUser(data.user);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // If no valid server session, try local storage as fallback
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            console.log("[AUTH] No server session, trying localStorage");
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            
+            // Make a second attempt to validate with server
+            const validationResponse = await apiRequest("GET", `/api/users/me`);
+            const validationData = await validationResponse.json();
+            
+            if (validationData.user) {
+              console.log("[AUTH] Session valid after retry");
+              setUser(validationData.user);
             } else {
-              // If user is not valid, clear local storage
+              console.log("[AUTH] Invalid session after retry, clearing");
               localStorage.removeItem("user");
               setUser(null);
             }
-          })
-          .catch(() => {
-            // If error, assume session expired
+          } catch (e) {
+            console.error("[AUTH] Error parsing stored user:", e);
             localStorage.removeItem("user");
             setUser(null);
-          });
-      } catch (e) {
+          }
+        } else {
+          console.log("[AUTH] No authentication found");
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("[AUTH] Error during initial auth check:", error);
+        // Clear any potentially stale data
         localStorage.removeItem("user");
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+    
+    checkServerSession();
   }, []);
 
   const login = async (userId: string, userRole: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
-    try {
-      console.log("[AUTH] Login called with userId:", userId, "userRole:", userRole);
-      
-      // Wait a second to ensure the server has time to establish the session
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Fetch user details using secure session - no query params needed
-      const response = await apiRequest("GET", `/api/users/me`);
-      const data = await response.json();
-      
-      if (data.user) {
-        console.log("[AUTH] Successfully retrieved user data:", data.user);
-        // Save user to state and localStorage
-        setUser(data.user);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        return Promise.resolve(); // Explicitly resolve the promise on success
-      } else {
-        console.error("[AUTH] Failed to get user data from /api/users/me");
-        setError("خطأ في جلب بيانات المستخدم");
-        return Promise.reject(new Error("خطأ في جلب بيانات المستخدم"));
+    console.log("[AUTH] Login called with userId:", userId, "userRole:", userRole);
+    
+    // We need to make multiple attempts to get user data as the session might take time to propagate
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second between retries
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[AUTH] Attempt ${attempt} to fetch user data`);
+        
+        // Wait before each attempt to give the server time to establish the session
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        
+        // Fetch user details using secure session - no query params needed
+        const response = await fetch('/api/users/me', {
+          credentials: 'include',
+          cache: 'no-cache', // Prevent caching issues
+        });
+        
+        if (!response.ok) {
+          console.warn(`[AUTH] Attempt ${attempt} failed with status ${response.status}`);
+          if (attempt === MAX_RETRIES) {
+            throw new Error(`Failed to fetch user data after ${MAX_RETRIES} attempts`);
+          }
+          continue; // Try again
+        }
+        
+        const data = await response.json();
+        
+        if (data.user) {
+          console.log("[AUTH] Successfully retrieved user data on attempt", attempt);
+          // Save user to state and localStorage
+          setUser(data.user);
+          localStorage.setItem("user", JSON.stringify(data.user));
+          setIsLoading(false);
+          return; // Success - exit the retry loop
+        } else {
+          console.warn(`[AUTH] User data not found in response on attempt ${attempt}`);
+        }
+      } catch (error: any) {
+        console.error(`[AUTH] Error in login attempt ${attempt}:`, error);
+        
+        if (attempt === MAX_RETRIES) {
+          setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+          setIsLoading(false);
+          throw error; // Only throw after all attempts fail
+        }
       }
-    } catch (error: any) {
-      console.error("[AUTH] Error in login function:", error);
-      setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
-      return Promise.reject(error);
-    } finally {
-      setIsLoading(false);
     }
+    
+    // If we get here, all attempts failed but didn't throw an error
+    setError("فشل في جلب بيانات المستخدم بعد عدة محاولات");
+    setIsLoading(false);
+    throw new Error("Failed to retrieve user data after multiple attempts");
   };
 
   const refreshUser = async (): Promise<void> => {
