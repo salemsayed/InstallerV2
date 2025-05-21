@@ -37,9 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        
-        // Verify the user is still valid from the server
-        // This would check a session or token in a real app
+
+        // Verify the user is still valid from the server using session
         apiRequest("GET", `/api/users/me`)
           .then(res => res.json())
           .then(data => {
@@ -66,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (userId: string, userRole: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     // Fetch user details
     apiRequest("GET", `/api/users/me?userId=${userId}`)
       .then(res => res.json())
@@ -89,11 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async (): Promise<void> => {
     if (!user) return;
-    
+
     try {
-      const response = await apiRequest("GET", `/api/users/me?userId=${user.id}`);
+      const response = await apiRequest("GET", `/api/users/me`);
       const data = await response.json();
-      
+
       if (data.user) {
         // Update user state with fresh data from server
         setUser(data.user);
@@ -115,12 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up auto-refresh for user data
   useEffect(() => {
     if (!user) return;
-    
+
     // Refresh user data every 2 seconds
     const intervalId = setInterval(() => {
       refreshUser();
     }, 2000);
-    
+
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, [user?.id]);
