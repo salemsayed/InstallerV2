@@ -8,5 +8,6 @@
 // v1.1.1 - Enhanced version increment system with automatic changelog generation
 // v1.2.0 - Deployment on 2025-05-21
 // v2.0.0 - Checkpoint created on 2025-05-21
+// v2.1.0 - Checkpoint created on 2025-05-21
 
-export const APP_VERSION = 'v2.0.0';
+export const APP_VERSION = 'v2.1.0';
