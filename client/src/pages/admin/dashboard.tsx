@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
+import { apiRequest } from "@/lib/queryClient";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
 import UsersTable from "@/components/admin/users-table";
@@ -21,13 +22,14 @@ export default function AdminDashboard() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Fetch users data
+  // Fetch users data - userId now derived from session on server
   const { 
     data: usersData, 
     isLoading: usersLoading,
     refetch: refetchUsers
   } = useQuery({
-    queryKey: [`/api/admin/users?userId=${user?.id}`],
+    queryKey: [`/api/admin/users`],
+    queryFn: () => apiRequest('GET', '/api/admin/users').then(res => res.json()),
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
@@ -38,7 +40,8 @@ export default function AdminDashboard() {
     isLoading: transactionsLoading,
     refetch: refetchTransactions 
   } = useQuery({
-    queryKey: [`/api/admin/transactions?userId=${user?.id}`],
+    queryKey: [`/api/admin/transactions`],
+    queryFn: () => apiRequest('GET', '/api/admin/transactions').then(res => res.json()),
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
@@ -55,13 +58,14 @@ export default function AdminDashboard() {
     enabled: !!user?.id && user.role === "admin",
   });
   
-  // Fetch badges data
+  // Fetch badges data - userId now derived from session on server
   const { 
     data: badgesData, 
     isLoading: badgesLoading,
     refetch: refetchBadges
   } = useQuery({
-    queryKey: [`/api/badges?userId=${user?.id}`],
+    queryKey: [`/api/badges`],
+    queryFn: () => apiRequest('GET', '/api/badges').then(res => res.json()),
     enabled: !!user?.id && user.role === "admin",
   });
 
