@@ -286,6 +286,9 @@ export default function AdvancedScanPage() {
         } else {
           console.log("ScanIntention not found in API, skipping this optimization");
         }
+        
+        // Set codeDuplicateFilter to 500ms for more responsive scanning
+        settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
 
         const capture = await BarcodeCapture.forContext(context, settings);
         captureRef.current = capture; // Store capture in ref

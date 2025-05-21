@@ -1,0 +1,176 @@
+Authentication System Rebuild Specification
+Overview
+Rebuild our user authentication system with a focus on reliability, user experience, and error handling.
+
+Our current implementation has significant issues including navigation freezes, logout failures, and inconsistent state management.
+
+Core Requirements
+1.1 Authentication Architecture
+Create a comprehensive authentication architecture that handles all user states:
+
+New visitors
+
+Sign-up process (including email verification)
+
+Login process
+
+Password reset flow
+
+Returning unverified users (both signed in and signed out states)
+
+Returning verified users (both signed in and signed out states)
+
+Session timeout/expiration
+
+Account lockout after failed attempts
+
+1.2 User Experience & Flow
+Implement context-sensitive login/signup that adapts to the user's current state
+
+Show appropriate UI based on authentication status (no main app visibility for logged-out users)
+
+Create smooth transitions between authentication states with visual feedback
+
+Add clear error messages with actionable next steps for users
+
+Include toast notifications for status updates (login success, verification emails sent, etc.)
+
+Ensure users can sign out from any page without errors or state corruption
+
+Support multiple permission levels (Admin, User) with appropriate access controls
+
+2.1 User Authentication & Management
+Priority: HIGHEST
+
+Robust, multi-state authentication using Supabase
+
+Clear session management with graceful error handling
+
+User state tracking (new, returning, verified, unverified, onboarded, partially onboarded)
+
+Support for multiple user roles (admin, regular user)
+
+Secure storage of user data and preferences
+
+Authentication state persistence across page refreshes/navigation
+
+2.2 Extra Specific Details:
+Create dedicated services for core authentication operations (login, signup, logout)
+
+Implement session management service with token refresh
+
+Build specialized hooks for different authentication flows (useAuth, useSession, useAuthRedirect)
+
+Implement a modular context structure with AuthProvider
+
+Add robust route protection with role-based access control
+
+Develop standardized error handling system for auth failures
+
+Ensure proper resolution of race conditions between localStorage and Supabase tables
+
+Technical Implementation
+3.1 Supabase Integration
+Use Supabase for authentication while following best practices:
+
+Store sensitive connection data only in .env files
+
+Implement proper token refresh handling
+
+Utilize Supabase's built-in session management instead of building custom solutions
+
+Create middleware to validate authentication on protected routes
+
+3.2 State Management
+Establish a single source of truth for user authentication state
+
+Minimize reliance on session/local storage for critical auth data
+
+Implement proper state synchronization between frontend and backend
+
+Create a centralized auth context/provider that all components can access
+
+3.3 Error Handling & Resilience:
+Implement comprehensive error tracking from authentication actions
+
+Handle all edge cases (incorrect credentials, expired sessions, network failures)
+
+Add fallback options when authentication services are temporarily unavailable
+
+Include detailed logging for troubleshooting authentication issues
+
+Prevent UI freezes during authentication operations
+
+Add timeout handling for auth operations to prevent infinite loading states
+
+Ensure the app displays beautiful and informative toast notifications for common auth tasks and edge cases
+
+Onboarding Experience
+4.1 State-Aware System:
+Implement a state-aware onboarding system that:
+
+Detects new users and offers appropriate guidance
+
+Provides optional tutorials that can be revisited later
+
+Tracks onboarding progress persistently
+
+Adapts UI based on user completion status
+
+Testing Requirements
+5.1 Test Coverage
+Include comprehensive test coverage for:
+
+All authentication flows (login, signup, password reset)
+
+Edge cases (expired tokens, invalid sessions)
+
+Error scenarios and recovery paths
+
+Performance under load and slow network conditions
+
+Implementation Approach
+6.1 Clean Core Code
+Start with a clean architecture focusing on separation of concerns
+
+Implement core authentication patterns first, then build additional features
+
+Use React context and hooks for state management rather than complex state libraries
+
+Follow accessibility standards throughout the authentication UI
+
+Prioritize mobile responsiveness for all authentication screens
+
+Ensure the newly rebuilt user authentication system integrates elegantly with all our other files and code
+
+Ensure you double-check any files or code that may still be using the old authentication system
+
+Documentation Requirements
+7.1 Clear Documentation
+When you're completely done rebuilding our User Authentication System, provide clear documentation explaining:
+
+Authentication flow diagrams
+
+State management approach
+
+Error handling strategies
+
+Configuration options
+
+The completed system should provide a seamless, frustration-free experience where users never encounter authentication-related freezes, infinite loops, or confusing states.
+
+NOW, BEFORE YOU CODE ANYTHING...
+
+Please tell me if you:
+
+A. Have read and understood our proposed User Auth System and its core features, enough to explain it's nuances to another AI?
+
+B. Understand what an elegant, robust implementation plan would be, complete with a chain of AI-First prompts and are prepared to outline it for another AI, including all nuances, from start to finish?
+
+C. Have any objections to my approach and would suggest something different?
+
+Also, at this time, please ask me as many clarifying questions as you need in order to be 100% certain that you understand what I want.
+
+ANSWER MY QUESTIONS, AND ASK ANY THAT YOU MAY HAVE, BEFORE WE PROCEED.
+
+Once all details have been sorted, ask for my approval before implementing our plan or coding anything.
