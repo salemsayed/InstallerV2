@@ -36,16 +36,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         // First check if we're already authenticated with Replit
-        const authResponse = await fetch('/api/auth/check', { credentials: 'include' });
+        const authResponse = await fetch('/api/auth/check', { 
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!authResponse.ok) {
+          console.error('[auth] Auth check failed:', authResponse.status);
+          setIsLoading(false);
+          return;
+        }
+
         let authData;
         try {
-          authData = await authResponse.json();
+          const text = await authResponse.text();
+          authData = JSON.parse(text);
         } catch (e) {
           console.error('[auth] Failed to parse auth check response:', e);
           setIsLoading(false);
           return;
         }
-        
+
         if (!authData?.authenticated) {
           console.log('[auth] Not authenticated');
           setIsLoading(false);
@@ -57,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!response.ok) {
           throw new Error('Session invalid');
         }
-        
+
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
@@ -84,13 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Clear any existing session data first
       localStorage.removeItem("user");
-      
+
       // Fetch user details using session auth
       const response = await apiRequest("GET", `/api/users/me`);
       if (!response.ok) {
         throw new Error("فشل تسجيل الدخول - يرجى المحاولة مرة أخرى");
       }
-      
+
       const data = await response.json();
       if (!data.user) {
         throw new Error("خطأ في جلب بيانات المستخدم");
@@ -117,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[auth] Refreshing user data...");
       const response = await apiRequest("GET", `/api/users/me`);
-      
+
       if (!response.ok) {
         console.log("[auth] Session expired or invalid, logging out");
         logout();

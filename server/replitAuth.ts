@@ -151,8 +151,21 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/auth/check", (req, res) => {
-    const authenticated = req.isAuthenticated();
-    res.json({ authenticated });
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const authenticated = req.isAuthenticated();
+      const user = req.user as any;
+      res.json({ 
+        authenticated,
+        userId: user?.id,
+        claims: user?.claims
+      });
+    } catch (error) {
+      res.status(401).json({ 
+        authenticated: false,
+        error: "Session validation failed"
+      });
+    }
   });
 
   app.get("/api/logout", (req, res) => {
