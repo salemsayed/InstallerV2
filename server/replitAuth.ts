@@ -46,16 +46,20 @@ export function getSession() {
   });
 
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const isSecure = !isDevelopment;
 
   // Create a consistent secret for the session
   const finalSecret = sessionSecret || 
     (isDevelopment ? 'dev-session-secret-bareeq-app-development-mode-only' : '');
 
+  // Get domain from REPLIT_DOMAINS
+  const domain = process.env.REPLIT_DOMAINS ? 
+    process.env.REPLIT_DOMAINS.split(',')[0] : undefined;
+
   // Log session configuration (without exposing the secret)
   console.log(`[SESSION CONFIG] Environment: ${isDevelopment ? 'development' : 'production'}`);
-  console.log(`[SESSION CONFIG] Cookie secure: ${isSecure}`);
-  console.log(`[SESSION CONFIG] Cookie sameSite: lax`);
+  console.log(`[SESSION CONFIG] Domain: ${domain || 'undefined'}`);
+  console.log(`[SESSION CONFIG] Cookie secure: ${!isDevelopment}`);
+  console.log(`[SESSION CONFIG] Cookie sameSite: none`);
   console.log(`[SESSION CONFIG] Session TTL: ${sessionTtl/1000/60} minutes`);
 
   return session({
@@ -64,14 +68,13 @@ export function getSession() {
     resave: false,
     saveUninitialized: false,
     name: 'bareeq.sid',
+    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: isSecure, // True in production, false in development
-      sameSite: 'lax', // More compatible with modern browsers
+      secure: !isDevelopment,
+      sameSite: 'none',
       maxAge: sessionTtl,
-      domain: process.env.REPLIT_DOMAINS ? 
-        `.${process.env.REPLIT_DOMAINS.split(',')[0]}` : // Add dot prefix for subdomain support
-        undefined,
+      domain: domain,
       path: '/',
     },
     proxy: true, // Trust the reverse proxy
