@@ -265,17 +265,28 @@ export default function AdvancedScanPage() {
         
         await camera.switchToDesiredState(FrameSourceState.On);
 
-        /* Capture only QR codes with optimized settings */
+        /* Configure barcode capture with optimized settings */
         const settings = new BarcodeCaptureSettings();
+        
+        // Enable QR codes with maximum sensitivity
         settings.enableSymbologies([Symbology.QR]);
         
-        // Optimization 1: Rectangular location selection (focused scan area)
-        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
-        const heightToWidth = 1; // Square finder
-        const locationSelection = RectangularLocationSelection.withWidthAndAspectRatio(
-          width, heightToWidth
-        );
-        settings.locationSelection = locationSelection;
+        // Try to set symbology-specific settings for higher sensitivity
+        try {
+          const qrSettings = settings.settingsForSymbology(Symbology.QR);
+          if (qrSettings) {
+            // Increase sensitivity if the API allows it
+            if (qrSettings.setProperty) {
+              qrSettings.setProperty("minContrastRatio", 2); // Lower contrast threshold
+            }
+          }
+        } catch (err) {
+          console.log("Could not adjust QR code specific settings", err);
+        }
+        
+        // Use full screen scanning (no location restriction)
+        // This will allow QR codes to be detected anywhere in the camera view
+        // Note: We'll keep the visual guidance overlay for user orientation
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
         // Try different possible locations of ScanIntention based on Scandit's structure
