@@ -38,13 +38,18 @@ export async function setupVite(app: Express, server: Server) {
     },
     server: { 
       middlewareMode: true,
+      hmr: {
+        host: 'localhost',
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false
         }
-      }
+      },
+      host: '0.0.0.0',
+      allowedHosts: ['localhost', '.replit.dev', '.repl.co']
     },
     appType: "custom",
   });
