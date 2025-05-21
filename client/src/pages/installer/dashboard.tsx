@@ -84,7 +84,7 @@ export default function InstallerDashboard() {
       {/* Achievement Card */}
       <section className="px-4 mb-8">
         <AchievementCard
-          points={user.points}
+          points={pointsBalance}
           badges={badgesData?.badges ? badgesData.badges : []}
           isLoading={badgesLoading}
         />
