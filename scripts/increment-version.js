@@ -1,56 +1,88 @@
-// Version increment script
-// Automatically increments the PATCH version in package.json
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const packageJsonPath = path.resolve(process.cwd(), 'package.json');
-let packageJsonContent;
+// Get the directory name correctly in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-try {
-  packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
-} catch (error) {
-  console.error(`Error reading package.json at ${packageJsonPath}:`, error);
-  process.exit(1);
+// Path to the version file
+const versionFilePath = path.join(__dirname, '..', 'shared', 'version.ts');
+
+/**
+ * Increments version number based on type (major, minor, patch)
+ * @param {string} currentVersion - Current version string (e.g., 'v1.0.1')
+ * @param {string} type - Type of increment ('major', 'minor', or 'patch')
+ * @returns {string} - New version string
+ */
+function incrementVersion(currentVersion, type = 'minor') {
+  // Strip the 'v' prefix if present
+  const versionString = currentVersion.startsWith('v') 
+    ? currentVersion.substring(1) 
+    : currentVersion;
+  
+  // Split version into components
+  const [major, minor, patch] = versionString.split('.').map(Number);
+  
+  // Increment based on type
+  switch (type.toLowerCase()) {
+    case 'major':
+      return `v${major + 1}.0.0`;
+    case 'minor':
+      return `v${major}.${minor + 1}.0`;
+    case 'patch':
+      return `v${major}.${minor}.${patch + 1}`;
+    default:
+      console.error('Invalid increment type. Use "major", "minor", or "patch"');
+      return currentVersion;
+  }
 }
 
-let packageJson;
-try {
-  packageJson = JSON.parse(packageJsonContent);
-} catch (error) {
-  console.error(`Error parsing package.json content:`, error);
-  process.exit(1);
+/**
+ * Updates the version file with the new version
+ */
+function updateVersionFile() {
+  try {
+    // Read the current file
+    const fileContent = fs.readFileSync(versionFilePath, 'utf8');
+    
+    // Extract current version
+    const versionRegex = /export const APP_VERSION = ['"](.+)['"];/;
+    const match = fileContent.match(versionRegex);
+    
+    if (!match) {
+      console.error('Could not find version string in file');
+      process.exit(1);
+    }
+    
+    const currentVersion = match[1];
+    console.log(`Current version: ${currentVersion}`);
+    
+    // Get increment type from command line argument or default to 'minor'
+    const incrementType = process.argv[2] || 'minor';
+    const newVersion = incrementVersion(currentVersion, incrementType);
+    console.log(`New version: ${newVersion}`);
+    
+    // Add new version entry to version history
+    const timestamp = new Date().toISOString().split('T')[0];
+    const versionHistoryEntry = `// ${newVersion} - Checkpoint created on ${timestamp}`;
+    
+    // Update file content
+    const updatedContent = fileContent
+      // Update version number
+      .replace(versionRegex, `export const APP_VERSION = '${newVersion}';`)
+      // Add new entry to history (find the line before APP_VERSION)
+      .replace(/(\/\/ v[\d.]+.+\n)(\n*export const APP_VERSION)/, `$1// ${newVersion} - Checkpoint created on ${timestamp}\n$2`);
+    
+    // Write the updated content back to the file
+    fs.writeFileSync(versionFilePath, updatedContent);
+    console.log('Version file updated successfully!');
+    
+  } catch (error) {
+    console.error('Error updating version file:', error);
+    process.exit(1);
+  }
 }
 
-if (!packageJson.version || typeof packageJson.version !== 'string') {
-  console.error('No valid version field found in package.json. Initializing to v0.1.0');
-  packageJson.version = '0.1.0'; // Initialize if not present or invalid
-}
-
-const versionString = packageJson.version;
-const versionParts = versionString.replace(/^v/, '').split('.');
-if (versionParts.length !== 3) {
-  console.error(`Invalid version format in package.json: "${packageJson.version}". Expected MAJOR.MINOR.PATCH. Resetting PATCH to 0.`);
-  versionParts[0] = versionParts[0] || '0';
-  versionParts[1] = versionParts[1] || '1';
-  versionParts[2] = '0'; // Reset patch if format is wrong
-}
-
-let major = parseInt(versionParts[0], 10);
-let minor = parseInt(versionParts[1], 10);
-let patch = parseInt(versionParts[2], 10);
-
-if (isNaN(major)) major = 0;
-if (isNaN(minor)) minor = 1;
-if (isNaN(patch)) patch = -1; // Will be incremented to 0
-
-patch++;
-const newVersionString = `${major}.${minor}.${patch}`;
-packageJson.version = newVersionString;
-
-try {
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-  console.log(`✓ Application version incremented to v${newVersionString}`);
-} catch (error) {
-  console.error(`Error writing updated package.json:`, error);
-  process.exit(1);
-}
+// Execute the update
+updateVersionFile();
