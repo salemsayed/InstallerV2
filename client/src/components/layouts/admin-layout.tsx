@@ -160,10 +160,13 @@ export default function AdminLayout({
         {children}
       </main>
       
-      {/* Footer with version */}
+      {/* Footer with responsive version */}
       <footer className="p-4 border-t mt-auto">
         <div className="container mx-auto text-center">
-          <VersionDisplay className="text-gray-400" />
+          <VersionDisplay 
+            variant="full" 
+            className="text-gray-400 hover:text-gray-600 transition-colors" 
+          />
         </div>
       </footer>
     </div>

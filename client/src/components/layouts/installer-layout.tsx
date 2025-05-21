@@ -41,7 +41,10 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
           <div className="flex items-center">
             <img src={arOnlyLogo} alt="بريق" className="h-10" />
             <div className="ml-2">
-              <VersionDisplay className="text-xs text-gray-400" />
+              <VersionDisplay 
+                variant="responsive" 
+                className="text-gray-400 transition-opacity hover:opacity-100 opacity-70" 
+              />
             </div>
           </div>
           

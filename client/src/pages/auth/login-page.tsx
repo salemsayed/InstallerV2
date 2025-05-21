@@ -135,9 +135,12 @@ export default function LoginPage() {
         </div>
       </div>
       
-      {/* Version display at the bottom of the page */}
+      {/* Version display at the bottom of the page - now with responsive behavior */}
       <div className="fixed bottom-2 left-0 right-0 text-center">
-        <VersionDisplay className="font-medium" />
+        <VersionDisplay 
+          variant="responsive" 
+          className="font-medium hover:text-primary/80 transition-colors px-2 py-1 rounded-md" 
+        />
       </div>
     </div>
   );
