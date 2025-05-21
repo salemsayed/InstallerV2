@@ -273,6 +273,12 @@ export default function AdvancedScanPage() {
         const qrSettings = settings.settingsForSymbology(Symbology.QR);
         qrSettings.isColorInvertedEnabled = true;
         
+        // Log the settings to confirm it's applied
+        console.log("QR Code settings:", {
+          colorInverted: qrSettings.isColorInvertedEnabled,
+          symbology: "QR"
+        });
+        
         // Optimization 1: Rectangular location selection (focused scan area)
         const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
         const heightToWidth = 1; // Square finder
@@ -352,6 +358,14 @@ export default function AdvancedScanPage() {
                 {licenseStatus === 'initialized' ? 'مفعّل' : 
                  licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
               </span>
+              
+              {/* Color inversion indicator */}
+              <div className="flex items-center gap-1 mr-2 border-r pr-2 border-gray-300">
+                <div className="flex items-center justify-center bg-black rounded-sm h-4 w-4">
+                  <div className="bg-white h-2 w-2 rounded-sm"></div>
+                </div>
+                <span className="text-xs">مسح معكوس</span>
+              </div>
             </div>
           </div>
         </div>
