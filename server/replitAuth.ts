@@ -167,29 +167,34 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  // Check if user exists and has required data instead of using isAuthenticated()
-  if (!user || !user?.claims) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    return res.redirect("/api/login");
+  const user = req.user as any;
+  if (!user?.claims) {
+    return res.status(401).json({ message: "جلسة غير صالحة. يرجى إعادة تسجيل الدخول." });
   }
 
   try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
+    const now = Math.floor(Date.now() / 1000);
+    if (now > user.expires_at) {
+      const refreshToken = user.refresh_token;
+      if (!refreshToken) {
+        req.logout(() => {
+          res.status(401).json({ message: "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى." });
+        });
+        return;
+      }
+
+      const config = await getOidcConfig();
+      const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+      updateUserSession(user, tokenResponse);
+    }
+    next();
   } catch (error) {
-    return res.redirect("/api/login");
+    req.logout(() => {
+      res.status(401).json({ message: "حدث خطأ في التحقق. يرجى تسجيل الدخول مرة أخرى." });
+    });
   }
 };
