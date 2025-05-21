@@ -618,12 +618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ADMIN ROUTES
   app.post("/api/admin/users", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
     
     try {
       const admin = await storage.getUser(adminId);
@@ -675,12 +679,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/admin/users", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
     
     try {
       const admin = await storage.getUser(adminId);
@@ -721,12 +729,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Update user
   app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
-    const targetUserId = parseInt(req.params.userId);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
+    const targetUserId = parseInt(req.params.userId);
     
     try {
       const admin = await storage.getUser(adminId);
@@ -784,12 +797,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Delete user
   app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
-    const targetUserId = parseInt(req.params.userId);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
+    const targetUserId = parseInt(req.params.userId);
     
     try {
       const admin = await storage.getUser(adminId);
