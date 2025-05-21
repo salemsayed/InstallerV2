@@ -259,8 +259,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Clear client-side state first to prevent any further authenticated requests
       setUser(null);
-      localStorage.removeItem("user");
+      
+      // Clear all storage to ensure complete logout
+      localStorage.clear();
       sessionStorage.clear();
+      
+      // Remove all authentication-related data
+      localStorage.removeItem("user");
+      localStorage.removeItem("auth_user_data");
+      localStorage.removeItem("temp_user_id");
+      localStorage.removeItem("temp_user_role");
+      localStorage.removeItem("auth_phone");
+      localStorage.removeItem("auth_otp");
+      localStorage.removeItem("auth_timestamp");
       
       // Stop the auto-refresh interval
       const win = window as any; // Type assertion for custom property
@@ -275,6 +286,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: "POST",
           credentials: "include",
           cache: "no-cache",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache"
+          }
         });
         
         if (response.ok) {
@@ -286,24 +301,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("[AUTH] Error calling logout endpoint:", fetchError);
       }
       
-      // Try to clear cookies every way possible to ensure they're gone
-      // Clear for root path
-      document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "bareeq.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Clear cookies manually
+      const cookieNames = ["sid", "connect.sid", "bareeq.sid"];
+      const paths = ["/", "/auth", "/api", ""];
       
-      // Force navigation to login page after a delay to ensure everything is cleared
-      console.log("[AUTH] Redirecting to login page");
+      // Clear cookies for all possible paths
+      cookieNames.forEach(name => {
+        paths.forEach(path => {
+          // Standard clearing
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'};`;
+          
+          // Also try with Secure and SameSite attributes 
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'}; secure; samesite=none;`;
+        });
+      });
+      
+      console.log("[AUTH] Cookie clearing complete");
+      
+      // Completely reload the page to reset all state rather than just redirecting
+      // This prevents the dashboard from showing after logout
+      console.log("[AUTH] Performing full page reload to /auth/login");
       setTimeout(() => {
-        window.location.href = "/auth/login";
-      }, 200);
+        // Use replace to prevent back button from going back to dashboard
+        window.location.replace("/auth/login?t=" + Date.now());
+      }, 100);
       
     } catch (error) {
       console.error("[AUTH] Unexpected error during logout:", error);
       
-      // Even on error, force logout by clearing everything and redirecting
+      // Even on error, force logout with hard page reload
       setUser(null);
-      localStorage.removeItem("user");
-      window.location.href = "/auth/login";
+      localStorage.clear();
+      window.location.replace("/auth/login?t=" + Date.now());
     }
   };
 
