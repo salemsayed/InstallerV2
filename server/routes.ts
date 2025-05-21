@@ -24,7 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
-  // Improved logout endpoint with proper cookie handling for all environments
+  // Enhanced logout endpoint with comprehensive session termination
   app.post("/api/auth/logout", (req, res) => {
     console.log("[LOGOUT] Logout request received", {
       hasSession: !!req.session,
@@ -40,6 +40,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Log environment for debugging
     console.log(`[LOGOUT] Environment: isReplit=${isReplit}, sameSite=${sameSite}, secure=${secure}`);
     
+    // If we have an active session in our tracking map, remove it
+    if (req.session?.sessionId && activeSessions.has(req.session.sessionId)) {
+      console.log(`[LOGOUT] Removing session ${req.session.sessionId} from active sessions map`);
+      activeSessions.delete(req.session.sessionId);
+    }
+    
     // Handle case where session doesn't exist
     if (!req.session) {
       console.log("[LOGOUT] No session to destroy");
@@ -54,58 +60,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
     
-    // Store session ID for logging purposes
-    const sessionId = req.session?.sessionId || 'unknown';
+    // Store session data for logging purposes
+    const sessionInfo = {
+      id: req.session?.sessionId || 'unknown',
+      userId: req.session?.userId || 'unknown'
+    };
     
-    // Destroy the session
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("[LOGOUT ERROR]", err);
-        return res.status(500).json({ success: false, message: "Failed to logout" });
-      }
-      
-      clearAllCookies();
-      
-      console.log(`[LOGOUT] Session ${sessionId} destroyed and cookies cleared`);
-      
-      // Set headers to prevent caching
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      res.setHeader('Pragma', 'no-cache');
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: "Logged out successfully",
-        timestamp: Date.now() // Add timestamp to prevent response caching
+    // Force session regeneration to ensure proper cleanup
+    if (req.session.regenerate) {
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error("[LOGOUT] Session regeneration error:", err);
+          
+          // Even on regeneration error, continue with destroy
+          destroySession();
+        } else {
+          console.log("[LOGOUT] Session regenerated before destruction");
+          destroySession();
+        }
       });
-    });
+    } else {
+      // If regenerate isn't available, go straight to destroy
+      destroySession();
+    }
+    
+    // Helper function to destroy the session
+    function destroySession() {
+      // Destroy the session completely
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("[LOGOUT ERROR]", err);
+          
+          // Even if destroy fails, clear cookies
+          clearAllCookies();
+          
+          return res.status(500).json({ 
+            success: false, 
+            message: "Session destroy error, but cookies cleared",
+            timestamp: Date.now()
+          });
+        }
+        
+        // Always clear cookies
+        clearAllCookies();
+        
+        console.log(`[LOGOUT] Session ${sessionInfo.id} destroyed and cookies cleared`);
+        
+        // Set headers to prevent caching
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: "Logged out successfully",
+          timestamp: Date.now() // Add timestamp to prevent response caching
+        });
+      });
+    }
     
     // Helper function to clear all cookies with the correct settings
     function clearAllCookies() {
-      // Clear all possible cookie names with appropriate settings
-      const cookieNames = ['sid', 'connect.sid', 'bareeq.sid'];
+      // Clear all possible cookie names with all possible settings
+      const cookieNames = ['sid', 'connect.sid', 'bareeq.sid', 'express.sid', 'express:sess', 'express:sess.sig'];
       
-      // Options for clearing cookies - must match the settings used when setting the cookie
-      const cookieOptions = {
-        path: '/',
-        httpOnly: true,
-        secure: secure,
-        sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined
-      };
+      // All paths that might have cookies
+      const paths = ['/', '/api', '/auth', '/api/auth', '/installer', '/admin', ''];
       
-      // Options for direct expiry
-      const expiredOptions = {
-        ...cookieOptions,
-        expires: new Date(0),
-        maxAge: 0
-      };
-      
-      // Clear all possible cookies
+      // Clear cookies with the most reliable approaches
       cookieNames.forEach(name => {
-        // Method 1: clearCookie
-        res.clearCookie(name, cookieOptions);
+        // Method 1: Use clearCookie with the correct path and security settings
+        res.clearCookie(name, {
+          path: '/',
+          httpOnly: true,
+          secure: secure,
+          sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined
+        });
         
-        // Method 2: set expired cookie
-        res.cookie(name, '', expiredOptions);
+        // Method 2: For each possible path, set an expired cookie
+        paths.forEach(path => {
+          // Standard clearing without domain (most reliable)
+          res.cookie(name, '', {
+            path: path,
+            httpOnly: true,
+            secure: secure,
+            sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined,
+            expires: new Date(0),
+            maxAge: 0
+          });
+          
+          // For session cookies that might not have httpOnly
+          res.cookie(name, '', {
+            path: path,
+            secure: secure,
+            sameSite: sameSite as 'lax' | 'strict' | 'none' | undefined,
+            expires: new Date(0),
+            maxAge: 0
+          });
+        });
         
         console.log(`[LOGOUT] Cleared cookie: ${name}`);
       });

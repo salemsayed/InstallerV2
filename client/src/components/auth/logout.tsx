@@ -16,11 +16,13 @@ export function LogoutButton({
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await logout();
+      // Bypass the auth provider's logout and go straight to logout page
+      // This is more reliable as it ensures a complete new page load
+      window.location.href = "/auth/logout?t=" + Date.now();
     } catch (error) {
-      console.error("Logout failed:", error);
-      // Force fallback logout
-      window.location.href = "/auth/logout";
+      console.error("Logout navigation failed:", error);
+      // Fallback to direct URL manipulation as last resort
+      window.location.replace("/auth/logout?t=" + Date.now());
     }
   };
   
@@ -37,47 +39,130 @@ export function LogoutButton({
 }
 
 export function LogoutPage() {
-  const [, setLocation] = useLocation();
-  const { logout } = useAuth();
   const [error, setError] = useState<string | null>(null);
   
-  // This page serves as a dedicated logout mechanism
-  // that will forcibly terminate the session
+  // This dedicated logout page handles complete session termination
   useEffect(() => {
-    const performLogout = async () => {
+    const performForceLogout = async () => {
       try {
-        // First, try to call the regular logout method
-        await logout();
+        console.log("[FORCE-LOGOUT] Beginning complete logout process");
+        
+        // 1. Clear all browser storage
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Also clear specific items in case clear() fails
+          const keysToRemove = [
+            "user", "auth_user_data", "temp_user_id", "temp_user_role", 
+            "auth_phone", "auth_otp", "auth_timestamp", "last_login"
+          ];
+          
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+          });
+          
+          console.log("[FORCE-LOGOUT] Storage cleared");
+        } catch (e) {
+          console.error("[FORCE-LOGOUT] Error clearing storage:", e);
+        }
+        
+        // 2. Aggressive cookie clearing across all paths and domains
+        try {
+          const cookieNames = [
+            "sid", "connect.sid", "bareeq.sid", 
+            "express.sid", "express:sess", "express:sess.sig"
+          ];
+          
+          const paths = ["/", "/auth", "/api", "/installer", "/admin", ""];
+          
+          // Use multiple cookie-clearing techniques for different browsers
+          cookieNames.forEach(name => {
+            paths.forEach(path => {
+              // Standard clearing
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'};`;
+              
+              // For secure cross-site cookies
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'}; secure; samesite=none;`;
+              
+              // Max-age approach
+              document.cookie = `${name}=; max-age=0; path=${path || '/'};`;
+              
+              // Simple approach that works in some browsers
+              document.cookie = `${name}=;`;
+            });
+          });
+          
+          console.log("[FORCE-LOGOUT] Cookies cleared");
+        } catch (e) {
+          console.error("[FORCE-LOGOUT] Error clearing cookies:", e);
+        }
+        
+        // 3. Call server-side logout endpoint with multiple approaches
+        try {
+          // Make multiple parallel attempts with different settings
+          const results = await Promise.allSettled([
+            // Standard approach
+            fetch("/api/auth/logout", {
+              method: "POST",
+              credentials: "include",
+              cache: "no-cache",
+              headers: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache"
+              }
+            }),
+            
+            // With explicit authentication header
+            fetch("/api/auth/logout", {
+              method: "POST",
+              credentials: "include",
+              cache: "no-cache",
+              headers: {
+                "X-Auth-Force-Logout": "true"
+              }
+            })
+          ]);
+          
+          console.log("[FORCE-LOGOUT] Server logout attempts completed:", 
+            results.map(r => r.status === 'fulfilled' ? 'success' : 'failed').join(', '));
+        } catch (e) {
+          console.error("[FORCE-LOGOUT] Error calling server logout:", e);
+        }
+        
+        // 4. Final step - force a complete page reload to the login page
+        console.log("[FORCE-LOGOUT] Redirecting to login page");
+        
+        // Give a small delay to ensure all async operations have a chance to complete
+        setTimeout(() => {
+          // Use window.location.replace to prevent back button from returning to dashboard
+          window.location.replace(`/auth/login?fresh=${Date.now()}`);
+        }, 1000);
+        
       } catch (error) {
-        console.error("Error during logout:", error);
+        console.error("[FORCE-LOGOUT] Unexpected error in logout process:", error);
         setError("حدث خطأ أثناء تسجيل الخروج. سيتم توجيهك إلى صفحة تسجيل الدخول.");
+        
+        // Even on error, force navigation to login
+        setTimeout(() => {
+          window.location.replace(`/auth/login?error=1&t=${Date.now()}`);
+        }, 1000);
       }
-      
-      // Force-clear all storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Clear all possible cookies
-      const cookieNames = ["sid", "connect.sid", "bareeq.sid"];
-      const paths = ["/", "/auth", "/api", ""];
-      
-      // Clear cookies for all possible paths
-      cookieNames.forEach(name => {
-        paths.forEach(path => {
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'};`;
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'}; secure; samesite=none;`;
-        });
-      });
-      
-      // Give it time for session termination
-      setTimeout(() => {
-        // Force a fresh page load
-        window.location.href = '/auth/login?fresh=' + Date.now();
-      }, 1000);
     };
     
-    performLogout();
-  }, [logout, setLocation]);
+    // Start the logout process immediately when this component mounts
+    performForceLogout();
+    
+    // If for some reason the logout process gets stuck, set a fail-safe timer
+    const failSafeTimer = setTimeout(() => {
+      console.log("[FORCE-LOGOUT] Fail-safe timer triggered");
+      window.location.replace(`/auth/login?failsafe=1&t=${Date.now()}`);
+    }, 5000);
+    
+    // Clean up the failsafe timer if the component unmounts
+    return () => clearTimeout(failSafeTimer);
+  }, []);
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-50">
@@ -85,7 +170,7 @@ export function LogoutPage() {
       {error ? (
         <div className="text-red-500 mb-4">{error}</div>
       ) : (
-        <div className="mb-4">جاري تسجيل الخروج...</div>
+        <div className="mb-4">جاري تسجيل الخروج... سيتم توجيهك إلى صفحة تسجيل الدخول</div>
       )}
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>

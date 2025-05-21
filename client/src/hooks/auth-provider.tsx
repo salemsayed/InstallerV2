@@ -257,21 +257,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[AUTH] Logout initiated");
       
-      // Clear client-side state first to prevent any further authenticated requests
+      // Clear client-side state immediately
       setUser(null);
       
       // Clear all storage to ensure complete logout
       localStorage.clear();
       sessionStorage.clear();
       
-      // Remove all authentication-related data
-      localStorage.removeItem("user");
-      localStorage.removeItem("auth_user_data");
-      localStorage.removeItem("temp_user_id");
-      localStorage.removeItem("temp_user_role");
-      localStorage.removeItem("auth_phone");
-      localStorage.removeItem("auth_otp");
-      localStorage.removeItem("auth_timestamp");
+      // Remove all specific authentication-related data
+      const keysToRemove = [
+        "user", "auth_user_data", "temp_user_id", "temp_user_role", 
+        "auth_phone", "auth_otp", "auth_timestamp", "last_login",
+        "session_id", "auth_state", "auth_method"
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
       
       // Stop the auto-refresh interval
       const win = window as any; // Type assertion for custom property
@@ -280,59 +283,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         win._authRefreshInterval = null;
       }
       
-      // Call the server to invalidate the session
-      try {
-        const response = await fetch("/api/auth/logout", {
-          method: "POST",
-          credentials: "include",
-          cache: "no-cache",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache"
-          }
-        });
-        
-        if (response.ok) {
-          console.log("[AUTH] Server session invalidated successfully");
-        } else {
-          console.warn("[AUTH] Server logout returned status:", response.status);
-        }
-      } catch (fetchError) {
-        console.error("[AUTH] Error calling logout endpoint:", fetchError);
-      }
+      // Try multiple server-side logout attempts with different fetch options
+      const logoutEndpoints = [
+        "/api/auth/logout",
+        "/auth/logout"
+      ];
       
-      // Clear cookies manually
-      const cookieNames = ["sid", "connect.sid", "bareeq.sid"];
-      const paths = ["/", "/auth", "/api", ""];
+      // Try all logout endpoints in parallel for redundancy
+      await Promise.allSettled(
+        logoutEndpoints.map(endpoint => 
+          fetch(endpoint, {
+            method: "POST",
+            credentials: "include",
+            cache: "no-cache",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              "Pragma": "no-cache",
+              "X-Auth-Force-Logout": "true"
+            }
+          })
+        )
+      );
       
-      // Clear cookies for all possible paths
+      // Comprehensive cookie clearing for all possible domains and paths
+      const cookieNames = [
+        "sid", "connect.sid", "bareeq.sid", 
+        "express.sid", "express:sess", "express:sess.sig",
+        "_csrf", "XSRF-TOKEN"
+      ];
+      
+      const paths = ["/", "/auth", "/api", "/installer", "/admin", ""];
+      
+      // Clear cookies with multiple techniques
       cookieNames.forEach(name => {
         paths.forEach(path => {
-          // Standard clearing
+          // Method 1: Standard clearing
           document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'};`;
           
-          // Also try with Secure and SameSite attributes 
+          // Method 2: With secure and SameSite none (for cross-site cookies)
           document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path || '/'}; secure; samesite=none;`;
+          
+          // Method 3: With explicit max-age
+          document.cookie = `${name}=; max-age=0; path=${path || '/'};`;
+          
+          // Method 4: Empty with nothing else (some browsers accept this)
+          document.cookie = `${name}=;`;
         });
       });
       
-      console.log("[AUTH] Cookie clearing complete");
+      console.log("[AUTH] Storage and cookie clearing complete");
       
-      // Completely reload the page to reset all state rather than just redirecting
-      // This prevents the dashboard from showing after logout
-      console.log("[AUTH] Performing full page reload to /auth/login");
+      // Final step: Use the hardcoded logout page that performs a browser-level redirect
+      // This ensures all auth state is reset completely, including browser cache
+      console.log("[AUTH] Redirecting to dedicated logout page");
+      
+      // Use setTimeout to ensure all async operations have a chance to complete
       setTimeout(() => {
-        // Use replace to prevent back button from going back to dashboard
-        window.location.replace("/auth/login?t=" + Date.now());
+        // Force a navigation to our dedicated logout page
+        // This will handle clearing everything and redirecting to login
+        window.location.href = "/auth/logout?t=" + Date.now();
       }, 100);
       
     } catch (error) {
       console.error("[AUTH] Unexpected error during logout:", error);
       
-      // Even on error, force logout with hard page reload
+      // Even on error, force logout with hardest possible page reload
       setUser(null);
       localStorage.clear();
-      window.location.replace("/auth/login?t=" + Date.now());
+      sessionStorage.clear();
+      
+      // Navigate to our dedicated logout page as failsafe
+      window.location.href = "/auth/logout?t=" + Date.now();
     }
   };
 
