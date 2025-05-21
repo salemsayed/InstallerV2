@@ -1939,7 +1939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's installation count (transactions of type EARNING that have product installations)
       const transactions = await storage.getTransactionsByUserId(userId);
       const installationCount = transactions.filter(t => 
-        (t.type === TransactionType.EARNING || t.type === 'earning') && 
+        (t.type === TransactionType.EARNING || t.type.toLowerCase() === 'earning') && 
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       ).length;
       
