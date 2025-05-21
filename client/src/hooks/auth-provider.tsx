@@ -66,9 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
 
-    // Fetch user details
-    apiRequest("GET", `/api/users/me?userId=${userId}`)
-      .then(res => res.json())
+    // Fetch user details using session auth
+    apiRequest("GET", `/api/users/me`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Unauthorized access");
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.user) {
           // Save user to state and localStorage
@@ -95,6 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[auth] Refreshing user data...");
       const response = await apiRequest("GET", `/api/users/me`);
+      
+      if (!response.ok) {
+        console.log("[auth] Session expired or invalid, logging out");
+        logout();
+        return;
+      }
+
       const data = await response.json();
       console.log("[auth] Server response:", data);
 
