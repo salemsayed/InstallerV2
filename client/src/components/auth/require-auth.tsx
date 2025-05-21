@@ -23,12 +23,14 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
   const isAuthenticated = !!user;
   const hasRequiredRole = role ? user?.role === role : true;
 
-  // Redirect to login page if not authenticated
+  // Only redirect to login if explicitly not authenticated (after checking with server)
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && location !== '/') {
+      // This prevents redirect loops - only redirect if we're not already on the login page
+      // and we've confirmed with the server that we're not authenticated
       setLocation('/');
     }
-  }, [isLoading, isAuthenticated, setLocation]);
+  }, [isLoading, isAuthenticated, setLocation, location]);
 
   // If still loading, show a loading spinner
   if (isLoading) {

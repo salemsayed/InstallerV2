@@ -63,28 +63,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = (userId: string, userRole: string) => {
+  const login = async (userId: string, userRole: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
-    // Fetch user details using secure session - no query params needed
-    apiRequest("GET", `/api/users/me`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          // Save user to state and localStorage
-          setUser(data.user);
-          localStorage.setItem("user", JSON.stringify(data.user));
-        } else {
-          setError("خطأ في جلب بيانات المستخدم");
-        }
-      })
-      .catch(error => {
-        setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    try {
+      // Fetch user details using secure session - no query params needed
+      const response = await apiRequest("GET", `/api/users/me`);
+      const data = await response.json();
+      
+      if (data.user) {
+        // Save user to state and localStorage
+        setUser(data.user);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        return Promise.resolve(); // Explicitly resolve the promise on success
+      } else {
+        setError("خطأ في جلب بيانات المستخدم");
+        return Promise.reject(new Error("خطأ في جلب بيانات المستخدم"));
+      }
+    } catch (error: any) {
+      setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+      return Promise.reject(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const refreshUser = async (): Promise<void> => {

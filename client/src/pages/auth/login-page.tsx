@@ -23,14 +23,18 @@ export default function LoginPage() {
     }
   }, [user, setLocation]);
 
-  const handleLoginSuccess = (userId: number, userRole: string) => {
-    login(userId.toString(), userRole);
+  const handleLoginSuccess = async (userId: number, userRole: string) => {
+    // Call the login function and wait for it to complete
+    await login(userId.toString(), userRole);
     
-    if (userRole === "admin") {
-      setLocation("/admin/dashboard");
-    } else {
-      setLocation("/installer/dashboard");
-    }
+    // Add a small delay to ensure the auth state is updated before redirect
+    setTimeout(() => {
+      if (userRole === "admin") {
+        setLocation("/admin/dashboard");
+      } else {
+        setLocation("/installer/dashboard");
+      }
+    }, 100);
   };
 
   if (isLoading) {
