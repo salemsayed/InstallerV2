@@ -17,6 +17,7 @@ export default function InstallerDashboard() {
   // Fetch user's transactions with no limit to ensure we get all transactions - using secure session auth
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: [`/api/transactions`], // No limit parameter to fetch all transactions
+    queryFn: () => apiRequest('GET', `/api/transactions`).then(res => res.json()),
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
