@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { VersionDisplay } from "../version-display";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -158,6 +159,13 @@ export default function AdminLayout({
       <main className="p-4">
         {children}
       </main>
+      
+      {/* Footer with version */}
+      <footer className="p-4 border-t mt-auto">
+        <div className="container mx-auto text-center">
+          <VersionDisplay className="text-gray-400" />
+        </div>
+      </footer>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import arOnlyLogo from "@assets/AR-Only.png";
 import { useAuth } from "@/hooks/auth-provider";
 import { QrCode } from "lucide-react";
+import { VersionDisplay } from "../version-display";
 import {
   DropdownMenu,
   DropdownMenuContent,

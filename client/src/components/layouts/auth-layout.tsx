@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import breegLogo from "@/assets/breeg-logo.svg";
+import { VersionDisplay } from "../version-display";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -17,6 +18,11 @@ export default function AuthLayout({ children, className }: AuthLayoutProps) {
         </div>
         
         {children}
+        
+        {/* Version display */}
+        <div className="text-center mt-6">
+          <VersionDisplay />
+        </div>
       </div>
     </div>
   );
