@@ -68,20 +68,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      console.log("[AUTH] Login called with userId:", userId, "userRole:", userRole);
+      
+      // Wait a second to ensure the server has time to establish the session
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Fetch user details using secure session - no query params needed
       const response = await apiRequest("GET", `/api/users/me`);
       const data = await response.json();
       
       if (data.user) {
+        console.log("[AUTH] Successfully retrieved user data:", data.user);
         // Save user to state and localStorage
         setUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
         return Promise.resolve(); // Explicitly resolve the promise on success
       } else {
+        console.error("[AUTH] Failed to get user data from /api/users/me");
         setError("خطأ في جلب بيانات المستخدم");
         return Promise.reject(new Error("خطأ في جلب بيانات المستخدم"));
       }
     } catch (error: any) {
+      console.error("[AUTH] Error in login function:", error);
       setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
       return Promise.reject(error);
     } finally {

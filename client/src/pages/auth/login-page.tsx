@@ -24,17 +24,27 @@ export default function LoginPage() {
   }, [user, setLocation]);
 
   const handleLoginSuccess = async (userId: number, userRole: string) => {
-    // Call the login function and wait for it to complete
-    await login(userId.toString(), userRole);
-    
-    // Add a small delay to ensure the auth state is updated before redirect
-    setTimeout(() => {
-      if (userRole === "admin") {
-        setLocation("/admin/dashboard");
-      } else {
-        setLocation("/installer/dashboard");
-      }
-    }, 100);
+    try {
+      console.log("[LOGIN PAGE] Login success handler called with userId:", userId, "userRole:", userRole);
+      
+      // Call the login function and wait for it to complete
+      await login(userId.toString(), userRole);
+      
+      // Add a longer delay to ensure the auth state is fully updated before redirect
+      console.log("[LOGIN PAGE] Login successful, redirecting to dashboard...");
+      
+      setTimeout(() => {
+        if (userRole === "admin") {
+          console.log("[LOGIN PAGE] Redirecting to admin dashboard");
+          setLocation("/admin/dashboard");
+        } else {
+          console.log("[LOGIN PAGE] Redirecting to installer dashboard");
+          setLocation("/installer/dashboard");
+        }
+      }, 1500); // Increased timeout to ensure session is established
+    } catch (error) {
+      console.error("[LOGIN PAGE] Error in login success handler:", error);
+    }
   };
 
   if (isLoading) {
