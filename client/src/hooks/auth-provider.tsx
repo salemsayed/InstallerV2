@@ -237,14 +237,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}; secure; samesite=none`;
       });
       
-      // Replace current location with login page (prevents back navigation)
-      window.location.replace("/auth/login");
+      // Use setLocation instead of window.location.replace to prevent refresh
+      setLocation("/auth/login");
     } catch (error) {
       console.error("[AUTH] Error during logout:", error);
       // Even if server logout fails, force client-side logout
       setUser(null);
       localStorage.clear();
-      window.location.replace("/auth/login");
+      setLocation("/auth/login");
     }
   };
 
