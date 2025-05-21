@@ -780,21 +780,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete user
-  app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
+  // Delete user - secured with admin authentication
+  app.delete("/api/admin/users/:userId", adminAuth, async (req: Request, res: Response) => {
     const targetUserId = parseInt(req.params.userId);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+    const adminId = req.session.userId as number; // Get admin ID from session for logging
     
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
-      }
+      // Admin auth is already validated through the middleware
       
       // Check if user exists
       const targetUser = await storage.getUser(targetUserId);
@@ -836,20 +828,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/admin/points", async (req: Request, res: Response) => {
-    // Check if the requester is an admin
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+  app.post("/api/admin/points", adminAuth, async (req: Request, res: Response) => {
+    // Get admin ID from session for logging and tracking
+    const adminId = req.session.userId as number;
     
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
-      }
+      // Admin authentication is already validated through the middleware
       
       // Validate request
       const { userId, amount, activityType, description } = pointsAllocationSchema.parse(req.body);
@@ -937,6 +921,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use a high limit to get all transactions for proper badge calculations
       const transactions = await storage.getTransactionsByUserId(userId, 1000);
       
+      // Get user to check badge status
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
+      
       // Count installations - filter by product installation transactions only
       const installationTransactions = transactions.filter(t => 
         t.type === TransactionType.EARNING && 
@@ -1009,10 +999,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUser(userId, { badgeIds: user.badgeIds });
       }
       
-      // Mark which ones the user has
+      // Mark which ones the user has (safely handle badgeIds array)
       const badges = allBadges.map(badge => ({
         ...badge,
-        earned: user.badgeIds.includes(badge.id)
+        earned: user.badgeIds && Array.isArray(user.badgeIds) ? user.badgeIds.includes(badge.id) : false
       }));
       
       return res.status(200).json({ badges });
@@ -1023,17 +1013,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Admin Badge Management Routes
-  app.post("/api/admin/badges", async (req: Request, res: Response) => {
+  app.post("/api/admin/badges", adminAuth, async (req: Request, res: Response) => {
     try {
-      const adminId = parseInt(req.query.userId as string);
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ 
-          success: false,
-          message: "ليس لديك صلاحية للقيام بهذه العملية" 
-        });
-      }
+      // Admin authentication already validated through middleware
       
       const { name, description, icon, requiredPoints, minInstallations, active } = req.body;
       
@@ -1066,7 +1048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/admin/badges/:id", async (req: Request, res: Response) => {
+  app.patch("/api/admin/badges/:id", adminAuth, async (req: Request, res: Response) => {
     try {
       console.log('========= BADGE UPDATE ENDPOINT START =========');
       console.log('Request body:', JSON.stringify(req.body));
@@ -1082,34 +1064,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const adminId = parseInt(req.query.userId as string);
-      if (isNaN(adminId)) {
-        console.error('Invalid admin ID:', req.query.userId);
-        return res.status(400).json({ 
-          success: false,
-          message: "Invalid admin ID format",
-          details: { userId: req.query.userId }
-        });
-      }
-      
+      // Admin authentication is already validated by middleware
+      const adminId = req.session.userId as number;
       console.log(`Processing badge update: Badge ID ${badgeId}, Admin ID ${adminId}`);
-      
-      const admin = await storage.getUser(adminId);
-      if (!admin) {
-        console.error('Admin not found:', adminId);
-        return res.status(404).json({ 
-          success: false,
-          message: "Admin user not found" 
-        });
-      }
-      
-      if (admin.role !== UserRole.ADMIN) {
-        console.error('Non-admin attempted badge update:', admin);
-        return res.status(403).json({ 
-          success: false,
-          message: "ليس لديك صلاحية للقيام بهذه العملية" 
-        });
-      }
       
       const badge = await storage.getBadge(badgeId);
       if (!badge) {
@@ -1244,18 +1201,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/admin/badges/:id", async (req: Request, res: Response) => {
+  app.delete("/api/admin/badges/:id", adminAuth, async (req: Request, res: Response) => {
     try {
       const badgeId = parseInt(req.params.id);
-      const adminId = parseInt(req.query.userId as string);
-      const admin = await storage.getUser(adminId);
+      const adminId = req.session.userId as number; // Get admin ID from session for logging
       
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ 
-          success: false,
-          message: "ليس لديك صلاحية للقيام بهذه العملية" 
-        });
-      }
+      // Admin authentication already validated through the middleware
       
       const badge = await storage.getBadge(badgeId);
       
