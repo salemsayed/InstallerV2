@@ -1433,13 +1433,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Helper function to check if badge arrays are different (using Set for efficiency)
+      // Improved helper function to accurately check badge array differences
       function areBadgeArraysDifferent(arr1: number[], arr2: number[]): boolean {
         if (arr1.length !== arr2.length) return true;
         
         const set1 = new Set(arr1);
+        const set2 = new Set(arr2);
+        
+        // Check if all elements in arr2 are in arr1
         for (const id of arr2) {
           if (!set1.has(id)) return true;
+        }
+        
+        // Check if all elements in arr1 are in arr2
+        for (const id of arr1) {
+          if (!set2.has(id)) return true;
         }
         
         return false;
@@ -1519,6 +1527,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Admin endpoint to recalculate badges for a specific user
+  app.post("/api/admin/recalculate-user-badges/:userId", async (req: Request, res: Response) => {
+    // Verify admin permissions
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authentication required",
+        error_code: "UNAUTHORIZED" 
+      });
+    }
+    
+    // Only admins can trigger badge recalculation
+    const adminUser = await storage.getUser(req.session.userId);
+    if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Admin access required",
+        error_code: "FORBIDDEN" 
+      });
+    }
+    
+    // Get target user ID from request params
+    const targetUserId = parseInt(req.params.userId);
+    if (!targetUserId || isNaN(targetUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid user ID is required",
+        error_code: "INVALID_USER_ID"
+      });
+    }
+    
+    try {
+      console.log(`[BADGE SYSTEM] Admin ${req.session.userId} requested badge recalculation for user ${targetUserId}`);
+      
+      // Check if target user exists
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+          error_code: "USER_NOT_FOUND"
+        });
+      }
+      
+      // Force update badge calculations for this user
+      const result = await calculateUserBadgeQualifications(targetUserId, true);
+      
+      return res.status(200).json({
+        success: true,
+        message: `Badge recalculation completed for user ${targetUserId}`,
+        currentBadges: result.qualifiedBadgeIds,
+        installationCount: result.installationCount,
+        pointsBalance: result.pointsBalance,
+        updated: result.userUpdated
+      });
+    } catch (error: any) {
+      console.error(`[ERROR] Failed to recalculate badges for user ${targetUserId}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to recalculate badges",
+        error_code: "BADGE_RECALCULATION_ERROR"
+      });
+    }
+  });
+
+  // Admin endpoint to recalculate all user badges (useful when badge requirements change)
+  app.post("/api/admin/recalculate-badges", async (req: Request, res: Response) => {
+    // Verify admin permissions
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authentication required",
+        error_code: "UNAUTHORIZED" 
+      });
+    }
+    
+    // Only admins can trigger badge recalculation
+    const adminUser = await storage.getUser(req.session.userId);
+    if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Admin access required",
+        error_code: "FORBIDDEN" 
+      });
+    }
+    
+    try {
+      console.log(`[BADGE SYSTEM] Starting system-wide badge recalculation requested by admin ${req.session.userId}`);
+      
+      // Get all users
+      const users = await storage.listUsers(1000);
+      console.log(`[BADGE SYSTEM] Recalculating badges for ${users.length} users`);
+      
+      // Track statistics
+      let updatedCount = 0;
+      let errorCount = 0;
+      let unchangedCount = 0;
+      
+      // Process each user
+      for (const user of users) {
+        try {
+          // Only process active installers (users who can earn badges)
+          if (user.status === 'active' && user.role === 'installer') {
+            console.log(`[BADGE SYSTEM] Recalculating badges for user ${user.id} (${user.name})`);
+            
+            // Force update to ensure proper recalculation
+            const result = await calculateUserBadgeQualifications(user.id, true);
+            
+            if (result.userUpdated) {
+              updatedCount++;
+              console.log(`[BADGE SYSTEM] Updated badges for user ${user.id} - now has ${result.qualifiedBadgeIds.length} badges`);
+            } else {
+              unchangedCount++;
+              console.log(`[BADGE SYSTEM] No badge changes for user ${user.id} - has ${result.qualifiedBadgeIds.length} badges`);
+            }
+          }
+        } catch (userError) {
+          errorCount++;
+          console.error(`[ERROR] Failed to recalculate badges for user ${user.id}:`, userError);
+        }
+      }
+      
+      // Return results
+      return res.status(200).json({
+        success: true,
+        message: "Badge recalculation completed",
+        stats: {
+          total: users.length,
+          updated: updatedCount,
+          unchanged: unchangedCount,
+          errors: errorCount
+        }
+      });
+    } catch (error: any) {
+      console.error("[ERROR] Failed to recalculate badges:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to recalculate badges",
+        error_code: "BADGE_RECALCULATION_ERROR"
+      });
+    }
+  });
+
   // Admin Badge Management Routes
   app.post("/api/admin/badges", async (req: Request, res: Response) => {
     try {
