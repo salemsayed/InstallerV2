@@ -39,14 +39,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ success: false, message: "Failed to logout" });
       }
       
-      // Clear cookies with proper options to match session cookie settings
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const cookieOptions = {
         httpOnly: true,
-        secure: false,
-        sameSite: 'none' as const,
+        secure: !isDevelopment,
+        sameSite: 'lax' as const,
         path: '/',
         domain: process.env.REPLIT_DOMAINS ? 
-          (process.env.REPLIT_DOMAINS.split(',')[0] || undefined) : 
+          `.${process.env.REPLIT_DOMAINS.split(',')[0]}` : // Add dot prefix for subdomain support
           undefined
       };
       

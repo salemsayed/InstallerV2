@@ -25,18 +25,18 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  
+
   // Fail fast if SESSION_SECRET is not set in production
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
     throw new Error('SESSION_SECRET must be set in production environment');
   }
-  
+
   // In development, warn but allow fallback
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
     console.warn('⚠️ WARNING: SESSION_SECRET not set. Using a random secret for development only. This would be insecure in production.');
   }
-  
+
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -44,37 +44,35 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  
+
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+  const isSecure = !isDevelopment;
+
   // Create a consistent secret for the session
   const finalSecret = sessionSecret || 
     (isDevelopment ? 'dev-session-secret-bareeq-app-development-mode-only' : '');
-    
+
   // Log session configuration (without exposing the secret)
   console.log(`[SESSION CONFIG] Environment: ${isDevelopment ? 'development' : 'production'}`);
-  console.log(`[SESSION CONFIG] Cookie secure: false`);
-  console.log(`[SESSION CONFIG] Cookie sameSite: none`);
+  console.log(`[SESSION CONFIG] Cookie secure: ${isSecure}`);
+  console.log(`[SESSION CONFIG] Cookie sameSite: lax`);
   console.log(`[SESSION CONFIG] Session TTL: ${sessionTtl/1000/60} minutes`);
-    
+
   return session({
     secret: finalSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'bareeq.sid', // Custom name to avoid conflicts
+    name: 'bareeq.sid',
     cookie: {
       httpOnly: true,
-      // Use secure=false for compatibility with both HTTP and HTTPS in Replit
-      secure: false,
-      // Use 'none' for cross-domain compatibility in deployment
-      sameSite: 'none',
+      secure: isSecure, // True in production, false in development
+      sameSite: 'lax', // More compatible with modern browsers
       maxAge: sessionTtl,
-      // Domain setting for cross-subdomain support
       domain: process.env.REPLIT_DOMAINS ? 
-        (process.env.REPLIT_DOMAINS.split(',')[0] || undefined) : 
+        `.${process.env.REPLIT_DOMAINS.split(',')[0]}` : // Add dot prefix for subdomain support
         undefined,
-      path: '/', // Ensure cookie is sent with all requests
+      path: '/',
     },
     proxy: true, // Trust the reverse proxy
     rolling: true, // Refresh cookie expiration on each request
@@ -95,7 +93,7 @@ async function upsertUser(
   claims: any,
 ) {
   const existingUser = await storage.getUserByEmail(claims["email"]);
-  
+
   if (existingUser) {
     // Update existing user with latest information from Replit
     return await storage.updateUser(existingUser.id, {
@@ -177,7 +175,7 @@ export async function setupAuth(app: Express) {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         }).href;
-        
+
         res.redirect(logoutUrl);
       });
     });
