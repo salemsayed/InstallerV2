@@ -154,13 +154,17 @@ export async function setupAuth(app: Express) {
     res.setHeader('Content-Type', 'application/json');
     try {
       const authenticated = req.isAuthenticated();
+      if (!authenticated) {
+        return res.json({ authenticated: false });
+      }
       const user = req.user as any;
       res.json({ 
-        authenticated,
+        authenticated: true,
         userId: user?.id,
         claims: user?.claims
       });
     } catch (error) {
+      console.error('[auth] Check error:', error);
       res.status(401).json({ 
         authenticated: false,
         error: "Session validation failed"

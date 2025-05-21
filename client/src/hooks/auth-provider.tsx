@@ -39,23 +39,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const authResponse = await fetch('/api/auth/check', { 
           credentials: 'include',
           headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
           }
         });
 
         if (!authResponse.ok) {
           console.error('[auth] Auth check failed:', authResponse.status);
           setIsLoading(false);
+          setUser(null);
           return;
         }
 
         let authData;
         try {
-          const text = await authResponse.text();
-          authData = JSON.parse(text);
+          authData = await authResponse.json();
         } catch (e) {
           console.error('[auth] Failed to parse auth check response:', e);
           setIsLoading(false);
+          setUser(null);
           return;
         }
 
