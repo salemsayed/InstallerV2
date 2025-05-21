@@ -146,14 +146,15 @@ export default function AchievementCard({ points, badges, isLoading = false }: A
                 <div key={badge.id} className="flex flex-col items-center group relative">
                   <div className="w-14 h-14 rounded-full flex items-center justify-center mb-2 bg-neutral-200 opacity-70 group-hover:opacity-100 transition-opacity relative">
                     <span className="material-icons text-2xl text-neutral-500">{badge.icon}</span>
-                    {badge.pointsPercentage > 0 && (
+                    {/* Show circular progress indicator using the completionPercentage for accurate display */}
+                    {badge.completionPercentage > 0 && (
                       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 36 36">
                         <circle 
                           className="stroke-primary/30" 
                           fill="none" 
                           strokeWidth="3" 
                           strokeLinecap="round" 
-                          strokeDasharray={`${badge.pointsPercentage}, 100`}
+                          strokeDasharray={`${badge.completionPercentage}, 100`}
                           transform="rotate(-90 18 18)"
                           cx="18" 
                           cy="18" 
