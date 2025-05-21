@@ -923,11 +923,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ADMIN TRANSACTIONS ENDPOINT - Gets all transactions
   app.get("/api/admin/transactions", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session instead of query parameters
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const adminId = req.session.userId;
     
     try {
       const admin = await storage.getUser(adminId);
@@ -1291,8 +1296,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.delete("/api/admin/badges/:id", async (req: Request, res: Response) => {
     try {
+      // Get user ID from secure session instead of query parameters
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول.",
+          error_code: "UNAUTHORIZED" 
+        });
+      }
+      
       const badgeId = parseInt(req.params.id);
-      const adminId = parseInt(req.query.userId as string);
+      const adminId = req.session.userId;
       const admin = await storage.getUser(adminId);
       
       if (!admin || admin.role !== UserRole.ADMIN) {

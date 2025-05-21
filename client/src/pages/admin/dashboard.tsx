@@ -21,24 +21,24 @@ export default function AdminDashboard() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Fetch users data
+  // Fetch users data - using secure session auth
   const { 
     data: usersData, 
     isLoading: usersLoading,
     refetch: refetchUsers
   } = useQuery({
-    queryKey: [`/api/admin/users?userId=${user?.id}`],
+    queryKey: [`/api/admin/users`],
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
-  // Fetch transactions data for ALL users (admin-specific endpoint)
+  // Fetch transactions data for ALL users (admin-specific endpoint) - using secure session auth
   const { 
     data: transactionsData, 
     isLoading: transactionsLoading,
     refetch: refetchTransactions 
   } = useQuery({
-    queryKey: [`/api/admin/transactions?userId=${user?.id}`],
+    queryKey: [`/api/admin/transactions`],
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
@@ -55,13 +55,13 @@ export default function AdminDashboard() {
     enabled: !!user?.id && user.role === "admin",
   });
   
-  // Fetch badges data
+  // Fetch badges data - using secure session auth
   const { 
     data: badgesData, 
     isLoading: badgesLoading,
     refetch: refetchBadges
   } = useQuery({
-    queryKey: [`/api/badges?userId=${user?.id}`],
+    queryKey: [`/api/badges`],
     enabled: !!user?.id && user.role === "admin",
   });
 
