@@ -13,6 +13,7 @@ interface AchievementCardProps {
     requiredPoints: number;
     minInstallations: number;
     earned: boolean;
+    installationCount?: number; // Total installations the user has made (used for progress calculation)
   }[];
   isLoading?: boolean;
 }
@@ -68,16 +69,34 @@ export default function AchievementCard({ points, badges, isLoading = false }: A
   const unEarnedBadges = uniqueBadges
     .filter(badge => !badge.earned)
     .map(badge => {
+      // Calculate points percentage (how close the user is to achieving the badge based on points)
       const pointsPercentage = badge.requiredPoints > 0 
         ? Math.min(100, (points / badge.requiredPoints) * 100) 
         : 0;
-        
+      
+      // Calculate installations percentage (if the badge requires installations)
+      // Default to 0 installations if not provided
+      const userInstallations = badge.installationCount || 0;
+      const installationsPercentage = badge.minInstallations > 0
+        ? Math.min(100, (userInstallations / badge.minInstallations) * 100) 
+        : 0;
+      
+      // Overall completion percentage is the minimum of both requirements
+      // This ensures we show the actual progress toward completing all badge requirements
+      const completionPercentage = badge.minInstallations > 0 && badge.requiredPoints > 0
+        ? Math.min(pointsPercentage, installationsPercentage)
+        : badge.minInstallations > 0
+          ? installationsPercentage
+          : pointsPercentage;
+      
       // Calculate a "closeness" score - higher means closer to earning
-      const closeness = pointsPercentage;
+      const closeness = completionPercentage;
       
       return {
         ...badge,
         pointsPercentage,
+        installationsPercentage,
+        completionPercentage,
         closeness
       };
     })
@@ -145,12 +164,31 @@ export default function AchievementCard({ points, badges, isLoading = false }: A
                   </div>
                   <span className="text-xs text-center text-neutral-700">{badge.name}</span>
                   
-                  {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-16 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 w-32 z-10 pointer-events-none">
+                  {/* Tooltip on hover - show proper completion percentage */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-20 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 w-40 z-10 pointer-events-none">
                     <p className="text-center mb-1">{badge.description}</p>
+                    
+                    {/* Show progress for points requirement */}
                     {badge.requiredPoints > 0 && (
-                      <p className="text-xs text-center">{Math.floor(badge.pointsPercentage)}% مكتمل</p>
+                      <p className="text-xs text-center">
+                        النقاط: {Math.floor(badge.pointsPercentage)}% 
+                        ({points}/{badge.requiredPoints})
+                      </p>
                     )}
+                    
+                    {/* Show progress for installations requirement */}
+                    {badge.minInstallations > 0 && (
+                      <p className="text-xs text-center">
+                        التركيبات: {Math.floor(badge.installationsPercentage)}% 
+                        ({badge.installationCount || 0}/{badge.minInstallations})
+                      </p>
+                    )}
+                    
+                    {/* Show overall completion status */}
+                    <p className="text-xs text-center mt-1 font-semibold">
+                      الإكتمال: {Math.floor(badge.completionPercentage)}%
+                    </p>
+                    
                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
                   </div>
                 </div>

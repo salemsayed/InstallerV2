@@ -35,3 +35,30 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Increment Minor"
+mode = "sequential"
+author = 41019726
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/increment-version.js"
+
+[[workflows.workflow]]
+name = "Increment Major"
+mode = "sequential"
+author = 41019726
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/increment-version.js major"
+
+[[workflows.workflow]]
+name = "Increment Patch"
+mode = "sequential"
+author = 41019726
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/increment-version.js patch"
