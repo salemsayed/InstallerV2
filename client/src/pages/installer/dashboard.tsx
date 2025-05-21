@@ -76,7 +76,7 @@ export default function InstallerDashboard() {
       {/* Points Card */}
       <section className="px-4 mb-8">
         <PointsCard 
-          points={transactionsLoading ? user.points : pointsBalance} 
+          points={pointsBalance} 
           isLoading={transactionsLoading}
         />
       </section>
