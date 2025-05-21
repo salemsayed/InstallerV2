@@ -28,9 +28,11 @@ export default function InstallerProfile() {
   });
   
   // Calculate actual points balance from transactions (same as on stats page and dashboard)
-  // Filter transactions by type
-  const earningTransactions = transactionsData?.transactions?.filter(t => t.type === 'earning') || [];
-  const redemptionTransactions = transactionsData?.transactions?.filter(t => t.type === 'redemption') || [];
+  // Filter transactions by type - case insensitive match
+  const earningTransactions = transactionsData?.transactions?.filter(t => 
+    t.type.toLowerCase() === 'earning') || [];
+  const redemptionTransactions = transactionsData?.transactions?.filter(t => 
+    t.type.toLowerCase() === 'redemption') || [];
   
   // Calculate total earnings and redemptions
   const totalEarnings = earningTransactions.reduce((sum, t) => sum + t.amount, 0);

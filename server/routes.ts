@@ -1939,7 +1939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's installation count (transactions of type EARNING that have product installations)
       const transactions = await storage.getTransactionsByUserId(userId);
       const installationCount = transactions.filter(t => 
-        t.type === TransactionType.EARNING && 
+        (t.type === TransactionType.EARNING || t.type === 'earning') && 
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       ).length;
       
@@ -2032,8 +2032,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the transactions related to product scanning for this user
       const transactions = await storage.getTransactionsByUserId(userId);
       const scanTransactions = transactions.filter(t => 
-        t.type === TransactionType.EARNING && 
-        (t.description.includes("تم تركيب منتج") || t.description.includes("تركيب منتج جديد"))
+        (t.type === TransactionType.EARNING || t.type === 'earning') && 
+        (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       );
       
       return res.status(200).json({ 
