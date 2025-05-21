@@ -1288,8 +1288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const userId = req.session.userId;
-    // Use 10000 as default limit (effectively no limit) unless explicitly specified
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10000;
+    // Use 1 million as default limit to handle extremely high transaction volumes
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000000;
     
     try {
       const user = await storage.getUser(userId);
