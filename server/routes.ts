@@ -1865,11 +1865,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         console.log('Badge update successful:', JSON.stringify(updatedBadge));
-        return res.status(200).json({ 
+        
+        // Check if badge requirements changed (points or installations)
+        const requirementsChanged = 
+          badge.requiredPoints !== parsedRequiredPoints ||
+          badge.minInstallations !== parsedMinInstallations ||
+          badge.active !== parsedActive;
+        
+        // Prepare response object
+        const response = { 
           success: true, 
           message: "تم تحديث الشارة بنجاح",
-          badge: updatedBadge 
-        });
+          badge: updatedBadge,
+          recalculationNeeded: requirementsChanged 
+        };
+        
+        // Check if automatic recalculation was requested
+        if (requirementsChanged && req.query.autoRecalculate === 'true') {
+          console.log(`[BADGE SYSTEM] Badge #${badgeId} requirements changed, performing auto-recalculation`);
+          
+          try {
+            // Get all active installers
+            const users = await storage.listUsers();
+            const activeInstallers = users.filter(u => u.status === 'active' && u.role === 'installer');
+            
+            // Track statistics
+            let updatedCount = 0;
+            let unchangedCount = 0;
+            let errorCount = 0;
+            
+            // Process each eligible user
+            for (const user of activeInstallers) {
+              try {
+                // Force badge recalculation with new requirements
+                const result = await calculateUserBadgeQualifications(user.id, true);
+                
+                if (result.userUpdated) {
+                  updatedCount++;
+                } else {
+                  unchangedCount++;
+                }
+              } catch (recalcError) {
+                errorCount++;
+                console.error(`[ERROR] Failed to recalculate badges for user ${user.id}:`, recalcError);
+              }
+            }
+            
+            // Add recalculation results to response
+            response.recalculation = {
+              performed: true,
+              total: activeInstallers.length,
+              updated: updatedCount,
+              unchanged: unchangedCount,
+              errors: errorCount
+            };
+          } catch (recalcError) {
+            console.error('[ERROR] Failed to perform badge recalculation:', recalcError);
+            response.recalculation = {
+              performed: false,
+              error: "فشل في إعادة حساب المؤهلات"
+            };
+          }
+        }
+        
+        return res.status(200).json(response);
       } catch (dbError: any) {
         console.error('Database error during badge update:', dbError);
         return res.status(500).json({
@@ -2174,7 +2233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         productName,
         pointsAwarded,
         productDetails: localProduct,
-        newPoints: updatedUser?.points || dbUser.points + pointsAwarded,
+        newPoints: badgeResult.pointsBalance, // Use more accurate points balance from badge system
+        totalInstallations: badgeResult.installationCount, // Return accurate installation count
         newBadges: newBadges.length > 0 ? newBadges : undefined
       });
       
