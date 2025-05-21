@@ -201,15 +201,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       console.log("[AUTH] Logout initiated");
-      // Clear all client-side state first
+      
+      // Important: First clear all client-side state to prevent any auth loops
       setUser(null);
       localStorage.removeItem("user");
       
-      // Call the server to invalidate the session - use fetch directly to avoid 
-      // any issues with the apiRequest utility in the logout flow
+      // Stop the auto-refresh interval to prevent further auth checks
+      if (window._authRefreshInterval) {
+        clearInterval(window._authRefreshInterval);
+        window._authRefreshInterval = null;
+      }
+      
+      // Call the server to invalidate the session - use fetch directly
       const response = await fetch("/api/auth/logout", {
         method: "POST",
-        credentials: "include" // Important to include cookies
+        credentials: "include", // Include cookies for session
+        cache: "no-cache", // Prevent caching of the logout request
       });
       
       if (response.ok) {
@@ -217,14 +224,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.error("[AUTH] Error invalidating server session:", await response.text());
       }
+      
+      // Extra safety - clear any cookies by setting expired cookies
+      document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "bareeq.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      
     } catch (error) {
       console.error("[AUTH] Error during logout:", error);
     } finally {
-      // Redirect to login page
-      console.log("[AUTH] Redirecting to login page after logout");
-      
-      // Force reload the page to clear any lingering state
-      window.location.href = "/";
+      // Delay redirection slightly to ensure all cleanup is complete
+      setTimeout(() => {
+        console.log("[AUTH] Redirecting to login page after logout");
+        
+        // Force a full page reload to clear all state and JS memory
+        window.location.replace("/");
+      }, 300);
     }
   };
 
@@ -232,13 +246,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     
-    // Refresh user data every 2 seconds
-    const intervalId = setInterval(() => {
+    console.log("[AUTH] Setting up auto-refresh for user data");
+    
+    // Store interval ID in a global variable so we can clear it on logout
+    // We need to typeset the window object to access our custom property
+    const win = window as any;
+    
+    // Clear any existing refresh interval to prevent duplicates
+    if (win._authRefreshInterval) {
+      clearInterval(win._authRefreshInterval);
+    }
+    
+    // Refresh user data every 15 seconds (less aggressive to reduce network load)
+    win._authRefreshInterval = setInterval(() => {
       refreshUser();
-    }, 2000);
+    }, 15000);
     
     // Clean up interval on unmount
-    return () => clearInterval(intervalId);
+    return () => {
+      if (win._authRefreshInterval) {
+        clearInterval(win._authRefreshInterval);
+        win._authRefreshInterval = null;
+      }
+    };
   }, [user?.id]);
 
   return (
