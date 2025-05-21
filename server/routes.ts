@@ -494,7 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[SMS AUTH] Creating session for user ${user.id} (${user.name})`);
         
         try {
-          // Store essential user details
+          // Store essential user details - Important keys that must be set
           req.session.userId = user.id;
           req.session.userRole = user.role;
           
@@ -507,13 +507,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Generate a unique session ID for tracking and revocation
           req.session.sessionId = `sms_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
           
-          // Set session expiration (24 hours)
-          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours for better persistence
+          // Set session expiration (1 week) - longer for better persistence across environments
+          req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; 
           
-          // Re-check and force proper cookie settings for maximum compatibility
-          req.session.cookie.secure = false;
-          req.session.cookie.sameSite = 'none';
+          // CRITICAL: Set cookie settings for maximum cross-environment compatibility
+          // These settings must work in both development and production
+          req.session.cookie.secure = false; // Works everywhere
+          req.session.cookie.sameSite = 'lax'; // Most compatible setting
           req.session.cookie.path = '/';
+          req.session.cookie.httpOnly = true;
           
           // Save session with promise-based approach
           await new Promise<void>((resolve, reject) => {
@@ -527,6 +529,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               resolve();
             });
           });
+          
+          // Add a special header to maintain auth state across redirects
+          res.setHeader('X-Auth-Token', req.session.sessionId);
           
           console.log(`[SMS AUTH] Enhanced session created for user ${user.id} with session ID ${req.session.sessionId}`);
         } catch (sessionError) {

@@ -1,0 +1,50 @@
+chunk-RPCDYKBN.js?v=b5b444f2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+auth-provider.tsx:35 [AUTH] Initializing auth state
+auth-provider.tsx:42 [AUTH] Checking server session
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+(index):92 Scandit SDK modules loaded successfully
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
+auth-provider.tsx:84 [AUTH] No authentication found
+Iura6YBj_oCad4k1nzGBC5xM.woff2:1 
+            
+            
+           Failed to load resource: the server responded with a status of 404 ()
+queryClient.ts:49 [API] POST request to /api/auth/request-otp
+queryClient.ts:49 [API] POST request to /api/auth/verify-otp
+login-page.tsx:28 [LOGIN PAGE] Login success handler called with userId: 13 userRole: installer
+auth-provider.tsx:104 [AUTH] Login called with userId: 13 userRole: installer
+auth-provider.tsx:112 [AUTH] Attempt 1 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
+auth-provider.tsx:124 [AUTH] Attempt 1 failed with status 401
+login @ auth-provider.tsx:124
+auth-provider.tsx:112 [AUTH] Attempt 2 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
+auth-provider.tsx:124 [AUTH] Attempt 2 failed with status 401
+login @ auth-provider.tsx:124
+auth-provider.tsx:112 [AUTH] Attempt 3 to fetch user data
+/api/users/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
+auth-provider.tsx:124 [AUTH] Attempt 3 failed with status 401
+login @ auth-provider.tsx:124
+auth-provider.tsx:151 [AUTH] Error in login attempt 3: Error: Failed to fetch user data after 3 attempts
+    at login (auth-provider.tsx:126:19)
+    at async handleLoginSuccess (login-page.tsx:31:7)
+login @ auth-provider.tsx:151
+login-page.tsx:46 [LOGIN PAGE] Error in login success handler: Error: Failed to fetch user data after 3 attempts
+    at login (auth-provider.tsx:126:19)
+    at async handleLoginSuccess (login-page.tsx:31:7)
+handleLoginSuccess @ login-page.tsx:46
