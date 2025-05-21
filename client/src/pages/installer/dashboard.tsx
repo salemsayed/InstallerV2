@@ -15,10 +15,8 @@ export default function InstallerDashboard() {
   const queryClient = useQueryClient();
 
   // Fetch user's transactions with frequent refresh and higher limit
-  // No need to include userId in query as it's now derived from the session
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['/api/transactions', { limit: 100 }],
-    queryFn: () => apiRequest('GET', '/api/transactions?limit=100').then(res => res.json()),
+    queryKey: [`/api/transactions?userId=${user?.id}&limit=100`],
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,
@@ -28,10 +26,9 @@ export default function InstallerDashboard() {
   });
 
   // Fetch user's badges with frequent refresh
-  // userId now comes from session on the server
   const { data: badgesData, isLoading: badgesLoading } = useQuery({
-    queryKey: ['/api/badges'],
-    queryFn: () => apiRequest('GET', '/api/badges').then(res => res.json()),
+    queryKey: ['/api/badges', user?.id],
+    queryFn: () => apiRequest('GET', `/api/badges?userId=${user?.id}`).then(res => res.json()),
     enabled: !!user?.id,
     staleTime: 0,
     refetchOnMount: true,

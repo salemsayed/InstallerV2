@@ -10,7 +10,6 @@ import {
 import { z } from "zod";
 import { createTransport } from "nodemailer";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { NextFunction } from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import SMS service
@@ -24,45 +23,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
-  
-  // Enhanced auth middleware that ensures userId comes from the session
-  const secureUserAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session || typeof req.session.userId !== 'number') {
-      return res.status(401).json({ 
-        success: false, 
-        message: "غير مصرح. يرجى تسجيل الدخول." 
-      });
-    }
-    next();
-  };
-  
-  // Admin authorization middleware
-  const adminAuth = async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session || typeof req.session.userId !== 'number') {
-      return res.status(401).json({ 
-        success: false, 
-        message: "غير مصرح. يرجى تسجيل الدخول." 
-      });
-    }
-    
-    try {
-      const admin = await storage.getUser(req.session.userId);
-      
-      if (!admin || admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ 
-          success: false, 
-          message: "ليس لديك صلاحية للوصول إلى هذه البيانات." 
-        });
-      }
-      
-      next();
-    } catch (error) {
-      return res.status(500).json({ 
-        success: false, 
-        message: "حدث خطأ أثناء التحقق من الصلاحيات." 
-      });
-    }
-  };
   
   // Store active sessions for management and monitoring
   const activeSessions = new Map<string, {
@@ -506,10 +466,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // USER ROUTES
 
-  // Session management endpoints - secured with session-based auth
-  app.get("/api/auth/sessions", secureUserAuth, async (req: Request, res: Response) => {
-    // Only use userId from the session for security
-    const userId = req.session.userId as number;
+  // Session management endpoints
+  app.get("/api/auth/sessions", async (req: Request, res: Response) => {
+    // Get the userId from either the session or the query parameter for backward compatibility
+    const userId = req.session?.userId || parseInt(req.query.userId as string);
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     // Collect all sessions for the current user
     const userSessions = Array.from(activeSessions.entries())
@@ -599,10 +563,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Enhanced user information endpoint - secured with session-based auth
-  app.get("/api/users/me", secureUserAuth, async (req: Request, res: Response) => {
-    // Only use userId from the session for security
-    const userId = req.session.userId;
+  // Enhanced user information endpoint
+  app.get("/api/users/me", async (req: Request, res: Response) => {
+    // Support both session-based auth and query param for backward compatibility
+    const userId = req.session?.userId || parseInt(req.query.userId as string);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
       const user = await storage.getUser(userId);
@@ -645,9 +613,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ADMIN ROUTES
-  app.post("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
+  app.post("/api/admin/users", async (req: Request, res: Response) => {
+    // Check if the requester is an admin
+    const adminId = parseInt(req.query.userId as string);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
     try {
-      // Admin auth is already validated through the middleware
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
       
       // Validate and create user
       const userData = insertUserSchema.parse(req.body);
@@ -691,9 +670,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/admin/users", adminAuth, async (req: Request, res: Response) => {
+  app.get("/api/admin/users", async (req: Request, res: Response) => {
+    // Check if the requester is an admin
+    const adminId = parseInt(req.query.userId as string);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
     try {
-      // Admin auth is already validated through the middleware
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
       
       // Get all users
       const users = await storage.listUsers();
@@ -725,13 +715,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update user - secured with admin authentication
-  app.patch("/api/admin/users/:userId", adminAuth, async (req: Request, res: Response) => {
+  // Update user
+  app.patch("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
-    const adminId = req.session.userId as number; // Get admin ID from session for logging
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
-      // Admin auth is already validated through the middleware
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
       
       // Validate input data
       let { name, phone, region, status, points } = req.body;
@@ -780,13 +778,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete user - secured with admin authentication
-  app.delete("/api/admin/users/:userId", adminAuth, async (req: Request, res: Response) => {
+  // Delete user
+  app.delete("/api/admin/users/:userId", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
     const targetUserId = parseInt(req.params.userId);
-    const adminId = req.session.userId as number; // Get admin ID from session for logging
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
-      // Admin auth is already validated through the middleware
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
       
       // Check if user exists
       const targetUser = await storage.getUser(targetUserId);
@@ -828,12 +834,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/admin/points", adminAuth, async (req: Request, res: Response) => {
-    // Get admin ID from session for logging and tracking
-    const adminId = req.session.userId as number;
+  app.post("/api/admin/points", async (req: Request, res: Response) => {
+    // Check if the requester is an admin
+    const adminId = parseInt(req.query.userId as string);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
-      // Admin authentication is already validated through the middleware
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه الصفحة." });
+      }
       
       // Validate request
       const { userId, amount, activityType, description } = pointsAllocationSchema.parse(req.body);
@@ -869,12 +883,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // INSTALLER ROUTES
-  app.get("/api/transactions", secureUserAuth, async (req: Request, res: Response) => {
-    // Get userId from session for security
-    const userId = req.session.userId as number;
+  app.get("/api/transactions", async (req: Request, res: Response) => {
+    const userId = parseInt(req.query.userId as string);
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     
+    if (!userId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
+    
     try {
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
+      
       // Get user transactions with a higher limit
       const transactions = await storage.getTransactionsByUserId(userId, limit);
       
@@ -890,11 +913,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ADMIN TRANSACTIONS ENDPOINT - Gets all transactions
-  app.get("/api/admin/transactions", adminAuth, async (req: Request, res: Response) => {
-    // Get all transactions - need to add this method to storage
-    console.log("[DEBUG] Fetching all transactions for admin dashboard");
+  app.get("/api/admin/transactions", async (req: Request, res: Response) => {
+    const adminId = parseInt(req.query.userId as string);
+    
+    if (!adminId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
+      
+      // Verify this is an admin user
+      if (admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه البيانات." });
+      }
+      
+      // Get all transactions - need to add this method to storage
+      console.log("[DEBUG] Fetching all transactions for admin dashboard");
       const transactions = await storage.getAllTransactions();
       console.log(`[DEBUG] Found ${transactions.length} total transactions`);
       
@@ -908,11 +947,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
 
   
-  app.get("/api/badges", secureUserAuth, async (req: Request, res: Response) => {
-    const userId = req.session.userId as number;
+  app.get("/api/badges", async (req: Request, res: Response) => {
+    const userId = parseInt(req.query.userId as string);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    }
     
     try {
-      // User is already authenticated via middleware
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود." });
+      }
       
       // Get all badges
       const allBadges = await storage.listBadges(true);
@@ -920,12 +967,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's installation count (transactions of type EARNING that have product installations)
       // Use a high limit to get all transactions for proper badge calculations
       const transactions = await storage.getTransactionsByUserId(userId, 1000);
-      
-      // Get user to check badge status
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
       
       // Count installations - filter by product installation transactions only
       const installationTransactions = transactions.filter(t => 
@@ -999,10 +1040,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUser(userId, { badgeIds: user.badgeIds });
       }
       
-      // Mark which ones the user has (safely handle badgeIds array)
+      // Mark which ones the user has
       const badges = allBadges.map(badge => ({
         ...badge,
-        earned: user.badgeIds && Array.isArray(user.badgeIds) ? user.badgeIds.includes(badge.id) : false
+        earned: user.badgeIds.includes(badge.id)
       }));
       
       return res.status(200).json({ badges });
@@ -1013,9 +1054,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Admin Badge Management Routes
-  app.post("/api/admin/badges", adminAuth, async (req: Request, res: Response) => {
+  app.post("/api/admin/badges", async (req: Request, res: Response) => {
     try {
-      // Admin authentication already validated through middleware
+      const adminId = parseInt(req.query.userId as string);
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
       
       const { name, description, icon, requiredPoints, minInstallations, active } = req.body;
       
@@ -1048,7 +1097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/admin/badges/:id", adminAuth, async (req: Request, res: Response) => {
+  app.patch("/api/admin/badges/:id", async (req: Request, res: Response) => {
     try {
       console.log('========= BADGE UPDATE ENDPOINT START =========');
       console.log('Request body:', JSON.stringify(req.body));
@@ -1064,9 +1113,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Admin authentication is already validated by middleware
-      const adminId = req.session.userId as number;
+      const adminId = parseInt(req.query.userId as string);
+      if (isNaN(adminId)) {
+        console.error('Invalid admin ID:', req.query.userId);
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid admin ID format",
+          details: { userId: req.query.userId }
+        });
+      }
+      
       console.log(`Processing badge update: Badge ID ${badgeId}, Admin ID ${adminId}`);
+      
+      const admin = await storage.getUser(adminId);
+      if (!admin) {
+        console.error('Admin not found:', adminId);
+        return res.status(404).json({ 
+          success: false,
+          message: "Admin user not found" 
+        });
+      }
+      
+      if (admin.role !== UserRole.ADMIN) {
+        console.error('Non-admin attempted badge update:', admin);
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
       
       const badge = await storage.getBadge(badgeId);
       if (!badge) {
@@ -1201,12 +1275,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/admin/badges/:id", adminAuth, async (req: Request, res: Response) => {
+  app.delete("/api/admin/badges/:id", async (req: Request, res: Response) => {
     try {
       const badgeId = parseInt(req.params.id);
-      const adminId = req.session.userId as number; // Get admin ID from session for logging
+      const adminId = parseInt(req.query.userId as string);
+      const admin = await storage.getUser(adminId);
       
-      // Admin authentication already validated through the middleware
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false,
+          message: "ليس لديك صلاحية للقيام بهذه العملية" 
+        });
+      }
       
       const badge = await storage.getBadge(badgeId);
       
@@ -1254,18 +1334,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uuid: z.string().uuid({ message: "رمز QR غير صالح. يجب أن يكون UUID" })
   });
 
-  // QR code scanning endpoint - secured with session-based authentication
-  app.post("/api/scan-qr", secureUserAuth, async (req: Request, res: Response) => {
+  // QR code scanning endpoint - secured with basic authentication
+  app.post("/api/scan-qr", async (req: Request, res: Response) => {
     try {
       console.log("[DEBUG QR-SCAN] Request received:", {
+        query: req.query,
         body: req.body,
         headers: req.headers['user-agent']
       });
       
-      // Get user ID from session instead of query parameters for better security
-      const userId = req.session.userId as number;
+      // Get user ID from query parameters (this should be updated to use session authentication in production)
+      const userId = parseInt(req.query.userId as string);
       
-      console.log("[DEBUG QR-SCAN] UserId from session:", userId);
+      console.log("[DEBUG QR-SCAN] UserId from query:", userId);
+      
+      if (!userId) {
+        console.log("[DEBUG QR-SCAN] No userId provided in query parameters");
+        return res.status(401).json({ 
+          success: false, 
+          message: "غير مصرح. يرجى تسجيل الدخول.",
+          error_code: "UNAUTHORIZED" 
+        });
+      }
       
       // Validate the request body
       const validation = scanQrSchema.safeParse(req.body);

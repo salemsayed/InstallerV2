@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/auth-provider";
-import { apiRequest } from "@/lib/queryClient";
 import AdminLayout from "@/components/layouts/admin-layout";
 import OverviewCards from "@/components/admin/overview-cards";
 import UsersTable from "@/components/admin/users-table";
@@ -17,35 +16,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  
-  console.log("[admin] Current user state:", user);
-  console.log("[admin] User role:", user?.role);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Fetch users data - userId now derived from session on server
+  // Fetch users data
   const { 
     data: usersData, 
     isLoading: usersLoading,
-    error: usersError,
     refetch: refetchUsers
   } = useQuery({
-    queryKey: [`/api/admin/users`],
-    queryFn: async () => {
-      console.log("[admin] Fetching users data...");
-      const res = await apiRequest('GET', '/api/admin/users');
-      const data = await res.json();
-      console.log("[admin] Users data response:", data);
-      return data;
-    },
-    enabled: user?.role === "admin",
-    refetchInterval: 5000,
-    retry: 2,
-    onError: (error) => {
-      console.error("[admin] Error fetching users:", error);
-    }
+    queryKey: [`/api/admin/users?userId=${user?.id}`],
+    enabled: !!user?.id && user.role === "admin",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   // Fetch transactions data for ALL users (admin-specific endpoint)
@@ -54,8 +38,7 @@ export default function AdminDashboard() {
     isLoading: transactionsLoading,
     refetch: refetchTransactions 
   } = useQuery({
-    queryKey: [`/api/admin/transactions`],
-    queryFn: () => apiRequest('GET', '/api/admin/transactions').then(res => res.json()),
+    queryKey: [`/api/admin/transactions?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
@@ -72,14 +55,13 @@ export default function AdminDashboard() {
     enabled: !!user?.id && user.role === "admin",
   });
   
-  // Fetch badges data - userId now derived from session on server
+  // Fetch badges data
   const { 
     data: badgesData, 
     isLoading: badgesLoading,
     refetch: refetchBadges
   } = useQuery({
-    queryKey: [`/api/badges`],
-    queryFn: () => apiRequest('GET', '/api/badges').then(res => res.json()),
+    queryKey: [`/api/badges?userId=${user?.id}`],
     enabled: !!user?.id && user.role === "admin",
   });
 

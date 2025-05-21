@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import AdminLayout from "@/components/layouts/admin-layout";
 import UsersTable from "@/components/admin/users-table";
 import InviteForm from "@/components/admin/invite-form";
@@ -27,10 +26,9 @@ export default function AdminUsers() {
     selectedUserId: selectedUser?.id 
   });
 
-  // Fetch users with auto-refresh - userId now derived from session on server
+  // Fetch users with auto-refresh
   const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>({
-    queryKey: ['/api/admin/users'],
-    queryFn: () => apiRequest('GET', '/api/admin/users').then(res => res.json()),
+    queryKey: [`/api/admin/users?userId=${user?.id}`],
     enabled: !!user && user.role === "admin",
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });

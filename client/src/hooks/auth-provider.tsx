@@ -32,125 +32,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    const checkSession = async () => {
-      setIsLoading(true);
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
       try {
-        // First check if we're already authenticated with Replit
-        const authResponse = await fetch('/api/auth/check', { 
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Verify the user is still valid from the server
+        // This would check a session or token in a real app
+        apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.user) {
+              setUser(data.user);
+            } else {
+              // If user is not valid, clear local storage
+              localStorage.removeItem("user");
+              setUser(null);
+            }
+          })
+          .catch(() => {
+            // If error, assume token expired
+            localStorage.removeItem("user");
+            setUser(null);
+          });
+      } catch (e) {
+        localStorage.removeItem("user");
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
-        let authData;
-        try {
-          const text = await authResponse.text();
-          try {
-            authData = JSON.parse(text);
-          } catch (e) {
-            console.error('[auth] Response was not JSON:', text.substring(0, 100));
-            throw new Error('Invalid JSON response');
-          }
-        } catch (e) {
-          console.error('[auth] Failed to parse auth check response:', e);
-          setIsLoading(false);
-          setUser(null);
-          return;
-        }
-
-        if (!authResponse.ok || !authData.authenticated) {
-          console.error('[auth] Auth check failed:', authResponse.status, authData);
-          setIsLoading(false);
-          setUser(null);
-          return;
-        }
-
-        if (!authData?.authenticated) {
-          console.log('[auth] Not authenticated');
-          setIsLoading(false);
-          return;
-        }
-
-        // Then get user details
-        const response = await apiRequest("GET", `/api/users/me`);
-        if (!response.ok) {
-          throw new Error('Session invalid');
-        }
-
-        const data = await response.json();
+  const login = (userId: string, userRole: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Fetch user details
+    apiRequest("GET", `/api/users/me?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
         if (data.user) {
+          // Save user to state and localStorage
           setUser(data.user);
           localStorage.setItem("user", JSON.stringify(data.user));
         } else {
-          throw new Error('No user data');
+          setError("خطأ في جلب بيانات المستخدم");
         }
-      } catch (e) {
-        console.log('[auth] Session check failed:', e);
-        localStorage.removeItem("user");
-        setUser(null);
-      } finally {
+      })
+      .catch(error => {
+        setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    };
-
-    checkSession();
-  }, []);
-
-  const login = async (userId: string, userRole: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Clear any existing session data first
-      localStorage.removeItem("user");
-
-      // Fetch user details using session auth
-      const response = await apiRequest("GET", `/api/users/me`);
-      if (!response.ok) {
-        throw new Error("فشل تسجيل الدخول - يرجى المحاولة مرة أخرى");
-      }
-
-      const data = await response.json();
-      if (!data.user) {
-        throw new Error("خطأ في جلب بيانات المستخدم");
-      }
-
-      // Save user to state and localStorage
-      setUser(data.user);
-      localStorage.setItem("user", JSON.stringify(data.user));
-    } catch (error: any) {
-      console.error('[auth] Login error:', error);
-      setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+      });
   };
 
   const refreshUser = async (): Promise<void> => {
-    if (!user) {
-      console.log("[auth] No user in state, skipping refresh");
-      return;
-    }
-
+    if (!user) return;
+    
     try {
-      console.log("[auth] Refreshing user data...");
-      const response = await apiRequest("GET", `/api/users/me`);
-
-      if (!response.ok) {
-        console.log("[auth] Session expired or invalid, logging out");
-        logout();
-        return;
-      }
-
+      const response = await apiRequest("GET", `/api/users/me?userId=${user.id}`);
       const data = await response.json();
-      console.log("[auth] Server response:", data);
-
+      
       if (data.user) {
-        console.log("[auth] Updating user state with:", data.user);
         // Update user state with fresh data from server
         setUser(data.user);
         // Also update localStorage
@@ -171,12 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up auto-refresh for user data
   useEffect(() => {
     if (!user) return;
-
+    
     // Refresh user data every 2 seconds
     const intervalId = setInterval(() => {
       refreshUser();
     }, 2000);
-
+    
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, [user?.id]);

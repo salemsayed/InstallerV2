@@ -150,43 +150,6 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/auth/check", (req, res) => {
-    if (!req.headers.accept?.includes('application/json')) {
-      return res.status(400).json({ error: "Require JSON requests" });
-    }
-    
-    res.setHeader('Content-Type', 'application/json');
-    try {
-      const authenticated = req.isAuthenticated();
-      if (!authenticated) {
-        return res.status(401).json({ 
-          authenticated: false,
-          error: "Not authenticated"
-        });
-      }
-
-      const user = req.user as any;
-      if (!user) {
-        return res.status(401).json({
-          authenticated: false,
-          error: "No user data"
-        });
-      }
-
-      res.json({ 
-        authenticated: true,
-        userId: user.id,
-        claims: user.claims
-      });
-    } catch (error) {
-      console.error('[auth] Check error:', error);
-      res.status(401).json({ 
-        authenticated: false,
-        error: "Session validation failed"
-      });
-    }
-  });
-
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
       // Clear server-side session
@@ -204,42 +167,29 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  res.setHeader('Content-Type', 'application/json');
-  
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ 
-      success: false,
-      message: "غير مصرح. يرجى تسجيل الدخول." 
-    });
+  const user = req.user as any;
+
+  // Check if user exists and has required data instead of using isAuthenticated()
+  if (!user || !user?.claims) {
+    return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
   }
 
-  const user = req.user as any;
-  if (!user?.claims) {
-    return res.status(401).json({ 
-      success: false,
-      message: "جلسة غير صالحة. يرجى إعادة تسجيل الدخول." 
-    });
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return next();
+  }
+
+  const refreshToken = user.refresh_token;
+  if (!refreshToken) {
+    return res.redirect("/api/login");
   }
 
   try {
-    const now = Math.floor(Date.now() / 1000);
-    if (now > user.expires_at) {
-      const refreshToken = user.refresh_token;
-      if (!refreshToken) {
-        req.logout(() => {
-          res.status(401).json({ message: "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى." });
-        });
-        return;
-      }
-
-      const config = await getOidcConfig();
-      const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-      updateUserSession(user, tokenResponse);
-    }
-    next();
+    const config = await getOidcConfig();
+    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    updateUserSession(user, tokenResponse);
+    return next();
   } catch (error) {
-    req.logout(() => {
-      res.status(401).json({ message: "حدث خطأ في التحقق. يرجى تسجيل الدخول مرة أخرى." });
-    });
+    return res.redirect("/api/login");
   }
 };
