@@ -794,12 +794,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Method 1: Primary session-based authentication
       if (req.session && req.session.userId) {
         const userId = req.session.userId;
-        console.log(`[USER ME] Session-based auth for user ID: ${userId}`);
+        // Session-based authentication successful (removed debug log)
         
         const user = await storage.getUser(userId);
         
         if (!user) {
-          console.warn(`[USER ME] User ID ${userId} from session not found in database`);
+          // Warning: User ID from session not found in database (removed debug log)
           return res.status(404).json({ 
             success: false,
             message: "المستخدم غير موجود.",
@@ -848,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (tempUserId && typeof tempUserId === 'string') {
         try {
-          console.log(`[USER ME] Header-based auth attempt for user ID: ${tempUserId}`);
+          // Header-based auth attempt (debug log removed)
           const userId = parseInt(tempUserId);
           const user = await storage.getUser(userId);
           
