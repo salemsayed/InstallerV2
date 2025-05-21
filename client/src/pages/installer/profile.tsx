@@ -41,12 +41,20 @@ export default function InstallerProfile() {
   // Calculate actual points balance (earnings minus redemptions)
   const pointsBalance = totalEarnings - totalRedemptions;
   
-  // Get user badges
-  const userBadges = user?.badgeIds 
-    ? badgesData?.badges?.filter(badge => 
-        Array.isArray(user.badgeIds) && user.badgeIds.includes(badge.id)
-      ) 
-    : [];
+  // Get user badges - properly handle badge IDs from user object
+  const userBadgeIds = user?.badge_ids || [];
+  
+  // Convert to number array if it's a string (sometimes stored as JSON string in database)
+  const parsedBadgeIds = Array.isArray(userBadgeIds) 
+    ? userBadgeIds 
+    : (typeof userBadgeIds === 'string' 
+        ? JSON.parse(userBadgeIds) 
+        : []);
+  
+  // Filter badges to only those earned by user
+  const userBadges = badgesData?.badges?.filter(badge => 
+    parsedBadgeIds.includes(badge.id)
+  ) || [];
   
   // Handle logout
   const handleLogout = () => {
