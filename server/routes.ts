@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 import { createTransport } from "nodemailer";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { NextFunction } from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import SMS service
@@ -23,6 +24,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
+  
+  // Enhanced auth middleware that ensures userId comes from the session
+  const secureUserAuth = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول." 
+      });
+    }
+    next();
+  };
   
   // Store active sessions for management and monitoring
   const activeSessions = new Map<string, {
