@@ -565,12 +565,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Enhanced user information endpoint
   app.get("/api/users/me", async (req: Request, res: Response) => {
-    // Support both session-based auth and query param for backward compatibility
-    const userId = req.session?.userId || parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
+    // Get user ID from secure session only - removing query parameter for security
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول.",
+        error_code: "UNAUTHORIZED" 
+      });
     }
+    
+    const userId = req.session.userId;
     
     try {
       const user = await storage.getUser(userId);

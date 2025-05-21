@@ -38,9 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
-        // Verify the user is still valid from the server
-        // This would check a session or token in a real app
-        apiRequest("GET", `/api/users/me?userId=${parsedUser.id}`)
+        // Verify the user is still valid from the server using secure session
+        // The server will use the session cookie instead of query parameters
+        apiRequest("GET", `/api/users/me`)
           .then(res => res.json())
           .then(data => {
             if (data.user) {
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           })
           .catch(() => {
-            // If error, assume token expired
+            // If error, assume session expired
             localStorage.removeItem("user");
             setUser(null);
           });
