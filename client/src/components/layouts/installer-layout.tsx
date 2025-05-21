@@ -92,6 +92,11 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
         </button>
       </Link>
       
+      {/* Small Version Info Bar */}
+      <div className="fixed bottom-14 left-0 right-0 bg-gray-100 text-center py-1">
+        <VersionDisplay className="text-xs text-gray-500" />
+      </div>
+      
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
         <div className="w-1/4">
