@@ -17,6 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  
+  console.log("[admin] Current user state:", user);
+  console.log("[admin] User role:", user?.role);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -26,12 +29,23 @@ export default function AdminDashboard() {
   const { 
     data: usersData, 
     isLoading: usersLoading,
+    error: usersError,
     refetch: refetchUsers
   } = useQuery({
     queryKey: [`/api/admin/users`],
-    queryFn: () => apiRequest('GET', '/api/admin/users').then(res => res.json()),
+    queryFn: async () => {
+      console.log("[admin] Fetching users data...");
+      const res = await apiRequest('GET', '/api/admin/users');
+      const data = await res.json();
+      console.log("[admin] Users data response:", data);
+      return data;
+    },
     enabled: user?.role === "admin",
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchInterval: 5000,
+    retry: 2,
+    onError: (error) => {
+      console.error("[admin] Error fetching users:", error);
+    }
   });
 
   // Fetch transactions data for ALL users (admin-specific endpoint)

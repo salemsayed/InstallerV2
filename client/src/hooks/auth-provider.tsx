@@ -87,13 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async (): Promise<void> => {
-    if (!user) return;
+    if (!user) {
+      console.log("[auth] No user in state, skipping refresh");
+      return;
+    }
 
     try {
+      console.log("[auth] Refreshing user data...");
       const response = await apiRequest("GET", `/api/users/me`);
       const data = await response.json();
+      console.log("[auth] Server response:", data);
 
       if (data.user) {
+        console.log("[auth] Updating user state with:", data.user);
         // Update user state with fresh data from server
         setUser(data.user);
         // Also update localStorage
