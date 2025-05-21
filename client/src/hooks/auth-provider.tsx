@@ -107,10 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    setLocation("/");
+  const logout = async () => {
+    try {
+      // Call the server to invalidate the session
+      await apiRequest("POST", "/api/auth/logout");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      // Always clear local state even if server request fails
+      setUser(null);
+      localStorage.removeItem("user");
+      setLocation("/");
+    }
   };
 
   // Set up auto-refresh for user data

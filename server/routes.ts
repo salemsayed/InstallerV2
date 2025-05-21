@@ -24,6 +24,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API base URLs
   const WASAGE_API_BASE_URL = 'https://wasage.com/api/otp/';
   
+  // Add a logout endpoint
+  app.post("/api/auth/logout", (req, res) => {
+    // Destroy the session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Error destroying session:", err);
+        return res.status(500).json({ success: false, message: "Failed to logout" });
+      }
+      res.clearCookie("connect.sid");
+      return res.status(200).json({ success: true, message: "Logged out successfully" });
+    });
+  });
+  
   // Store active sessions for management and monitoring
   const activeSessions = new Map<string, {
     userId: number;
