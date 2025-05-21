@@ -24,16 +24,20 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  // Fixed session TTL - 1 week in seconds
-  const sessionTtl = 7 * 24 * 60 * 60;
+  // Fixed session TTL - 1 week in minutes
+  const sessionTtlMinutes = 7 * 24 * 60;
   const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Get the domain for cookie configuration
+  const domain = process.env.REPLIT_DOMAINS ? 
+    process.env.REPLIT_DOMAINS.split(',')[0] : undefined;
   
   // Use a consistent secret
   const sessionSecret = process.env.SESSION_SECRET || 
     (isDevelopment ? 'bareeq-dev-secret-key-do-not-use-in-production' : '');
     
-  if (isDevelopment && !process.env.SESSION_SECRET) {
-    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using fallback for development only.');
+  if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using fallback key which is insecure.');
   }
   
   // Create session store with PostgreSQL
@@ -41,15 +45,16 @@ export function getSession() {
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: true,
-    ttl: sessionTtl,
+    ttl: sessionTtlMinutes,
     tableName: "sessions",
   });
 
-  // Log session configuration (without exposing the secret)
+  // Log session configuration for debugging
   console.log('[SESSION CONFIG] Environment:', process.env.NODE_ENV);
-  console.log('[SESSION CONFIG] Cookie secure: false');
-  console.log('[SESSION CONFIG] Cookie sameSite: lax');
-  console.log('[SESSION CONFIG] Session TTL:', sessionTtl/60, 'minutes');
+  if (domain) console.log('[SESSION CONFIG] Domain:', domain);
+  console.log('[SESSION CONFIG] Cookie secure: false'); // False for both environments
+  console.log('[SESSION CONFIG] Cookie sameSite: lax'); // Lax is more compatible
+  console.log('[SESSION CONFIG] Session TTL:', sessionTtlMinutes, 'minutes');
 
   return session({
     secret: sessionSecret,
@@ -59,12 +64,13 @@ export function getSession() {
     name: 'bareeq.sid',
     cookie: {
       httpOnly: true,
-      secure: false, // Set to false for both environments to fix cross-domain issues
-      sameSite: 'lax', // Changed to lax for better browser compatibility
-      maxAge: sessionTtl * 1000, // Convert seconds to milliseconds
+      secure: false, // Set to false for both environments to ensure cookies work properly
+      sameSite: 'lax', // Using lax for better browser compatibility
+      maxAge: sessionTtlMinutes * 60 * 1000, // Convert minutes to milliseconds
       path: '/',
     },
-    proxy: true, // Trust the reverse proxy
+    // Essential for Replit's environment
+    proxy: true, // Trust reverse proxies
     rolling: true, // Refresh cookie expiration on each request
   });
 }
