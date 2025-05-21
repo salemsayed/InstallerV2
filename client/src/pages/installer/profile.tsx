@@ -105,36 +105,6 @@ export default function InstallerProfile() {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">الشارات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {badgesLoading ? (
-              <p className="text-center py-4">جاري التحميل...</p>
-            ) : userBadges?.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {userBadges.map(badge => (
-                  <div key={badge.id} className="flex items-center p-2 border rounded-lg">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/20 mr-2">
-                      <span className="material-icons text-accent">{badge.icon}</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{badge.name}</p>
-                      <p className="text-xs text-neutral-500">{badge.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <span className="material-icons text-neutral-400 text-2xl mb-2">emoji_events</span>
-                <p className="text-neutral-500">لا توجد شارات بعد. استمر في العمل الجيد للحصول على شارات!</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
         <Separator />
         
         <Button 
