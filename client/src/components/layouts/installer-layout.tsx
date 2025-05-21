@@ -38,7 +38,12 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="px-4 py-5 flex justify-between items-center">
-          <img src={arOnlyLogo} alt="بريق" className="h-10" />
+          <div className="flex items-center">
+            <img src={arOnlyLogo} alt="بريق" className="h-10" />
+            <div className="ml-2">
+              <VersionDisplay className="text-xs text-gray-400" />
+            </div>
+          </div>
           
           {/* Profile Button */}
           <DropdownMenu>
@@ -92,10 +97,7 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
         </button>
       </Link>
       
-      {/* Version Info Bar - Positioned above the navigation with higher visibility */}
-      <div className="fixed bottom-14 left-0 right-0 bg-primary/10 text-center py-1 shadow-inner z-10">
-        <VersionDisplay className="text-xs font-medium" />
-      </div>
+      {/* Remove the version bar above the navigation */}
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 flex items-center justify-around py-3 px-6">
