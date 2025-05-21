@@ -1,0 +1,88 @@
+client:495 [vite] connecting...
+client:618 [vite] connected.
+chunk-RPCDYKBN.js?v=b5b444f2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+(index):92 Scandit SDK modules loaded successfully
+auth-provider.tsx:57 [auth] Failed to parse auth check response: SyntaxError: Unexpected token '<', "
+<!DOCTYPE "... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at checkSession (auth-provider.tsx:55:27)
+checkSession @ auth-provider.tsx:57
+await in checkSession
+(anonymous) @ auth-provider.tsx:90
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=b5b444f2:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=b5b444f2:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=b5b444f2:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=b5b444f2:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=b5b444f2:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=b5b444f2:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=b5b444f2:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=b5b444f2:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=b5b444f2:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=b5b444f2:19432
+commitRoot @ chunk-RPCDYKBN.js?v=b5b444f2:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=b5b444f2:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=b5b444f2:18718
+workLoop @ chunk-RPCDYKBN.js?v=b5b444f2:197
+flushWork @ chunk-RPCDYKBN.js?v=b5b444f2:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=b5b444f2:384
+fonts.gstatic.com/s/tajawal/v9/Iura6YBj_oCad4k1nzGBC5xM.woff2:1 
+            
+            
+           GET https://fonts.gstatic.com/s/tajawal/v9/Iura6YBj_oCad4k1nzGBC5xM.woff2 net::ERR_ABORTED 404 (Not Found)
+queryClient.ts:33 
+            
+            
+           GET https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/api/users/me 401 (Unauthorized)
+apiRequest @ queryClient.ts:33
+login @ auth-provider.tsx:102
+handleLoginSuccess @ login-page.tsx:27
+onOTPSubmit @ phone-login-form.tsx:127
+await in onOTPSubmit
+(anonymous) @ chunk-4ROUXF3S.js?v=b5b444f2:1464
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=b5b444f2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=b5b444f2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=b5b444f2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=b5b444f2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=b5b444f2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=b5b444f2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=b5b444f2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=b5b444f2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=b5b444f2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=b5b444f2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=b5b444f2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=b5b444f2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=b5b444f2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=b5b444f2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=b5b444f2:5449
+auth-provider.tsx:116 [auth] Login error: Error: غير مصرح لك بالوصول. تحقق من بياناتك أو تواصل مع المسؤول.
+    at throwIfResNotOk (queryClient.ts:22:24)
+    at async apiRequest (queryClient.ts:40:3)
+    at async login (auth-provider.tsx:102:24)
+login @ auth-provider.tsx:116
+await in login
+handleLoginSuccess @ login-page.tsx:27
+onOTPSubmit @ phone-login-form.tsx:127
+await in onOTPSubmit
+(anonymous) @ chunk-4ROUXF3S.js?v=b5b444f2:1464
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=b5b444f2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=b5b444f2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=b5b444f2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=b5b444f2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=b5b444f2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=b5b444f2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=b5b444f2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=b5b444f2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=b5b444f2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=b5b444f2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=b5b444f2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=b5b444f2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=b5b444f2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=b5b444f2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=b5b444f2:5449
