@@ -58,7 +58,12 @@ export function SessionManagement() {
   });
 
   // Helper function to determine device icon based on user agent
-  const getDeviceIcon = (userAgent: string) => {
+  const getDeviceIcon = (userAgent?: string) => {
+    // Handle undefined or null userAgent
+    if (!userAgent) {
+      return <Laptop className="h-4 w-4 mx-1" />;
+    }
+    
     const isMobile = 
       userAgent.includes('Mobile') || 
       userAgent.includes('Android') || 

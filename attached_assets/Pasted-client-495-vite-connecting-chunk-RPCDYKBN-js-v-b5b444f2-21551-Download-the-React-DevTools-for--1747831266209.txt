@@ -1,0 +1,69 @@
+client:495 [vite] connecting...
+chunk-RPCDYKBN.js?v=b5b444f2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+VM13:21 Scandit SDK modules loaded successfully
+client:618 [vite] connected.
+Iura6YBj_oCad4k1nzGBC5xM.woff2:1 
+            
+            
+           Failed to load resource: the server responded with a status of 404 ()
+09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.
+auth-provider.tsx:103 User data refreshed: Object
+auth-provider.tsx:103 User data refreshed: Object
+auth-provider.tsx:103 User data refreshed: Object
+auth-provider.tsx:103 User data refreshed: Object
+session-management.tsx:63 Uncaught TypeError: Cannot read properties of undefined (reading 'includes')
+    at getDeviceIcon (session-management.tsx:63:17)
+    at session-management.tsx:119:20
+    at Array.map (<anonymous>)
+    at SessionManagement (session-management.tsx:116:23)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b5b444f2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=b5b444f2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=b5b444f2:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=b5b444f2:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=b5b444f2:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=b5b444f2:3733:39)
+session-management.tsx:63 Uncaught TypeError: Cannot read properties of undefined (reading 'includes')
+    at getDeviceIcon (session-management.tsx:63:17)
+    at session-management.tsx:119:20
+    at Array.map (<anonymous>)
+    at SessionManagement (session-management.tsx:116:23)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b5b444f2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=b5b444f2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=b5b444f2:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=b5b444f2:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=b5b444f2:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=b5b444f2:3733:39)
+chunk-RPCDYKBN.js?v=b5b444f2:14032 The above error occurred in the <SessionManagement> component:
+
+    at SessionManagement (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/src/components/account/session-management.tsx:29:21)
+    at div
+    at main
+    at div
+    at InstallerLayout (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/src/components/layouts/installer-layout.tsx:30:43)
+    at SettingsPage (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/src/pages/installer/settings.tsx:30:21)
+    at Route (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b5b444f2:338:16)
+    at Switch (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b5b444f2:394:17)
+    at Router
+    at AuthProvider (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/src/hooks/auth-provider.tsx:22:32)
+    at App
+    at Provider (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-E7IAXTU4.js?v=b5b444f2:38:15)
+    at TooltipProvider (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=b5b444f2:61:5)
+    at QueryClientProvider (https://09f2287c-3f7c-483b-b440-cbda7f987018-00-3caezgwhdskrd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=b5b444f2:2881:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=b5b444f2:14032
+chunk-RPCDYKBN.js?v=b5b444f2:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'includes')
+    at getDeviceIcon (session-management.tsx:63:17)
+    at session-management.tsx:119:20
+    at Array.map (<anonymous>)
+    at SessionManagement (session-management.tsx:116:23)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=b5b444f2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=b5b444f2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=b5b444f2:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=b5b444f2:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=b5b444f2:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=b5b444f2:19137:13)
