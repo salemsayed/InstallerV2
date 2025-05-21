@@ -116,16 +116,21 @@ export default function InstallerProfile() {
               <div className="grid grid-cols-2 gap-3">
                 {userBadges.map(badge => (
                   <div key={badge.id} className="flex items-center p-2 border rounded-lg">
-                    <span className="material-icons text-primary mr-2">{badge.icon}</span>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/20 mr-2">
+                      <span className="material-icons text-accent">{badge.icon}</span>
+                    </div>
                     <div>
-                      <p className="font-medium">{badge.name}</p>
+                      <p className="font-medium text-sm">{badge.name}</p>
                       <p className="text-xs text-neutral-500">{badge.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-center py-4 text-neutral-500">لا توجد شارات بعد. استمر في العمل الجيد للحصول على شارات!</p>
+              <div className="text-center py-4">
+                <span className="material-icons text-neutral-400 text-2xl mb-2">emoji_events</span>
+                <p className="text-neutral-500">لا توجد شارات بعد. استمر في العمل الجيد للحصول على شارات!</p>
+              </div>
             )}
           </CardContent>
         </Card>

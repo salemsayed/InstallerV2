@@ -90,7 +90,10 @@ export default function InstallerDashboard() {
       <section className="px-4 mb-8">
         <AchievementCard
           points={pointsBalance}
-          badges={badgesData?.badges ? badgesData.badges : []}
+          badges={badgesData?.badges ? badgesData.badges.map(badge => ({
+            ...badge,
+            installationCount: badgesData.installationCount || 0 // Add installation count to each badge
+          })) : []}
           isLoading={badgesLoading}
         />
       </section>
