@@ -853,7 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUser(userId);
           
           if (user) {
-            console.log(`[USER ME] Header-based auth successful for user ${userId} (${user.name})`);
+            // Header-based auth successful (debug log removed)
             
             // Create a proper session for this user to fix future requests
             if (req.session) {
@@ -867,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               });
               
-              console.log(`[USER ME] Created new session from header auth: ${req.session.sessionId}`);
+              // Created new session from header auth (debug log removed)
             }
             
             // Header-based authentication successful
@@ -886,7 +886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         } catch (error) {
-          console.error("[USER ME] Error in header-based auth:", error);
+          console.error("[Auth Error] Header-based auth failed:", error);
         }
       }
       
