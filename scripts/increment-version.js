@@ -74,6 +74,11 @@ function updateVersionFile() {
       // Add new entry to history (find the line before APP_VERSION)
       .replace(/(\/\/ v[\d.]+.+\n)(\n*export const APP_VERSION)/, `$1// ${newVersion} - Checkpoint created on ${timestamp}\n$2`);
     
+    // Add a message encouraging the user to add a descriptive comment
+    console.log('\nRemember to update the automatically added version history entry with a descriptive comment.');
+    console.log('For example: Change "Checkpoint created on..." to something meaningful like:');
+    console.log(`"${newVersion} - Added new user achievements" or "${newVersion} - Fixed QR code scanning issue"`);
+    
     // Write the updated content back to the file
     fs.writeFileSync(versionFilePath, updatedContent);
     console.log('Version file updated successfully!');
