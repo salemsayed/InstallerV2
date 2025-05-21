@@ -27,13 +27,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Enhanced auth middleware that ensures userId comes from the session
   const secureUserAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session || !req.session.userId) {
+    if (!req.session || typeof req.session.userId !== 'number') {
       return res.status(401).json({ 
         success: false, 
         message: "غير مصرح. يرجى تسجيل الدخول." 
       });
     }
     next();
+  };
+  
+  // Admin authorization middleware
+  const adminAuth = async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session || typeof req.session.userId !== 'number') {
+      return res.status(401).json({ 
+        success: false, 
+        message: "غير مصرح. يرجى تسجيل الدخول." 
+      });
+    }
+    
+    try {
+      const admin = await storage.getUser(req.session.userId);
+      
+      if (!admin || admin.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "ليس لديك صلاحية للوصول إلى هذه البيانات." 
+        });
+      }
+      
+      next();
+    } catch (error) {
+      return res.status(500).json({ 
+        success: false, 
+        message: "حدث خطأ أثناء التحقق من الصلاحيات." 
+      });
+    }
   };
   
   // Store active sessions for management and monitoring
@@ -575,14 +603,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Enhanced user information endpoint
-  app.get("/api/users/me", async (req: Request, res: Response) => {
-    // Support both session-based auth and query param for backward compatibility
-    const userId = req.session?.userId || parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+  // Enhanced user information endpoint - secured with session-based auth
+  app.get("/api/users/me", secureUserAuth, async (req: Request, res: Response) => {
+    // Only use userId from the session for security
+    const userId = req.session.userId;
     
     try {
       const user = await storage.getUser(userId);
@@ -895,21 +919,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // INSTALLER ROUTES
-  app.get("/api/transactions", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
+  app.get("/api/transactions", secureUserAuth, async (req: Request, res: Response) => {
+    // Get userId from session for security
+    const userId = req.session.userId as number;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
     
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
-    
     try {
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
-      
       // Get user transactions with a higher limit
       const transactions = await storage.getTransactionsByUserId(userId, limit);
       
@@ -925,27 +940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ADMIN TRANSACTIONS ENDPOINT - Gets all transactions
-  app.get("/api/admin/transactions", async (req: Request, res: Response) => {
-    const adminId = parseInt(req.query.userId as string);
-    
-    if (!adminId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+  app.get("/api/admin/transactions", adminAuth, async (req: Request, res: Response) => {
+    // Get all transactions - need to add this method to storage
+    console.log("[DEBUG] Fetching all transactions for admin dashboard");
     
     try {
-      const admin = await storage.getUser(adminId);
-      
-      if (!admin) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
-      
-      // Verify this is an admin user
-      if (admin.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "ليس لديك صلاحية للوصول إلى هذه البيانات." });
-      }
-      
-      // Get all transactions - need to add this method to storage
-      console.log("[DEBUG] Fetching all transactions for admin dashboard");
       const transactions = await storage.getAllTransactions();
       console.log(`[DEBUG] Found ${transactions.length} total transactions`);
       
@@ -959,19 +958,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
 
   
-  app.get("/api/badges", async (req: Request, res: Response) => {
-    const userId = parseInt(req.query.userId as string);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "غير مصرح. يرجى تسجيل الدخول." });
-    }
+  app.get("/api/badges", secureUserAuth, async (req: Request, res: Response) => {
+    const userId = req.session.userId as number;
     
     try {
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود." });
-      }
+      // User is already authenticated via middleware
       
       // Get all badges
       const allBadges = await storage.listBadges(true);
