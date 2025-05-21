@@ -1381,17 +1381,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Count installations - filter by product installation transactions only
       // Note: type might be stored as 'earning' (lowercase) in database
       const installationTransactions = transactions.filter(t => 
-        (t.type === TransactionType.EARNING || t.type === 'earning') && 
+        (t.type === TransactionType.EARNING || t.type.toLowerCase() === 'earning') && 
         (t.description?.includes("تم تركيب منتج") || t.description?.includes("تركيب منتج جديد"))
       );
       
-      // Filter for current month installations only
+      // Important: For badge qualification, we count ALL installations, not just current month
+      // This is for cumulative badges like "Golden Technician" that require 30 total installations
+      const installationCount = installationTransactions.length;
+      
+      // Keep track of current month installations separately (might be used for monthly badges)
       const now = new Date();
-      // In JavaScript, months are 0-indexed (0=January, 1=February, ..., 11=December)
       const currentMonth = now.getMonth(); 
       const currentYear = now.getFullYear();
       
-      // Count only current month installations for badge qualification
       const currentMonthInstallations = installationTransactions.filter(t => {
         const transactionDate = new Date(t.createdAt);
         const transactionMonth = transactionDate.getMonth();
@@ -1399,8 +1401,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         return (transactionMonth === currentMonth && transactionYear === currentYear);
       });
-      
-      const installationCount = currentMonthInstallations.length;
       
       // Initialize badgeIds array if it doesn't exist
       if (!user.badgeIds) {
