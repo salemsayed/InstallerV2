@@ -92,9 +92,9 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
         </button>
       </Link>
       
-      {/* Small Version Info Bar */}
-      <div className="fixed bottom-14 left-0 right-0 bg-gray-100 text-center py-1">
-        <VersionDisplay className="text-xs text-gray-500" />
+      {/* Version Info Bar - Positioned above the navigation with higher visibility */}
+      <div className="fixed bottom-14 left-0 right-0 bg-primary/10 text-center py-1 shadow-inner z-10">
+        <VersionDisplay className="text-xs font-medium" />
       </div>
       
       {/* Bottom Navigation */}
