@@ -1,10 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { getSession } from "./replitAuth";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add session middleware with PostgreSQL storage
+app.use(getSession());
 
 // List of fields that should be redacted in logs
 const SENSITIVE_FIELDS = [
