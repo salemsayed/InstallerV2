@@ -136,6 +136,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(data.user);
           localStorage.setItem("user", JSON.stringify(data.user));
           setIsLoading(false);
+
+          // Handle role-based redirection
+          if (data.user.role === 'ADMIN') {
+            setLocation('/admin/dashboard');
+          } else if (data.user.role === 'INSTALLER') {
+            setLocation('/installer/dashboard');
+          }
           return; // Success - exit the retry loop
         } else {
           console.warn(`[AUTH] User data not found in response on attempt ${attempt}`);
@@ -237,7 +244,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}; secure; samesite=none`;
       });
       
-      // Use setLocation instead of window.location.replace to prevent refresh
       setLocation("/auth/login");
     } catch (error) {
       console.error("[AUTH] Error during logout:", error);
