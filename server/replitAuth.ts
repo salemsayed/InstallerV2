@@ -24,19 +24,19 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-
-  // Fail fast if SESSION_SECRET is not set in production
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET must be set in production environment');
+  // Fixed session TTL - 1 week in seconds
+  const sessionTtl = 7 * 24 * 60 * 60;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Use a consistent secret
+  const sessionSecret = process.env.SESSION_SECRET || 
+    (isDevelopment ? 'bareeq-dev-secret-key-do-not-use-in-production' : '');
+    
+  if (isDevelopment && !process.env.SESSION_SECRET) {
+    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using fallback for development only.');
   }
-
-  // In development, warn but allow fallback
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (!sessionSecret) {
-    console.warn('⚠️ WARNING: SESSION_SECRET not set. Using a random secret for development only. This would be insecure in production.');
-  }
-
+  
+  // Create session store with PostgreSQL
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -45,36 +45,23 @@ export function getSession() {
     tableName: "sessions",
   });
 
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
-  // Create a consistent secret for the session
-  const finalSecret = sessionSecret || 
-    (isDevelopment ? 'dev-session-secret-bareeq-app-development-mode-only' : '');
-
-  // Get domain from REPLIT_DOMAINS
-  const domain = process.env.REPLIT_DOMAINS ? 
-    process.env.REPLIT_DOMAINS.split(',')[0] : undefined;
-
   // Log session configuration (without exposing the secret)
-  console.log(`[SESSION CONFIG] Environment: ${isDevelopment ? 'development' : 'production'}`);
-  console.log(`[SESSION CONFIG] Domain: ${domain || 'undefined'}`);
-  console.log(`[SESSION CONFIG] Cookie secure: ${!isDevelopment}`);
-  console.log(`[SESSION CONFIG] Cookie sameSite: none`);
-  console.log(`[SESSION CONFIG] Session TTL: ${sessionTtl/1000/60} minutes`);
+  console.log('[SESSION CONFIG] Environment:', process.env.NODE_ENV);
+  console.log('[SESSION CONFIG] Cookie secure: false');
+  console.log('[SESSION CONFIG] Cookie sameSite: lax');
+  console.log('[SESSION CONFIG] Session TTL:', sessionTtl/60, 'minutes');
 
   return session({
-    secret: finalSecret,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     name: 'bareeq.sid',
-    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: !isDevelopment,
-      sameSite: 'none',
-      maxAge: sessionTtl,
-      domain: domain,
+      secure: false, // Set to false for both environments to fix cross-domain issues
+      sameSite: 'lax', // Changed to lax for better browser compatibility
+      maxAge: sessionTtl * 1000, // Convert seconds to milliseconds
       path: '/',
     },
     proxy: true, // Trust the reverse proxy
