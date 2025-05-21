@@ -150,6 +150,11 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  app.get("/api/auth/check", (req, res) => {
+    const authenticated = req.isAuthenticated();
+    res.json({ authenticated });
+  });
+
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
       // Clear server-side session

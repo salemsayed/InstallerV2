@@ -35,13 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       setIsLoading(true);
       try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+        // First check if we're already authenticated with Replit
+        const authResponse = await fetch('/api/auth/check', { credentials: 'include' });
+        const authData = await authResponse.json();
+        
+        if (!authData.authenticated) {
+          setIsLoading(false);
+          return;
         }
 
-        // Always verify session with server
+        // Then get user details
         const response = await apiRequest("GET", `/api/users/me`);
         if (!response.ok) {
           throw new Error('Session invalid');
