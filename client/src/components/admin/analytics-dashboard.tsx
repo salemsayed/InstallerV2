@@ -174,22 +174,26 @@ export default function AnalyticsDashboard({ userId, isLoading = false }: Analyt
   const [activeChartTab, setActiveChartTab] = useState("installations");
   
   // Fetch transaction data with proper type checking
+  // Now using session-based authentication
   const { 
     data: transactionsData, 
     isLoading: transactionsLoading 
   } = useQuery<TransactionsResponse>({
-    queryKey: [`/api/admin/transactions?userId=${userId || 0}`],
-    enabled: !!userId,
+    queryKey: ['/api/admin/transactions'],
+    queryFn: () => fetch('/api/admin/transactions').then(res => res.json()),
+    enabled: true,
     refetchInterval: 5000,
   });
   
   // Fetch users data with proper type checking
+  // Now using session-based authentication
   const { 
     data: usersData, 
     isLoading: usersLoading 
   } = useQuery<UsersResponse>({
-    queryKey: [`/api/admin/users?userId=${userId || 0}`],
-    enabled: !!userId,
+    queryKey: ['/api/admin/users'],
+    queryFn: () => fetch('/api/admin/users').then(res => res.json()),
+    enabled: true,
     refetchInterval: 5000,
   });
   
