@@ -51,9 +51,22 @@ export default function InstallerLayout({ children, className, activeTab }: Inst
                 <span className="material-icons ml-2">account_circle</span>
                 <span>{user?.name}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={logout}>
-                <span className="material-icons ml-2">logout</span>
-                <span>تسجيل الخروج</span>
+              <DropdownMenuItem>
+                <a 
+                  href="/?force_logout=true" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Clear all local storage first
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    // Then navigate directly to server logout endpoint
+                    window.location.href = "/auth/logout?t=" + Date.now();
+                  }}
+                  className="flex items-center w-full"
+                >
+                  <span className="material-icons ml-2">logout</span>
+                  <span>تسجيل الخروج</span>
+                </a>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
