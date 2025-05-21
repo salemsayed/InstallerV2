@@ -47,25 +47,37 @@ export function getSession() {
   
   const isDevelopment = process.env.NODE_ENV === 'development';
   
+  // Create a consistent secret for the session
+  const finalSecret = sessionSecret || 
+    (isDevelopment ? 'dev-session-secret-bareeq-app-development-mode-only' : '');
+    
+  // Log session configuration (without exposing the secret)
+  console.log(`[SESSION CONFIG] Environment: ${isDevelopment ? 'development' : 'production'}`);
+  console.log(`[SESSION CONFIG] Cookie secure: false`);
+  console.log(`[SESSION CONFIG] Cookie sameSite: none`);
+  console.log(`[SESSION CONFIG] Session TTL: ${sessionTtl/1000/60} minutes`);
+    
   return session({
-    secret: sessionSecret || (isDevelopment ? Math.random().toString(36).substring(2, 15) : ''),
+    secret: finalSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: 'bareeq.sid', // Custom name to avoid conflicts
     cookie: {
       httpOnly: true,
-      // In deployed environments, cookies need to work in iframe context
-      // Use secure=false to ensure cookies work in both HTTP and HTTPS
+      // Use secure=false for compatibility with both HTTP and HTTPS in Replit
       secure: false,
-      // Use 'none' for cross-site iframe usage in Replit deployment
+      // Use 'none' for cross-domain compatibility in deployment
       sameSite: 'none',
       maxAge: sessionTtl,
-      // Make sure the cookie is accessible from all subdomains
+      // Domain setting for cross-subdomain support
       domain: process.env.REPLIT_DOMAINS ? 
         (process.env.REPLIT_DOMAINS.split(',')[0] || undefined) : 
         undefined,
+      path: '/', // Ensure cookie is sent with all requests
     },
-    proxy: true, // Trust the reverse proxy when setting secure cookies
+    proxy: true, // Trust the reverse proxy
+    rolling: true, // Refresh cookie expiration on each request
   });
 }
 

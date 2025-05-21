@@ -119,15 +119,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // Call the server to invalidate the session
-      await apiRequest("POST", "/api/auth/logout");
-    } catch (error) {
-      console.error("Error during logout:", error);
-    } finally {
-      // Always clear local state even if server request fails
+      console.log("[AUTH] Logout initiated");
+      // Clear all client-side state first
       setUser(null);
       localStorage.removeItem("user");
-      setLocation("/");
+      
+      // Call the server to invalidate the session - use fetch directly to avoid 
+      // any issues with the apiRequest utility in the logout flow
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include" // Important to include cookies
+      });
+      
+      if (response.ok) {
+        console.log("[AUTH] Server session invalidated successfully");
+      } else {
+        console.error("[AUTH] Error invalidating server session:", await response.text());
+      }
+    } catch (error) {
+      console.error("[AUTH] Error during logout:", error);
+    } finally {
+      // Redirect to login page
+      console.log("[AUTH] Redirecting to login page after logout");
+      
+      // Force reload the page to clear any lingering state
+      window.location.href = "/";
     }
   };
 

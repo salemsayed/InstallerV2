@@ -26,13 +26,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Add a logout endpoint
   app.post("/api/auth/logout", (req, res) => {
+    console.log("[LOGOUT] Logout request received", {
+      hasSession: !!req.session,
+      sessionId: req.session?.sessionId || 'none',
+      userId: req.session?.userId || 'none'
+    });
+    
     // Destroy the session
     req.session.destroy((err) => {
       if (err) {
-        console.error("Error destroying session:", err);
+        console.error("[LOGOUT ERROR]", err);
         return res.status(500).json({ success: false, message: "Failed to logout" });
       }
+      
+      // Clear both the old and new cookie names
       res.clearCookie("connect.sid");
+      res.clearCookie("bareeq.sid");
+      
+      console.log("[LOGOUT] Session destroyed and cookies cleared");
       return res.status(200).json({ success: true, message: "Logged out successfully" });
     });
   });
@@ -298,27 +309,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Enhanced session management
+      // Enhanced session management - Create a robust session for the WhatsApp login flow
       if (req.session) {
-        // Store essential user details
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+        console.log(`[WASAGE AUTH] Creating session for user ${user.id} (${user.name})`);
         
-        // Add security-related metadata
-        req.session.createdAt = new Date().toISOString();
-        req.session.lastActive = new Date().toISOString();
-        req.session.ipAddress = req.ip || req.socket.remoteAddress;
-        req.session.userAgent = req.headers['user-agent'];
-        
-        // Generate a unique session ID for tracking and revocation
-        req.session.sessionId = `wasage_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-        
-        // Set session expiration (8 hours)
-        req.session.cookie.maxAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-        
-        // Save session
-        await req.session.save();
-        console.log(`[DEBUG WASAGE CALLBACK] Enhanced session created for user ${user.id} with ID ${req.session.sessionId}`);
+        try {
+          // Store essential user details
+          req.session.userId = user.id;
+          req.session.userRole = user.role;
+          
+          // Add security-related metadata
+          req.session.createdAt = new Date().toISOString();
+          req.session.lastActive = new Date().toISOString();
+          req.session.ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+          req.session.userAgent = req.headers['user-agent'] || 'unknown';
+          
+          // Generate a unique session ID for tracking and revocation
+          req.session.sessionId = `wasage_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+          
+          // Set session expiration (24 hours)
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours for better persistence
+          
+          // Re-check and force proper cookie settings for maximum compatibility
+          req.session.cookie.secure = false;
+          req.session.cookie.sameSite = 'none';
+          req.session.cookie.path = '/';
+          
+          // Save session - use promises for reliable async handling
+          await new Promise<void>((resolve, reject) => {
+            req.session.save((err) => {
+              if (err) {
+                console.error(`[WASAGE AUTH ERROR] Failed to save session:`, err);
+                reject(err);
+                return;
+              }
+              console.log(`[WASAGE AUTH] Session saved successfully with ID ${req.session.sessionId}`);
+              resolve();
+            });
+          });
+          
+          console.log(`[WASAGE AUTH] Enhanced session created for user ${user.id} with session ID ${req.session.sessionId}`);
+        } catch (sessionError) {
+          console.error(`[WASAGE AUTH ERROR] Session creation error:`, sessionError);
+        }
+      } else {
+        console.error(`[WASAGE AUTH ERROR] No session object available for WhatsApp auth`);
       }
       
       return res.json({ 
@@ -429,27 +464,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Enhanced session management - same as WhatsApp authentication
+      // Enhanced session management with improved robustness for SMS login flow
       if (req.session) {
-        // Store essential user details
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+        console.log(`[SMS AUTH] Creating session for user ${user.id} (${user.name})`);
         
-        // Add security-related metadata
-        req.session.createdAt = new Date().toISOString();
-        req.session.lastActive = new Date().toISOString();
-        req.session.ipAddress = req.ip || req.socket.remoteAddress;
-        req.session.userAgent = req.headers['user-agent'];
-        
-        // Generate a unique session ID for tracking and revocation
-        req.session.sessionId = `sms_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-        
-        // Set session expiration (8 hours)
-        req.session.cookie.maxAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-        
-        // Save session
-        await req.session.save();
-        console.log(`[DEBUG SMS AUTH] Enhanced session created for user ${user.id} with ID ${req.session.sessionId}`);
+        try {
+          // Store essential user details
+          req.session.userId = user.id;
+          req.session.userRole = user.role;
+          
+          // Add security-related metadata
+          req.session.createdAt = new Date().toISOString();
+          req.session.lastActive = new Date().toISOString();
+          req.session.ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+          req.session.userAgent = req.headers['user-agent'] || 'unknown';
+          
+          // Generate a unique session ID for tracking and revocation
+          req.session.sessionId = `sms_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+          
+          // Set session expiration (24 hours)
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours for better persistence
+          
+          // Re-check and force proper cookie settings for maximum compatibility
+          req.session.cookie.secure = false;
+          req.session.cookie.sameSite = 'none';
+          req.session.cookie.path = '/';
+          
+          // Save session with promise-based approach
+          await new Promise<void>((resolve, reject) => {
+            req.session.save((err) => {
+              if (err) {
+                console.error(`[SMS AUTH ERROR] Failed to save session:`, err);
+                reject(err);
+                return;
+              }
+              console.log(`[SMS AUTH] Session saved successfully with ID ${req.session.sessionId}`);
+              resolve();
+            });
+          });
+          
+          console.log(`[SMS AUTH] Enhanced session created for user ${user.id} with session ID ${req.session.sessionId}`);
+        } catch (sessionError) {
+          console.error(`[SMS AUTH ERROR] Session creation error:`, sessionError);
+        }
+      } else {
+        console.error(`[SMS AUTH ERROR] No session object available for SMS auth`);
       }
       
       return res.json({
