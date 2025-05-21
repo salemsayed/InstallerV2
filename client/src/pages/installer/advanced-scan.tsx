@@ -265,43 +265,17 @@ export default function AdvancedScanPage() {
         
         await camera.switchToDesiredState(FrameSourceState.On);
 
-        /* Configure barcode capture with optimized settings */
+        /* Capture only QR codes with optimized settings */
         const settings = new BarcodeCaptureSettings();
+        settings.enableSymbologies([Symbology.QR]);
         
-        // Enable QR codes and additional barcode formats with maximum sensitivity
-        settings.enableSymbologies([
-          Symbology.QR,
-          Symbology.DATA_MATRIX,  // Enable more industrial QR code variants
-          Symbology.AZTEC,        // Similar to QR but sometimes used in ticketing
-          Symbology.PDF417        // Used in some IDs and shipping labels
-        ]);
-        
-        // Add advanced settings for all barcode types
-        settings.setProperty("barcodeCapture.maxNumberOfCodesInFrame", 5);  // Allow detecting multiple codes at once
-        settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);    // Ensure the 500ms filter setting is applied
-        
-        // Set global scanning properties to maximum sensitivity
-        settings.setProperty("barcodeCapture.decodingSpeed", 1.0);            // Best performance (0.0-1.0 scale)
-        settings.setProperty("barcodeCapture.minimumTextContrastRatio", 1.5); // Lower global contrast threshold
-        
-        // Try to set symbology-specific settings for higher sensitivity
-        try {
-          const qrSettings = settings.settingsForSymbology(Symbology.QR);
-          if (qrSettings) {
-            // Increase sensitivity if the API allows it
-            if (qrSettings.setProperty) {
-              qrSettings.setProperty("minContrastRatio", 0);      // Minimum contrast requirements
-              qrSettings.setProperty("maxCornerRoundness", 100);  // Allow more rounded QR corners
-              qrSettings.setProperty("active", true);             // Ensure QR scanning is active
-            }
-          }
-        } catch (err) {
-          console.log("Could not adjust QR code specific settings", err);
-        }
-        
-        // Use full screen scanning (no location restriction)
-        // This will allow QR codes to be detected anywhere in the camera view
-        // Note: We'll keep the visual guidance overlay for user orientation
+        // Optimization 1: Rectangular location selection (focused scan area)
+        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
+        const heightToWidth = 1; // Square finder
+        const locationSelection = RectangularLocationSelection.withWidthAndAspectRatio(
+          width, heightToWidth
+        );
+        settings.locationSelection = locationSelection;
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
         // Try different possible locations of ScanIntention based on Scandit's structure
