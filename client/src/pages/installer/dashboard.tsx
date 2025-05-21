@@ -64,6 +64,12 @@ export default function InstallerDashboard() {
   
   // Calculate actual points balance (earnings minus redemptions)
   const pointsBalance = totalEarnings - totalRedemptions;
+  
+  // Add debugging to help us understand what's happening with the data
+  console.log(`[POINTS DEBUG] User ID: ${user.id}, Name: ${user.name}`);
+  console.log(`[POINTS DEBUG] User.points from server: ${user.points}`);
+  console.log(`[POINTS DEBUG] Transactions count: ${transactions.length}`);
+  console.log(`[POINTS DEBUG] Calculated points: ${pointsBalance}`);
 
   return (
     <InstallerLayout>
