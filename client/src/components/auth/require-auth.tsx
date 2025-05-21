@@ -12,7 +12,7 @@ interface RequireAuthProps {
 
 export function RequireAuth({ children, role }: RequireAuthProps) {
   const { user, isLoading, refreshUser } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   // Force a refresh of user data when the component mounts
   useEffect(() => {
@@ -23,6 +23,13 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
   const isAuthenticated = !!user;
   const hasRequiredRole = role ? user?.role === role : true;
 
+  // Redirect to login page if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setLocation('/');
+    }
+  }, [isLoading, isAuthenticated, setLocation]);
+
   // If still loading, show a loading spinner
   if (isLoading) {
     return (
@@ -32,42 +39,47 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
     );
   }
 
-  // If authenticated and has required role, render children
-  if (isAuthenticated && hasRequiredRole) {
-    return <>{children}</>;
+  // If not authenticated, don't render anything as we're redirecting
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
-  // If not authenticated or doesn't have required role, show error message
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-neutral-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img src={arOnlyLogo} alt="بريق" className="h-16" />
-          </div>
-          <CardTitle className="text-xl">يجب تسجيل الدخول</CardTitle>
-          <CardDescription>
-            {!isAuthenticated 
-              ? 'لم يتم تسجيل دخولك. يرجى تسجيل الدخول للوصول إلى هذه الصفحة.'
-              : 'ليس لديك الصلاحيات الكافية للوصول إلى هذه الصفحة.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center">
-            {!isAuthenticated 
-              ? 'جلسة تسجيل الدخول الخاصة بك انتهت أو قمت بالوصول مباشرة إلى صفحة محمية.'
-              : 'حسابك ليس لديه الصلاحيات المطلوبة لعرض هذه الصفحة.'}
-          </p>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button
-            className="w-full"
-            onClick={() => setLocation('/')}
-          >
-            العودة إلى صفحة تسجيل الدخول
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
-  );
+  // If authenticated but wrong role, show error message
+  if (!hasRequiredRole) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-neutral-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <img src={arOnlyLogo} alt="بريق" className="h-16" />
+            </div>
+            <CardTitle className="text-xl">خطأ في الصلاحيات</CardTitle>
+            <CardDescription>
+              ليس لديك الصلاحيات الكافية للوصول إلى هذه الصفحة.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground text-center">
+              حسابك ليس لديه الصلاحيات المطلوبة لعرض هذه الصفحة.
+            </p>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button
+              className="w-full"
+              onClick={() => setLocation('/')}
+            >
+              العودة إلى صفحة تسجيل الدخول
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // If authenticated and has required role, render children
+  return <>{children}</>;
 }
