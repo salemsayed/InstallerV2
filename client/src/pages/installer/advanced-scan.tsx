@@ -268,8 +268,21 @@ export default function AdvancedScanPage() {
         /* Configure barcode capture with optimized settings */
         const settings = new BarcodeCaptureSettings();
         
-        // Enable QR codes with maximum sensitivity
-        settings.enableSymbologies([Symbology.QR]);
+        // Enable QR codes and additional barcode formats with maximum sensitivity
+        settings.enableSymbologies([
+          Symbology.QR,
+          Symbology.DATA_MATRIX,  // Enable more industrial QR code variants
+          Symbology.AZTEC,        // Similar to QR but sometimes used in ticketing
+          Symbology.PDF417        // Used in some IDs and shipping labels
+        ]);
+        
+        // Add advanced settings for all barcode types
+        settings.setProperty("barcodeCapture.maxNumberOfCodesInFrame", 5);  // Allow detecting multiple codes at once
+        settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);    // Ensure the 500ms filter setting is applied
+        
+        // Set global scanning properties to maximum sensitivity
+        settings.setProperty("barcodeCapture.decodingSpeed", 1.0);            // Best performance (0.0-1.0 scale)
+        settings.setProperty("barcodeCapture.minimumTextContrastRatio", 1.5); // Lower global contrast threshold
         
         // Try to set symbology-specific settings for higher sensitivity
         try {
@@ -277,7 +290,9 @@ export default function AdvancedScanPage() {
           if (qrSettings) {
             // Increase sensitivity if the API allows it
             if (qrSettings.setProperty) {
-              qrSettings.setProperty("minContrastRatio", 2); // Lower contrast threshold
+              qrSettings.setProperty("minContrastRatio", 0);      // Minimum contrast requirements
+              qrSettings.setProperty("maxCornerRoundness", 100);  // Allow more rounded QR corners
+              qrSettings.setProperty("active", true);             // Ensure QR scanning is active
             }
           }
         } catch (err) {
