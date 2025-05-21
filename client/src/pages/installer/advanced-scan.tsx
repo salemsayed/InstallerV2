@@ -269,6 +269,10 @@ export default function AdvancedScanPage() {
         const settings = new BarcodeCaptureSettings();
         settings.enableSymbologies([Symbology.QR]);
         
+        // Enable inverted color scanning (white QR on black background)
+        const qrSettings = settings.settingsForSymbology(Symbology.QR);
+        qrSettings.isColorInvertedEnabled = true;
+        
         // Optimization 1: Rectangular location selection (focused scan area)
         const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
         const heightToWidth = 1; // Square finder
