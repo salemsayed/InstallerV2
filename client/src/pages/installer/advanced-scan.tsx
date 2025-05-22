@@ -4,6 +4,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
 import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } from "lucide-react";
+// NEW ───────────────
+import {
+  LabelCapture,
+  LabelCaptureSettings,
+  LabelDefinition,
+  labelCaptureLoader,
+} from "@scandit/web-datacapture-label";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
@@ -65,7 +72,7 @@ export default function AdvancedScanPage() {
   // References to context and capture objects
   const contextRef = useRef<any>(null);
   const captureRef = useRef<any>(null); // Reference for barcode capture
-  const textCaptureRef = useRef<any>(null); // Reference for text capture
+  const labelCaptureRef = useRef<any>(null); // Smart-Label capture
   
   // Timers for auto-switching between modes
   const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -516,186 +523,36 @@ export default function AdvancedScanPage() {
     }
   };
 
-  // Function to switch between scanner modes
+  // Function to switch between scanner modes - simplified with direct enable/disable toggles
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
-    try {
-      // Clear any existing auto-switch timer
-      if (modeTimerRef.current) {
-        clearTimeout(modeTimerRef.current);
-        modeTimerRef.current = null;
+    // Clear any existing auto-switch timer
+    if (modeTimerRef.current) clearTimeout(modeTimerRef.current);
+    
+    console.log(`[SCANNER_MODE] Switching from ${scannerMode} to ${mode} mode`);
+    
+    setScannerMode(mode);
+    
+    if (mode === "qr") {
+      setStatusMessage("جارٍ البحث عن رمز QR...");
+      captureRef.current?.setEnabled(true);
+      labelCaptureRef.current?.setEnabled(false);
+      
+      if (autoSwitchEnabled) {
+        console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to OCR mode");
+        modeTimerRef.current = setTimeout(() => switchScannerMode("ocr"), 10000);
       }
+    } else {
+      setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
+      captureRef.current?.setEnabled(false);
+      labelCaptureRef.current?.setEnabled(true);
       
-      console.log(`[SCANNER_MODE] Switching from ${scannerMode} to ${mode} mode`);
-      
-      // Set new mode and update status message
-      setScannerMode(mode);
-      
-      try {
-        // Simply log mode change - we'll work with direct settings references
-        console.log(`[SCANNER_MODE] Processing mode switch to ${mode}`);
-      } catch (e) {
-        console.error("[SCANNER_MODE] Error in switch setup:", e);
+      if (autoSwitchEnabled) {
+        console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to QR mode");
+        modeTimerRef.current = setTimeout(() => switchScannerMode("qr"), 10000);
       }
-      
-      if (mode === 'qr') {
-        setStatusMessage("جارٍ البحث عن رمز QR...");
-        
-        // Apply QR settings to barcode capture
-        if (captureRef.current) {
-          console.log("[SCANNER_MODE] Switching to QR settings");
-          
-          try {
-            // Get existing settings
-            const currentSettings = captureRef.current.settings;
-            
-            // Reset the symbologies
-            currentSettings.enableSymbologies([]);
-            
-            // Get the Scandit barcode module directly from the global scope
-            const barcodeModule = window.ScanditSDK?.barcode;
-            
-            // Enable only QR code detection using the proper approach
-            if (barcodeModule && barcodeModule.Symbology && barcodeModule.Symbology.QR !== undefined) {
-              // Using the right symbology enum from the module
-              currentSettings.enableSymbologies([barcodeModule.Symbology.QR]);
-              console.log("[SCANNER_MODE] Enabled QR symbology using enum");
-              
-              // Enable inverted colors using the proper enum
-              const symbologySettings = currentSettings.settingsForSymbology(barcodeModule.Symbology.QR);
-              if (symbologySettings) {
-                symbologySettings.isColorInvertedEnabled = true;
-                console.log("[SCANNER_MODE] Set inversion for QR detection");
-              }
-            } else {
-              // Fallback to use numeric value in case the enum isn't accessible
-              console.log("[SCANNER_MODE] Using numeric value for QR code (0)");
-              currentSettings.enableSymbologies([0]); // QR is usually 0
-            }
-            
-            // Apply these settings
-            captureRef.current.applySettings(currentSettings)
-              .then(() => captureRef.current.setEnabled(true))
-              .catch((err: any) => console.error("[SCANNER_MODE] Error applying QR settings:", err));
-          } catch (err) {
-            console.error("[SCANNER_MODE] Error in QR mode setup:", err);
-          }
-        }
-        
-        // Set timer to auto-switch to OCR mode if enabled
-        if (autoSwitchEnabled) {
-          console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to OCR mode");
-          modeTimerRef.current = setTimeout(() => {
-            console.log("[SCANNER_MODE] Auto-switching to OCR mode after 10s without QR detection");
-            switchScannerMode('ocr');
-          }, 10000);
-        }
-      } else {
-        setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
-        
-        // Apply improved OCR settings to detect printed alphanumeric codes
-        if (captureRef.current) {
-          console.log("[SCANNER_MODE] Switching to OCR settings");
-          
-          try {
-            // Special handling for alphanumeric printed codes (like A1B2C3)
-            // Use a combination of specific barcode types optimized for text-like content
-            
-            // Reset and apply OCR-optimized settings
-            const currentSettings = captureRef.current.settings;
-            currentSettings.enableSymbologies([]);
-            
-            // Get the Scandit barcode module directly from the global scope
-            const barcodeModule = window.ScanditSDK?.barcode;
-            
-            if (barcodeModule && barcodeModule.Symbology) {
-              // Enable multiple symbologies to increase chance of detecting alphanumeric codes
-              // Code39 and Code128 are excellent for alphanumeric content
-              const symbolsToEnable = [];
-              
-              // Access symbologies directly from the barcode module
-              const { Symbology } = barcodeModule;
-              
-              if (Symbology.Code39 !== undefined) symbolsToEnable.push(Symbology.Code39);
-              if (Symbology.Code128 !== undefined) symbolsToEnable.push(Symbology.Code128);
-              if (Symbology.DataMatrix !== undefined) symbolsToEnable.push(Symbology.DataMatrix);
-              
-              console.log("[SCANNER_MODE] OCR mode - enabling symbologies:", symbolsToEnable);
-              
-              if (symbolsToEnable.length > 0) {
-                currentSettings.enableSymbologies(symbolsToEnable);
-                
-                // Configure Code39 settings for alphanumeric text
-                if (Symbology.Code39 !== undefined) {
-                  const code39Settings = currentSettings.settingsForSymbology(Symbology.Code39);
-                  if (code39Settings) {
-                    code39Settings.isColorInvertedEnabled = true;
-                    console.log("[SCANNER_MODE] Enhanced Code39 settings for text detection");
-                  }
-                }
-                
-                // Configure Code128 for optimal text detection
-                if (Symbology.Code128 !== undefined) {
-                  const code128Settings = currentSettings.settingsForSymbology(Symbology.Code128);
-                  if (code128Settings) {
-                    code128Settings.isColorInvertedEnabled = true;
-                  }
-                }
-                
-                // Configure DataMatrix settings
-                if (Symbology.DataMatrix !== undefined) {
-                  const dataMatrixSettings = currentSettings.settingsForSymbology(Symbology.DataMatrix);
-                  if (dataMatrixSettings) {
-                    dataMatrixSettings.isColorInvertedEnabled = true;
-                  }
-                }
-              } else {
-                // Fallback to numeric values if enum is not available
-                console.log("[SCANNER_MODE] Using numeric values for symbologies");
-                currentSettings.enableSymbologies([2, 5, 6]); // Code39=2, Code128=5, DataMatrix=6
-              }
-            } else {
-              // Fallback to numeric values if enum is not available
-              console.log("[SCANNER_MODE] Using numeric values for symbologies");
-              currentSettings.enableSymbologies([2, 5, 6]); // Code39=2, Code128=5, DataMatrix=6
-            }
-            
-            // Apply special configuration for detecting 6-character alphanumeric codes
-            if (typeof currentSettings.setProperty === 'function') {
-              try {
-                // Improve detection of short codes
-                currentSettings.setProperty("barcodeCapture.minimumTextLength", 6);
-                currentSettings.setProperty("barcodeCapture.maximumTextLength", 6);
-                // Increase sensitivity for better detection
-                currentSettings.setProperty("barcodeCapture.duplicateFilter", 100);
-              } catch (propError) {
-                console.log("[OCR_DEBUG] Could not apply advanced properties:", propError);
-              }
-            }
-            
-            // Apply these settings
-            captureRef.current.applySettings(currentSettings)
-              .then(() => captureRef.current.setEnabled(true))
-              .catch((err: any) => console.error("[SCANNER_MODE] Error applying OCR settings:", err));
-          } catch (err) {
-            console.error("[SCANNER_MODE] Error in OCR mode setup:", err);
-          }
-        }
-        
-        // Set timer to auto-switch back to QR mode if enabled
-        if (autoSwitchEnabled) {
-          console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to QR mode");
-          modeTimerRef.current = setTimeout(() => {
-            console.log("[SCANNER_MODE] Auto-switching to QR mode after 10s without OCR detection");
-            switchScannerMode('qr');
-          }, 10000);
-        }
-      }
-      
-      // Trigger haptic feedback for mode change
-      triggerHapticFeedback([50]);
-    } catch (err) {
-      console.error("Error switching scanner mode:", err);
     }
+    
+    triggerHapticFeedback([50]);
   }, [scannerMode, autoSwitchEnabled, triggerHapticFeedback]);
   
   // Toggle auto-switching feature
@@ -1095,59 +952,8 @@ export default function AdvancedScanPage() {
               // In QR mode, process as QR code
               await validateQrCode(data);
             } else {
-              // In OCR mode, try to extract a 6-character alphanumeric code
-              try {
-                // Check if the data contains a 6-character alphanumeric pattern
-                // This could come directly from the barcode or be part of a larger string
-                console.log("[OCR_DEBUG] Raw data from OCR scan:", data);
-                console.log("[OCR_DEBUG] Data type:", typeof data);
-                console.log("[OCR_DEBUG] Data length:", data?.length);
-                
-                // Try different pattern matching approaches
-                const codeMatch = data.match(/[A-Z0-9]{6}/i);
-                const altMatch = data.replace(/[^A-Z0-9]/gi, '').match(/.{6}/);
-                
-                console.log("[OCR_DEBUG] Standard regex match result:", codeMatch);
-                console.log("[OCR_DEBUG] Alternative match result:", altMatch);
-                
-                if (codeMatch) {
-                  // Found a 6-character code pattern with standard regex
-                  const detectedCode = codeMatch[0].toUpperCase();
-                  console.log("[OCR_DEBUG] Successfully detected a 6-character code:", detectedCode);
-                  
-                  // Process the detected code with our custom function
-                  await processOcrCode(detectedCode);
-                } else if (altMatch) {
-                  // Try alternative approach - take first 6 alphanumeric characters
-                  const detectedCode = altMatch[0].toUpperCase();
-                  console.log("[OCR_DEBUG] Used alternative method to detect code:", detectedCode);
-                  
-                  // Process with the alternative approach
-                  await processOcrCode(detectedCode);
-                } else {
-                  // Data doesn't contain a valid 6-character code
-                  console.log("[OCR_DEBUG] No valid 6-character code found in data:", data);
-                  
-                  // Try one last approach - extract any alphanumeric characters
-                  const alphaNumericOnly = data.replace(/[^A-Z0-9]/gi, '');
-                  console.log("[OCR_DEBUG] Alphanumeric characters only:", alphaNumericOnly);
-                  
-                  if (alphaNumericOnly.length >= 6) {
-                    // Take first 6 characters as a last resort
-                    const possibleCode = alphaNumericOnly.substring(0, 6).toUpperCase();
-                    console.log("[OCR_DEBUG] Last resort - first 6 alphanumeric chars:", possibleCode);
-                    
-                    // Process this potential code
-                    await processOcrCode(possibleCode);
-                  } else {
-                    // Re-enable scanner after a short delay
-                    setTimeout(() => {
-                      if (captureRef.current) {
-                        captureRef.current.setEnabled(true).catch(console.error);
-                      }
-                    }, 500);
-                  }
-                }
+              // OCR handled by LabelCapture; nothing to do here.
+              await capture.setEnabled(true);
               } catch (err) {
                 console.error("Error processing OCR data:", err);
                 // Re-enable scanner after error
