@@ -632,18 +632,23 @@ export default function AdvancedScanPage() {
           }, 10000);
         }
       } else {
-        setStatusMessage("وضع النص (OCR) معطل مؤقتاً - استخدم وضع QR");
+        setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // OCR mode temporarily disabled - keep barcode capture enabled
+        // Disable barcode capture and enable label capture
         if (captureRef.current) {
-          captureRef.current.setEnabled(true).catch(console.error);
+          captureRef.current.setEnabled(false).catch(console.error);
+        }
+        if (textCaptureRef.current) {
+          textCaptureRef.current.setEnabled(true).catch(console.error);
         }
         
-        // Show message that OCR is disabled and switch back to QR after 3 seconds
-        setTimeout(() => {
-          console.log("OCR mode disabled, switching back to QR mode");
-          switchScannerMode('qr');
-        }, 3000);
+        // Set timer to auto-switch back to QR mode if enabled
+        if (autoSwitchEnabled) {
+          modeTimerRef.current = setTimeout(() => {
+            console.log("Auto-switching to QR mode after 10s without OCR detection");
+            switchScannerMode('qr');
+          }, 10000);
+        }
       }
       
       // Trigger haptic feedback for mode change
@@ -672,9 +677,15 @@ export default function AdvancedScanPage() {
               switchScannerMode('ocr');
             }, 10000);
           }
-        } else if (scannerMode === 'ocr') {
-          console.log("OCR mode disabled - switching back to QR mode");
-          switchScannerMode('qr');
+        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
+          console.log("Re-enabling OCR scanner after validation");
+          textCaptureRef.current.setEnabled(true).catch(console.error);
+          // Restart the auto-switch timer
+          if (autoSwitchEnabled && !modeTimerRef.current) {
+            modeTimerRef.current = setTimeout(() => {
+              switchScannerMode('qr');
+            }, 10000);
+          }
         }
       } catch (err) {
         console.error("Error re-enabling scanner:", err);
@@ -715,8 +726,9 @@ export default function AdvancedScanPage() {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // Note: Label capture temporarily disabled due to CDN issues
-        // const label = await import("@scandit/web-datacapture-label");
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const label = await import("@scandit/web-datacapture-label");
         const {
           configure,
           DataCaptureView,
@@ -739,16 +751,13 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
-        // Label capture disabled - using barcode scanning only
-        // const {
-        //   LabelCapture,
-        //   labelCaptureLoader,
-        //   LabelCaptureSettings,
-        //   LabelDefinition,
-        //   TextField,
-        //   TextFieldBuilder,
-        //   LabelDefinitionBuilder
-        // } = label as any;
+        const {
+          LabelCapture,
+          labelCaptureLoader,
+          LabelCaptureSettings,
+          LabelDefinition,
+          TextField
+        } = label as any;
 
         try {
           /* Initialise the engine (downloads WASM files automatically) */
@@ -757,7 +766,7 @@ export default function AdvancedScanPage() {
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
               "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.3.0/sdc-lib/",
-            moduleLoaders: [barcodeCaptureLoader()],
+            moduleLoaders: [barcodeCaptureLoader(), labelCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             // Intercept and translate SDK error messages to Arabic
@@ -948,9 +957,53 @@ export default function AdvancedScanPage() {
         });
         await capture.setEnabled(true);
 
-        /* Label Capture temporarily disabled due to CDN compatibility issues */
-        // TODO: Implement OCR scanning when label capture library is properly configured
-        console.log("Label capture (OCR) temporarily disabled - using QR scanning only");
+        /* Set up Smart Label Capture for OCR Mode (6-digit alphanumeric codes) */
+        const labelCaptureSettings = new LabelCaptureSettings();
+        
+        // Create a simple text field for 6-digit alphanumeric codes
+        const textField = new TextField("serialNumber", "^[A-Z0-9]{6}$");
+        
+        // Create a label definition with the text field
+        const labelDefinition = new LabelDefinition([textField]);
+        labelCaptureSettings.addLabelDefinition(labelDefinition);
+        
+        // Create label capture instance
+        const labelCapture = await LabelCapture.forContext(context, labelCaptureSettings);
+        textCaptureRef.current = labelCapture; // Store label capture in ref
+        
+        labelCapture.addListener({
+          didCaptureLabel: async (_labelCapture: any, session: any) => {
+            const capturedLabels = session.newlyCapturedLabels;
+            if (!capturedLabels || capturedLabels.length === 0) return;
+            
+            // Get the first captured label
+            const capturedLabel = capturedLabels[0];
+            const fields = capturedLabel.fields;
+            
+            // Look for our serial number field
+            if (fields && fields.serialNumber && fields.serialNumber.value) {
+              const code = fields.serialNumber.value.toUpperCase().trim();
+              console.log("OCR code detected:", code);
+              
+              // Validate the format (6-digit alphanumeric)
+              if (!/^[A-Z0-9]{6}$/.test(code)) {
+                console.warn("Invalid OCR format detected:", code);
+                return;
+              }
+              
+              // Disable capture while processing
+              await labelCapture.setEnabled(false);
+              
+              // Process the OCR code with validation
+              await validateOcrCode(code);
+            }
+          }
+        });
+        
+        // Initially disabled - will be enabled when OCR mode is selected
+        await labelCapture.setEnabled(false);
+        
+        console.log("Smart Label Capture (OCR) initialized successfully");
 
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
@@ -958,10 +1011,9 @@ export default function AdvancedScanPage() {
             if (capture) {
               await capture.setEnabled(false);
             }
-            // Label capture disabled
-            // if (textCaptureRef.current) {
-            //   await textCaptureRef.current.setEnabled(false);
-            // }
+            if (textCaptureRef.current) {
+              await textCaptureRef.current.setEnabled(false);
+            }
             if (context) {
               await context.dispose();
             }
@@ -1122,15 +1174,21 @@ export default function AdvancedScanPage() {
                   <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
                 </div>
               ) : (
-                /* OCR Mode - disabled message */
-                <div className="relative w-[min(85vw,400px)] h-24 border-2 border-gray-500 border-dashed rounded-md flex items-center justify-center bg-gray-800/50">
-                  {/* Disabled icon */}
-                  <div className="text-gray-400 text-sm font-medium px-4 text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <AlertCircle className="h-6 w-6 mr-2" />
-                    </div>
-                    <div>وضع النص (OCR) معطل مؤقتاً</div>
-                    <div className="text-xs opacity-70 mt-1">سيتم التبديل إلى وضع QR تلقائياً</div>
+                /* OCR Mode - rectangle for text scanning */
+                <div className="relative w-[min(85vw,400px)] h-24 border-2 border-amber-500 rounded-md flex items-center justify-center bg-black/20">
+                  {/* OCR scanning animation - moving line */}
+                  <div 
+                    className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
+                    style={{
+                      animation: 'pulse-slide 2s infinite ease-in-out',
+                      left: 0
+                    }}
+                  ></div>
+                  
+                  {/* OCR guidance text */}
+                  <div className="text-amber-500 text-sm font-medium px-4 text-center">
+                    <div>وجه الكاميرا نحو الرمز المطبوع</div>
+                    <div className="text-xs opacity-70 mt-1">رمز من ٦ أحرف وأرقام</div>
                   </div>
                 </div>
               )}
@@ -1141,7 +1199,7 @@ export default function AdvancedScanPage() {
               <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
                 {scannerMode === 'qr' 
                   ? 'وجه الكاميرا نحو رمز QR الخاص بالمنتج'
-                  : 'وضع النص معطل - سيتم التبديل إلى QR تلقائياً'
+                  : 'وجه الكاميرا نحو الرمز المطبوع بجانب QR'
                 }
               </div>
             </div>
