@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -34,6 +33,8 @@ export default defineConfig({
         '@scandit/web-datacapture-core/*',
         '@scandit/web-datacapture-barcode',
         '@scandit/web-datacapture-barcode/*',
+        '@scandit/web-datacapture-id',
+        '@scandit/web-datacapture-id/*',
         /^@scandit\/.*/
       ]
     }
