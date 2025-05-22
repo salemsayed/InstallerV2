@@ -11,6 +11,37 @@ function isValidUUIDv4(uuid: string): boolean {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
 }
 
+// Helper function to translate error details from English to Arabic
+const translateErrorDetails = (details: string): string => {
+  if (!details) return '';
+  
+  // Common server error translations
+  if (details.includes("already been scanned") || details.includes("has been scanned")) {
+    return "تم مسح هذا المنتج مسبقاً";
+  }
+  if (details.includes("not found") || details.includes("invalid")) {
+    return "منتج غير صالح أو غير موجود";
+  }
+  if (details.includes("expired")) {
+    return "انتهت صلاحية رمز المنتج";
+  }
+  if (details.includes("unauthorized") || details.includes("not allowed")) {
+    return "غير مصرح لك بمسح هذا المنتج";
+  }
+  if (details.includes("limit") || details.includes("maximum")) {
+    return "تم تجاوز الحد المسموح من المسح";
+  }
+  if (details.includes("duplicate")) {
+    return "منتج مكرر";
+  }
+  if (details.includes("network") || details.includes("connection")) {
+    return "خطأ في الاتصال بالشبكة";
+  }
+  
+  // Default case - return original with note that it wasn't translated
+  return details;
+};
+
 /**
  * Advanced scanner page – powered by Scandit Web SDK
  * Note: Scandit modules are pulled dynamically via CDN import-map (see index.html).
@@ -130,11 +161,29 @@ export default function AdvancedScanPage() {
       const result = await scanResult.json();
       
       if (!result.success) {
-        const errorDetails = result.details ? JSON.stringify(result.details, null, 2) : '';
         const errorCode = result.error_code ? ` (${result.error_code})` : '';
         
         // Translate common server error responses to Arabic
         let arabicErrorMessage = result.message;
+        let arabicErrorDetails = '';
+        
+        // Translate server response details to Arabic
+        if (result.details) {
+          if (typeof result.details === 'string') {
+            // Handle string details
+            arabicErrorDetails = translateErrorDetails(result.details);
+          } else if (result.details.duplicate) {
+            // Handle duplicate scanning case
+            arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
+          } else if (result.details.message) {
+            // Handle object with message
+            arabicErrorDetails = translateErrorDetails(result.details.message);
+          } else {
+            // Handle other object details by stringifying but translating known patterns
+            const detailsStr = JSON.stringify(result.details, null, 2);
+            arabicErrorDetails = translateErrorDetails(detailsStr);
+          }
+        }
         
         // Map common English error messages to Arabic
         if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
@@ -153,7 +202,13 @@ export default function AdvancedScanPage() {
           arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
         }
         
-        setError(`${arabicErrorMessage}${errorCode}\n${errorDetails ? 'تفاصيل إضافية:' : ''} ${errorDetails}`);
+        // Format the complete error message with any translated details
+        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
+        if (arabicErrorDetails) {
+          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
+        }
+        
+        setError(completeErrorMessage);
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
