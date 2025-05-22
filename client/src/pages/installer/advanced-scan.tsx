@@ -530,18 +530,11 @@ export default function AdvancedScanPage() {
       // Set new mode and update status message
       setScannerMode(mode);
       
-      // Get Symbology reference from the global SDK object
-      // This is safer because the SDK might not be loaded at component definition time
-      let symbologyValues;
       try {
-        if (window.ScanditSDK && window.ScanditSDK.barcode && window.ScanditSDK.barcode.Symbology) {
-          symbologyValues = window.ScanditSDK.barcode.Symbology;
-          console.log("[SCANNER_MODE] Successfully accessed Symbology enum from global object");
-        } else {
-          console.log("[SCANNER_MODE] No Symbology enum found, using numeric fallbacks");
-        }
+        // Simply log mode change - we'll work with direct settings references
+        console.log(`[SCANNER_MODE] Processing mode switch to ${mode}`);
       } catch (e) {
-        console.error("[SCANNER_MODE] Error accessing Symbology:", e);
+        console.error("[SCANNER_MODE] Error in switch setup:", e);
       }
       
       if (mode === 'qr') {
@@ -558,17 +551,23 @@ export default function AdvancedScanPage() {
             // Reset the symbologies
             currentSettings.enableSymbologies([]);
             
-            // Enable only QR code detection
-            if (symbologyValues && symbologyValues.QR !== undefined) {
-              currentSettings.enableSymbologies([symbologyValues.QR]);
+            // Get the Scandit barcode module directly from the global scope
+            const barcodeModule = window.ScanditSDK?.barcode;
+            
+            // Enable only QR code detection using the proper approach
+            if (barcodeModule && barcodeModule.Symbology && barcodeModule.Symbology.QR !== undefined) {
+              // Using the right symbology enum from the module
+              currentSettings.enableSymbologies([barcodeModule.Symbology.QR]);
+              console.log("[SCANNER_MODE] Enabled QR symbology using enum");
               
-              // Enable inverted colors
-              const symbologySettings = currentSettings.settingsForSymbology(symbologyValues.QR);
+              // Enable inverted colors using the proper enum
+              const symbologySettings = currentSettings.settingsForSymbology(barcodeModule.Symbology.QR);
               if (symbologySettings) {
                 symbologySettings.isColorInvertedEnabled = true;
+                console.log("[SCANNER_MODE] Set inversion for QR detection");
               }
             } else {
-              // Fallback to use numeric value if enum is not available
+              // Fallback to use numeric value in case the enum isn't accessible
               console.log("[SCANNER_MODE] Using numeric value for QR code (0)");
               currentSettings.enableSymbologies([0]); // QR is usually 0
             }
@@ -605,45 +604,46 @@ export default function AdvancedScanPage() {
             const currentSettings = captureRef.current.settings;
             currentSettings.enableSymbologies([]);
             
-            if (symbologyValues) {
+            // Get the Scandit barcode module directly from the global scope
+            const barcodeModule = window.ScanditSDK?.barcode;
+            
+            if (barcodeModule && barcodeModule.Symbology) {
               // Enable multiple symbologies to increase chance of detecting alphanumeric codes
               // Code39 and Code128 are excellent for alphanumeric content
               const symbolsToEnable = [];
               
-              if (symbologyValues.Code39 !== undefined) symbolsToEnable.push(symbologyValues.Code39);
-              if (symbologyValues.Code128 !== undefined) symbolsToEnable.push(symbologyValues.Code128);
-              if (symbologyValues.DataMatrix !== undefined) symbolsToEnable.push(symbologyValues.DataMatrix);
+              // Access symbologies directly from the barcode module
+              const { Symbology } = barcodeModule;
+              
+              if (Symbology.Code39 !== undefined) symbolsToEnable.push(Symbology.Code39);
+              if (Symbology.Code128 !== undefined) symbolsToEnable.push(Symbology.Code128);
+              if (Symbology.DataMatrix !== undefined) symbolsToEnable.push(Symbology.DataMatrix);
+              
+              console.log("[SCANNER_MODE] OCR mode - enabling symbologies:", symbolsToEnable);
               
               if (symbolsToEnable.length > 0) {
                 currentSettings.enableSymbologies(symbolsToEnable);
                 
                 // Configure Code39 settings for alphanumeric text
-                if (symbologyValues.Code39 !== undefined) {
-                  const code39Settings = currentSettings.settingsForSymbology(symbologyValues.Code39);
+                if (Symbology.Code39 !== undefined) {
+                  const code39Settings = currentSettings.settingsForSymbology(Symbology.Code39);
                   if (code39Settings) {
                     code39Settings.isColorInvertedEnabled = true;
-                    // Make the scanner more lenient with printed codes
-                    if (typeof code39Settings.setExtendedMode === 'function') {
-                      code39Settings.setExtendedMode(true);
-                    }
-                    // Enable full ASCII mode if available
-                    if (typeof code39Settings.setFullASCIIEnabled === 'function') {
-                      code39Settings.setFullASCIIEnabled(true);
-                    }
+                    console.log("[SCANNER_MODE] Enhanced Code39 settings for text detection");
                   }
                 }
                 
                 // Configure Code128 for optimal text detection
-                if (symbologyValues.Code128 !== undefined) {
-                  const code128Settings = currentSettings.settingsForSymbology(symbologyValues.Code128);
+                if (Symbology.Code128 !== undefined) {
+                  const code128Settings = currentSettings.settingsForSymbology(Symbology.Code128);
                   if (code128Settings) {
                     code128Settings.isColorInvertedEnabled = true;
                   }
                 }
                 
                 // Configure DataMatrix settings
-                if (symbologyValues.DataMatrix !== undefined) {
-                  const dataMatrixSettings = currentSettings.settingsForSymbology(symbologyValues.DataMatrix);
+                if (Symbology.DataMatrix !== undefined) {
+                  const dataMatrixSettings = currentSettings.settingsForSymbology(Symbology.DataMatrix);
                   if (dataMatrixSettings) {
                     dataMatrixSettings.isColorInvertedEnabled = true;
                   }
@@ -850,13 +850,10 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
         
-        // Create reference to Symbology enum
-        const {
-          QR,
-          Code39, 
-          Code128,
-          DataMatrix
-        } = Symbology;
+        /* 
+         * Note: We'll be accessing Symbology directly through the Barcode API
+         * This is the approach recommended to avoid 'Cannot set properties of undefined (setting '_symbology')' errors
+         */
 
         try {
           /* Initialise the engine (downloads WASM files automatically) */
