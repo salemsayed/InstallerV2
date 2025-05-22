@@ -525,6 +525,8 @@ export default function AdvancedScanPage() {
         modeTimerRef.current = null;
       }
       
+      console.log(`[SCANNER_MODE] Switching from ${scannerMode} to ${mode} mode`);
+      
       // Set new mode and update status message
       setScannerMode(mode);
       
@@ -533,16 +535,19 @@ export default function AdvancedScanPage() {
         
         // Disable text capture and enable barcode capture
         if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(false).catch(console.error);
+          console.log("[SCANNER_MODE] Disabling text capture for QR mode");
+          textCaptureRef.current.setEnabled(false).catch(e => console.error("[SCANNER_MODE] Error disabling text capture:", e));
         }
         if (captureRef.current) {
-          captureRef.current.setEnabled(true).catch(console.error);
+          console.log("[SCANNER_MODE] Enabling barcode capture for QR mode");
+          captureRef.current.setEnabled(true).catch(e => console.error("[SCANNER_MODE] Error enabling barcode capture:", e));
         }
         
         // Set timer to auto-switch to OCR mode if enabled
         if (autoSwitchEnabled) {
+          console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to OCR mode");
           modeTimerRef.current = setTimeout(() => {
-            console.log("Auto-switching to OCR mode after 10s without QR detection");
+            console.log("[SCANNER_MODE] Auto-switching to OCR mode after 10s without QR detection");
             switchScannerMode('ocr');
           }, 10000);
         }
@@ -551,16 +556,19 @@ export default function AdvancedScanPage() {
         
         // Disable barcode capture and enable text capture
         if (captureRef.current) {
-          captureRef.current.setEnabled(false).catch(console.error);
+          console.log("[SCANNER_MODE] Disabling barcode capture for OCR mode");
+          captureRef.current.setEnabled(false).catch(e => console.error("[SCANNER_MODE] Error disabling barcode capture:", e));
         }
         if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(true).catch(console.error);
+          console.log("[SCANNER_MODE] Enabling text capture for OCR mode");
+          textCaptureRef.current.setEnabled(true).catch(e => console.error("[SCANNER_MODE] Error enabling text capture:", e));
         }
         
         // Set timer to auto-switch back to QR mode if enabled
         if (autoSwitchEnabled) {
+          console.log("[SCANNER_MODE] Setting 10s timer to auto-switch to QR mode");
           modeTimerRef.current = setTimeout(() => {
-            console.log("Auto-switching to QR mode after 10s without OCR detection");
+            console.log("[SCANNER_MODE] Auto-switching to QR mode after 10s without OCR detection");
             switchScannerMode('qr');
           }, 10000);
         }
@@ -1102,34 +1110,47 @@ export default function AdvancedScanPage() {
                  licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
               </span>
               
-              {/* Scanner Mode Indicator */}
-              <div className="flex items-center gap-1 mr-2 border-r pr-2 border-gray-300">
+              {/* Scanner Mode Indicator - Enhanced for better visibility */}
+              <div className={`
+                flex items-center gap-1 mr-2 border-r pr-2 
+                ${scannerMode === 'qr' 
+                  ? 'border-primary/50' 
+                  : 'border-amber-500/50'}
+              `}>
                 {scannerMode === 'qr' ? (
                   <>
-                    <QrCode className="h-4 w-4" />
-                    <span className="text-xs">وضع QR</span>
+                    <QrCode className="h-5 w-5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">وضع QR</span>
                   </>
                 ) : (
                   <>
-                    <TextCursorInput className="h-4 w-4" />
-                    <span className="text-xs">وضع النص</span>
+                    <TextCursorInput className="h-5 w-5 text-amber-500 animate-pulse" />
+                    <span className="text-xs font-semibold text-amber-500">وضع النص</span>
                   </>
                 )}
               </div>
             </div>
           </div>
           
-          {/* Scanner Mode Status Message */}
+          {/* Enhanced Scanner Mode Status Message - More visible */}
           {licenseStatus === 'initialized' && (
             <div className="flex justify-center mt-2">
               <div 
-                className={`px-4 py-1 rounded-full text-sm ${
-                  scannerMode === 'qr' 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'bg-amber-500/10 text-amber-700'
-                }`}
+                className={`
+                  px-4 py-2 rounded-full text-sm 
+                  ${scannerMode === 'qr' 
+                    ? 'bg-primary/15 text-primary border border-primary/30' 
+                    : 'bg-amber-500/15 text-amber-700 border border-amber-500/30 animate-pulse-slow'}
+                `}
               >
-                <span className="text-xs font-medium">{statusMessage}</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  {scannerMode === 'qr' ? (
+                    <QrCode className="h-4 w-4" />
+                  ) : (
+                    <TextCursorInput className="h-4 w-4" />
+                  )}
+                  {statusMessage}
+                </span>
               </div>
             </div>
           )}
