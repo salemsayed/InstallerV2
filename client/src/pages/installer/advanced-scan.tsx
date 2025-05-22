@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } from "lucide-react";
 import InstallerLayout from "@/components/layouts/installer-layout";
+import { Button } from "@/components/ui/button";
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -56,9 +57,18 @@ export default function AdvancedScanPage() {
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   
-  // Reference to context and capture for later use
+  // Scanner mode state (QR or OCR)
+  const [scannerMode, setScannerMode] = useState<'qr' | 'ocr'>('qr');
+  const [statusMessage, setStatusMessage] = useState<string>("جارٍ البحث عن رمز QR...");
+  const [autoSwitchEnabled, setAutoSwitchEnabled] = useState<boolean>(true);
+  
+  // References to context and capture objects
   const contextRef = useRef<any>(null);
-  const captureRef = useRef<any>(null);
+  const captureRef = useRef<any>(null); // Reference for barcode capture
+  const textCaptureRef = useRef<any>(null); // Reference for text capture
+  
+  // Timers for auto-switching between modes
+  const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for scan result notification
   const [showNotification, setShowNotification] = useState(false);
@@ -369,12 +379,91 @@ export default function AdvancedScanPage() {
     }
   };
 
+  // Function to switch between scanner modes
+  const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
+    try {
+      // Clear any existing auto-switch timer
+      if (modeTimerRef.current) {
+        clearTimeout(modeTimerRef.current);
+        modeTimerRef.current = null;
+      }
+      
+      // Set new mode and update status message
+      setScannerMode(mode);
+      
+      if (mode === 'qr') {
+        setStatusMessage("جارٍ البحث عن رمز QR...");
+        
+        // Disable text capture and enable barcode capture
+        if (textCaptureRef.current) {
+          textCaptureRef.current.setEnabled(false).catch(console.error);
+        }
+        if (captureRef.current) {
+          captureRef.current.setEnabled(true).catch(console.error);
+        }
+        
+        // Set timer to auto-switch to OCR mode if enabled
+        if (autoSwitchEnabled) {
+          modeTimerRef.current = setTimeout(() => {
+            console.log("Auto-switching to OCR mode after 10s without QR detection");
+            switchScannerMode('ocr');
+          }, 10000);
+        }
+      } else {
+        setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
+        
+        // Disable barcode capture and enable text capture
+        if (captureRef.current) {
+          captureRef.current.setEnabled(false).catch(console.error);
+        }
+        if (textCaptureRef.current) {
+          textCaptureRef.current.setEnabled(true).catch(console.error);
+        }
+        
+        // Set timer to auto-switch back to QR mode if enabled
+        if (autoSwitchEnabled) {
+          modeTimerRef.current = setTimeout(() => {
+            console.log("Auto-switching to QR mode after 10s without OCR detection");
+            switchScannerMode('qr');
+          }, 10000);
+        }
+      }
+      
+      // Trigger haptic feedback for mode change
+      triggerHapticFeedback([50]);
+    } catch (err) {
+      console.error("Error switching scanner mode:", err);
+    }
+  }, [autoSwitchEnabled]);
+  
+  // Toggle auto-switching feature
+  const toggleAutoSwitch = () => {
+    setAutoSwitchEnabled(!autoSwitchEnabled);
+  };
+
+  // Reset the scanner after processing a result
   const resetScannerAfterDelay = (delay = 1500) => {
     setTimeout(() => {
       try {
-        if (captureRef.current) {
-          console.log("Re-enabling scanner after validation");
+        // Re-enable the current capture mode after processing
+        if (scannerMode === 'qr' && captureRef.current) {
+          console.log("Re-enabling QR scanner after validation");
           captureRef.current.setEnabled(true).catch(console.error);
+          // Restart the auto-switch timer
+          if (autoSwitchEnabled && !modeTimerRef.current) {
+            modeTimerRef.current = setTimeout(() => {
+              switchScannerMode('ocr');
+            }, 10000);
+          }
+        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
+          console.log("Re-enabling OCR scanner after validation");
+          textCaptureRef.current.setEnabled(true).catch(console.error);
+          // Restart the auto-switch timer
+          if (autoSwitchEnabled && !modeTimerRef.current) {
+            modeTimerRef.current = setTimeout(() => {
+              switchScannerMode('qr');
+            }, 10000);
+          }
         }
       } catch (err) {
         console.error("Error re-enabling scanner:", err);
@@ -389,14 +478,15 @@ export default function AdvancedScanPage() {
 
     (async () => {
       try {
-        /* Dynamically import the two SDK packages loaded via the CDN */
+        /* Dynamically import the three SDK packages loaded via the CDN */
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const core = await import("@scandit/web-datacapture-core");
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-
+        // We'll handle text capture later with a different approach
+        // Just use core and barcode for now
         const {
           configure,
           DataCaptureView,
