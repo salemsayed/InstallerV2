@@ -348,13 +348,10 @@ export default function AdvancedScanPage() {
       
       // Add translated error details if available
       if (err.message) {
-        if (err.message.includes("network") || err.message.includes("timeout")) {
-          arabicErrorMessage += "\n\nتفاصيل: خطأ في الاتصال بالشبكة، يرجى التحقق من اتصال الإنترنت";
-        } else if (err.message.includes("server")) {
-          arabicErrorMessage += "\n\nتفاصيل: خطأ في الخادم، يرجى المحاولة مرة أخرى لاحقاً";
-        } else {
-          arabicErrorMessage += "\n\nتفاصيل: " + (err.message || "خطأ غير معروف");
-        }
+        const translatedDetail = translateErrorDetails(err.message);
+        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
+      } else {
+        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
       }
       
       setError(arabicErrorMessage);
@@ -439,7 +436,7 @@ export default function AdvancedScanPage() {
                 // Translate Scandit error messages to Arabic
                 console.error("Scandit error:", error);
                 let arabicMessage = "خطأ في تهيئة الماسح الضوئي";
-                
+
                 if (error && error.message) {
                   if (error.message.includes("license")) {
                     arabicMessage = "خطأ في ترخيص المكتبة، يرجى التحقق من صلاحية الترخيص";
@@ -449,13 +446,15 @@ export default function AdvancedScanPage() {
                     arabicMessage = "خطأ في الاتصال بالشبكة، يرجى التحقق من اتصالك بالإنترنت";
                   }
                 }
-                
+
                 setError(arabicMessage);
                 setLicenseStatus('failed');
                 setNotificationType('error');
                 setShowNotification(true);
-                
-                return arabicMessage; // Return Arabic message to SDK
+
+                // Do not return the message to the SDK, to prevent it from trying to display it.
+                // This might prevent the 'this.errorElement.textContent' error.
+                return; 
               }
             }
           });
