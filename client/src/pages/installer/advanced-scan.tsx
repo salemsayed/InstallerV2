@@ -471,15 +471,11 @@ export default function AdvancedScanPage() {
     }, delay);
   };
 
-  // Simulate OCR detection (for demo purposes)
-  const simulateOcrDetection = useCallback(() => {
-    if (scannerMode === 'ocr') {
-      // Generate a random 6-character alphanumeric code
-      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      let detectedCode = '';
-      for (let i = 0; i < 6; i++) {
-        detectedCode += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
+  // Process a detected 6-character alphanumeric code from OCR scanning
+  const processOcrCode = useCallback((detectedCode: string) => {
+    // Only process if it matches our pattern (6 alphanumeric chars)
+    if (/^[A-Z0-9]{6}$/.test(detectedCode)) {
+      console.log("OCR detected a valid 6-character code:", detectedCode);
       
       // Show success message
       setResult(`تم اكتشاف الرمز المطبوع: ${detectedCode}`);
@@ -505,27 +501,11 @@ export default function AdvancedScanPage() {
         clearTimeout(modeTimerRef.current);
         modeTimerRef.current = null;
       }
+      
+      return true;
     }
-  }, [scannerMode, toast, triggerHapticFeedback, resetScannerAfterDelay]);
-  
-  // Simulate occasional OCR detection when in OCR mode
-  useEffect(() => {
-    let simulationTimer: NodeJS.Timeout | null = null;
-    
-    if (scannerMode === 'ocr' && !isValidating && !showNotification) {
-      // Randomly detect a code after 2-4 seconds of being in OCR mode
-      const detectionTime = 2000 + Math.random() * 2000;
-      simulationTimer = setTimeout(() => {
-        simulateOcrDetection();
-      }, detectionTime);
-    }
-    
-    return () => {
-      if (simulationTimer) {
-        clearTimeout(simulationTimer);
-      }
-    };
-  }, [scannerMode, simulateOcrDetection, isValidating, showNotification]);
+    return false;
+  }, [toast, triggerHapticFeedback, resetScannerAfterDelay]);
   
   // Initialize auto-mode switching when component mounts
   useEffect(() => {
@@ -553,15 +533,16 @@ export default function AdvancedScanPage() {
 
     (async () => {
       try {
-        /* Dynamically import the three SDK packages loaded via the CDN */
+        /* Dynamically import the SDK packages loaded via the CDN */
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const core = await import("@scandit/web-datacapture-core");
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // We'll handle text capture later with a different approach
-        // Just use core and barcode for now
+        
+        // We're not using text capture module for now, but will use enhanced barcode settings
+        // to handle OCR-like scanning of alphanumeric codes
         const {
           configure,
           DataCaptureView,
@@ -720,17 +701,44 @@ export default function AdvancedScanPage() {
         }
 
         /* Capture only QR codes with optimized settings */
-        const settings = new BarcodeCaptureSettings();
-        settings.enableSymbologies([Symbology.QR]);
+        // Create settings that will be swapped based on scan mode
+        const qrModeSettings = new BarcodeCaptureSettings();
+        qrModeSettings.enableSymbologies([Symbology.QR]);
         
-        // Enable inverted color scanning (white QR on black background)
-        const qrSettings = settings.settingsForSymbology(Symbology.QR);
+        // Enable inverted color scanning for QR mode
+        const qrSettings = qrModeSettings.settingsForSymbology(Symbology.QR);
         qrSettings.isColorInvertedEnabled = true;
         
-        // Log the settings to confirm it's applied
-        console.log("QR Code settings:", {
-          colorInverted: qrSettings.isColorInvertedEnabled,
-          symbology: "QR"
+        // Create separate settings optimized for alphanumeric text codes
+        const ocrModeSettings = new BarcodeCaptureSettings();
+        // Enable symbologies that can detect alphanumeric codes
+        ocrModeSettings.enableSymbologies([
+          Symbology.Code128, 
+          Symbology.Code39, 
+          Symbology.DataMatrix
+        ]);
+        
+        // Configure code symbologies to better detect short alphanumeric sequences
+        try {
+          const code128Settings = ocrModeSettings.settingsForSymbology(Symbology.Code128);
+          code128Settings.isColorInvertedEnabled = true;
+          
+          const code39Settings = ocrModeSettings.settingsForSymbology(Symbology.Code39);
+          code39Settings.isColorInvertedEnabled = true;
+          
+          const dataMatrixSettings = ocrModeSettings.settingsForSymbology(Symbology.DataMatrix);
+          dataMatrixSettings.isColorInvertedEnabled = true;
+        } catch (e) {
+          console.warn("Could not configure text mode settings:", e);
+        }
+        
+        // Start with QR settings by default
+        const settings = scannerMode === 'qr' ? qrModeSettings : ocrModeSettings;
+        
+        // Log current scanner mode and settings
+        console.log(`Scanner mode: ${scannerMode}`, {
+          symbologies: scannerMode === 'qr' ? 'QR only' : 'Code128, Code39, DataMatrix',
+          colorInverted: true
         });
         
         // Optimization 1: Rectangular location selection (focused scan area)
