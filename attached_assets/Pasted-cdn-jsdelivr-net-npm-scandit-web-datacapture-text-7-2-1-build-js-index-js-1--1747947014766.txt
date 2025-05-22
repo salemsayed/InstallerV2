@@ -1,0 +1,119 @@
+cdn.jsdelivr.net/npm/@scandit/web-datacapture-text@7.2.1/build/js/index.js:1 
+            
+            
+           Failed to load resource: the server responded with a status of 404 ()
+chunk-RPCDYKBN.js?v=fda2d652:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+dashboard:1 Unchecked runtime.lastError: The message port closed before a response was received.
+dashboard:1 Unchecked runtime.lastError: The message port closed before a response was received.
+dashboard:1 Unchecked runtime.lastError: The message port closed before a response was received.
+dashboard:1 Unchecked runtime.lastError: The message port closed before a response was received.
+dashboard:101 Failed to load Scandit SDK modules: TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-text@7.2.1/build/js/index.js
+(anonymous) @ dashboard:101
+queryClient.ts:49 [API] GET request to /api/transactions
+queryClient.ts:49 [API] GET request to /api/badges
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:357 [AUTH] Setting up auto-refresh for user data
+Iura6YBj_oCad4k1nzGBC5xM.woff2:1 
+            
+            
+           Failed to load resource: the server responded with a status of 404 ()
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/transactions
+queryClient.ts:49 [API] GET request to /api/badges
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/badges
+queryClient.ts:49 [API] GET request to /api/transactions
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/badges
+queryClient.ts:49 [API] GET request to /api/transactions
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/transactions
+queryClient.ts:49 [API] GET request to /api/badges
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/transactions
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:49 [API] GET request to /api/badges
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data
+queryClient.ts:98 [API Query] GET /api/users/me
+auth-provider.tsx:240 [AUTH] User data refreshed successfully
+auth-provider.tsx:212 [AUTH] Refreshing user data

@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
     } catch (error: any) {
-      console.error(`[AUTH] Error in login:`, error);
+      // Silent error handling
       setError(error.message || "حدث خطأ أثناء تسجيل الدخول");
       setIsLoading(false);
       throw error;
@@ -209,8 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      console.log("[AUTH] Refreshing user data");
-      
       // Use fetch directly with proper options for session authentication
       const response = await fetch('/api/users/me', {
         credentials: 'include',
@@ -218,11 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (!response.ok) {
-        console.warn(`[AUTH] Refresh failed with status ${response.status}`);
-        
         // If we get an auth error during refresh, the session may be invalid
         if (response.status === 401 || response.status === 403) {
-          console.error("[AUTH] Session invalid during refresh, logging out");
           // Clear local state but don't redirect yet
           localStorage.removeItem("user");
           setUser(null);
@@ -237,12 +232,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Also update localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
-        console.log("[AUTH] User data refreshed successfully");
-      } else {
-        console.warn("[AUTH] User data missing in refresh response");
       }
     } catch (error) {
-      console.error("[AUTH] Error refreshing user data:", error);
+      // Silent error handling
     }
   };
 
@@ -354,8 +346,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     
-    console.log("[AUTH] Setting up auto-refresh for user data");
-    
     // Store interval ID in a global variable so we can clear it on logout
     // We need to typeset the window object to access our custom property
     const win = window as any;
@@ -365,10 +355,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearInterval(win._authRefreshInterval);
     }
     
-    // Refresh user data every 15 seconds (less aggressive to reduce network load)
+    // Refresh user data every 60 seconds (reduced frequency to minimize logs and network load)
     win._authRefreshInterval = setInterval(() => {
       refreshUser();
-    }, 15000);
+    }, 60000);
     
     // Clean up interval on unmount
     return () => {

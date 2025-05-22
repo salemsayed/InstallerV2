@@ -731,6 +731,8 @@ export default function AdvancedScanPage() {
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
+            // Don't attempt to use the text capture module that's failing to load
+            useTextCapture: false,
             logger: customLogger,
             // Intercept and translate SDK error messages to Arabic
             errorListener: {
