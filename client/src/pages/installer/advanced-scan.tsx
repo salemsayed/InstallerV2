@@ -781,12 +781,39 @@ export default function AdvancedScanPage() {
             // Disable capture while processing
             await capture.setEnabled(false);
             
-            // Get barcode data
-            const url = code.data;
-            console.log("QR code detected:", url);
+            // Get barcode data and type
+            const data = code.data;
+            const symbology = code.symbology;
             
-            // Process the code with validation
-            await validateQrCode(url);
+            console.log(`Barcode detected in ${scannerMode} mode:`, { data, symbology });
+            
+            if (scannerMode === 'qr') {
+              // In QR mode, process as QR code
+              await validateQrCode(data);
+            } else {
+              // In OCR mode, try to extract a 6-character alphanumeric code
+              try {
+                // Check if the data contains a 6-character alphanumeric pattern
+                // This could come directly from the barcode or be part of a larger string
+                const codeMatch = data.match(/[A-Z0-9]{6}/i);
+                
+                if (codeMatch) {
+                  // Found a 6-character code pattern
+                  const detectedCode = codeMatch[0].toUpperCase();
+                  console.log("OCR successfully detected a 6-character code:", detectedCode);
+                  
+                  // Process the detected code
+                  processOcrCode(detectedCode);
+                } else {
+                  // Data doesn't contain a valid 6-character code
+                  console.log("Detected barcode doesn't contain a valid 6-character code:", data);
+                  resetScannerAfterDelay(500);
+                }
+              } catch (err) {
+                console.error("Error processing OCR data:", err);
+                resetScannerAfterDelay(500);
+              }
+            }
           }
         });
         await capture.setEnabled(true);
