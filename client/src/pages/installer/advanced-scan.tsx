@@ -533,14 +533,20 @@ export default function AdvancedScanPage() {
       if (mode === 'qr') {
         setStatusMessage("جارٍ البحث عن رمز QR...");
         
-        // Disable text capture and enable barcode capture
-        if (textCaptureRef.current) {
-          console.log("[SCANNER_MODE] Disabling text capture for QR mode");
-          textCaptureRef.current.setEnabled(false).catch(e => console.error("[SCANNER_MODE] Error disabling text capture:", e));
-        }
+        // Apply QR settings to barcode capture
         if (captureRef.current) {
-          console.log("[SCANNER_MODE] Enabling barcode capture for QR mode");
-          captureRef.current.setEnabled(true).catch(e => console.error("[SCANNER_MODE] Error enabling barcode capture:", e));
+          console.log("[SCANNER_MODE] Switching to QR settings");
+          
+          // Create QR-specific settings
+          const qrSettings = new BarcodeCaptureSettings();
+          qrSettings.enableSymbologies([Symbology.QR]);
+          const symbologySettings = qrSettings.settingsForSymbology(Symbology.QR);
+          symbologySettings.isColorInvertedEnabled = true;
+          
+          // Apply these settings
+          captureRef.current.applySettings(qrSettings)
+            .then(() => captureRef.current.setEnabled(true))
+            .catch(e => console.error("[SCANNER_MODE] Error applying QR settings:", e));
         }
         
         // Set timer to auto-switch to OCR mode if enabled
@@ -554,14 +560,32 @@ export default function AdvancedScanPage() {
       } else {
         setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // Disable barcode capture and enable text capture
+        // Apply OCR-optimized settings to barcode capture
         if (captureRef.current) {
-          console.log("[SCANNER_MODE] Disabling barcode capture for OCR mode");
-          captureRef.current.setEnabled(false).catch(e => console.error("[SCANNER_MODE] Error disabling barcode capture:", e));
-        }
-        if (textCaptureRef.current) {
-          console.log("[SCANNER_MODE] Enabling text capture for OCR mode");
-          textCaptureRef.current.setEnabled(true).catch(e => console.error("[SCANNER_MODE] Error enabling text capture:", e));
+          console.log("[SCANNER_MODE] Switching to OCR settings");
+          
+          // Create OCR-optimized settings for barcode scanning
+          const ocrSettings = new BarcodeCaptureSettings();
+          ocrSettings.enableSymbologies([
+            Symbology.Code128, 
+            Symbology.Code39, 
+            Symbology.DataMatrix
+          ]);
+          
+          // Enhance settings for text detection
+          const code128Settings = ocrSettings.settingsForSymbology(Symbology.Code128);
+          code128Settings.isColorInvertedEnabled = true;
+          
+          const code39Settings = ocrSettings.settingsForSymbology(Symbology.Code39);
+          code39Settings.isColorInvertedEnabled = true;
+          
+          const dataMatrixSettings = ocrSettings.settingsForSymbology(Symbology.DataMatrix);
+          dataMatrixSettings.isColorInvertedEnabled = true;
+          
+          // Apply these settings
+          captureRef.current.applySettings(ocrSettings)
+            .then(() => captureRef.current.setEnabled(true))
+            .catch(e => console.error("[SCANNER_MODE] Error applying OCR settings:", e));
         }
         
         // Set timer to auto-switch back to QR mode if enabled
