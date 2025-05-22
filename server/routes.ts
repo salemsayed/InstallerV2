@@ -1353,14 +1353,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Robust helper function to accurately check badge qualifications and update user badges
   // This is the single source of truth for badge qualifications
-  // Debug flag for badge system - set to false to disable console logs
-  const BADGE_SYSTEM_DEBUG = false;
-  
-  // Helper for conditional logging
-  const badgeLog = (message: string) => {
-    if (BADGE_SYSTEM_DEBUG) console.log(`[BADGE SYSTEM] ${message}`);
-  };
-  
   async function calculateUserBadgeQualifications(userId: number, forceUpdate = false): Promise<{
     badges: any[], 
     userUpdated: boolean,
@@ -1369,7 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     pointsBalance: number
   }> {
     try {
-      badgeLog(`Calculating badge qualifications for user ${userId}, forceUpdate=${forceUpdate}`);
+      console.log(`[BADGE SYSTEM] Calculating badge qualifications for user ${userId}, forceUpdate=${forceUpdate}`);
       
       // Get user data
       const user = await storage.getUser(userId);
@@ -1379,11 +1371,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all active badges
       const allBadges = await storage.listBadges(true);
-      badgeLog(`Found ${allBadges.length} active badges to check`);
+      console.log(`[BADGE SYSTEM] Found ${allBadges.length} active badges to check`);
       
       // Get all user transactions with a high limit to ensure we have complete data
       const transactions = await storage.getTransactionsByUserId(userId, 10000);
-      badgeLog(`Retrieved ${transactions.length} transactions for user ${userId}`);
+      console.log(`[BADGE SYSTEM] Retrieved ${transactions.length} transactions for user ${userId}`);
       
       // CRITICAL: Accurately count installations with case-insensitive type matching
       const installationTransactions = transactions.filter(t => {
@@ -1396,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Count total lifetime installations
       const installationCount = installationTransactions.length;
-      badgeLog(`User ${userId} has completed ${installationCount} total installations`);
+      console.log(`[BADGE SYSTEM] User ${userId} has completed ${installationCount} total installations`);
       
       // Calculate accurate points balance from transactions
       const earningTransactions = transactions.filter(t => 
@@ -1408,7 +1400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
       const pointsBalance = totalEarnings - totalRedemptions;
       
-      badgeLog(`User ${userId} has ${pointsBalance} points balance (${totalEarnings} earned, ${totalRedemptions} redeemed)`);
+      console.log(`[BADGE SYSTEM] User ${userId} has ${pointsBalance} points balance (${totalEarnings} earned, ${totalRedemptions} redeemed)`);
       
       // Initialize clean badge arrays
       const currentBadgeIds = Array.isArray(user.badgeIds) ? [...user.badgeIds] : [];
@@ -1425,18 +1417,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (qualifies) {
           qualifiedBadgeIds.push(badge.id);
-          badgeLog(`User ${userId} qualifies for badge ${badge.id} (${badge.name})`);
+          console.log(`[BADGE SYSTEM] User ${userId} qualifies for badge ${badge.id} (${badge.name})`);
           
           if (!currentBadgeIds.includes(badge.id)) {
-            badgeLog(`Badge ${badge.id} (${badge.name}) is newly qualified`);
+            console.log(`[BADGE SYSTEM] Badge ${badge.id} (${badge.name}) is newly qualified`);
           }
         } else {
           // Log detailed qualification failure reasons for debugging
           if (!meetsPointsRequirement) {
-            badgeLog(`User ${userId} does not meet points requirement (${pointsBalance}/${badge.requiredPoints}) for badge ${badge.id} (${badge.name})`);
+            console.log(`[BADGE SYSTEM] User ${userId} does not meet points requirement (${pointsBalance}/${badge.requiredPoints}) for badge ${badge.id} (${badge.name})`);
           }
           if (!meetsInstallationRequirement) {
-            badgeLog(`User ${userId} does not meet installation requirement (${installationCount}/${badge.minInstallations}) for badge ${badge.id} (${badge.name})`);
+            console.log(`[BADGE SYSTEM] User ${userId} does not meet installation requirement (${installationCount}/${badge.minInstallations}) for badge ${badge.id} (${badge.name})`);
           }
         }
       }
@@ -1467,10 +1459,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update user's badges in database if new badges were earned or force update requested
       if (userBadgesUpdated) {
-        badgeLog(`Updating user ${userId} badges in database. Old: [${currentBadgeIds}], New: [${qualifiedBadgeIds}]`);
+        console.log(`[BADGE SYSTEM] Updating user ${userId} badges in database. Old: [${currentBadgeIds}], New: [${qualifiedBadgeIds}]`);
         await storage.updateUser(userId, { badgeIds: qualifiedBadgeIds });
       } else {
-        badgeLog(`No badge changes for user ${userId}`);
+        console.log(`[BADGE SYSTEM] No badge changes for user ${userId}`);
       }
       
       // Mark which badges the user has now qualified for

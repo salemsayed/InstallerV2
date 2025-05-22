@@ -46,8 +46,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Remove API logging to reduce console noise
-  // console.log(`[API] ${method} request to ${url}`);
+  console.log(`[API] ${method} request to ${url}`);
   
   try {
     // Enhanced headers to ensure proper cookies and cache behavior
@@ -96,8 +95,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // Silent logging to reduce console clutter
-    // console.log(`[API Query] GET ${queryKey[0]}`);
+    console.log(`[API Query] GET ${queryKey[0]}`);
     
     try {
       // Enhanced headers for better cross-environment compatibility
@@ -128,10 +126,11 @@ export const getQueryFn: <T>(options: {
       });
       
       if (res.status === 401 || res.status === 403) {
-        // Silent auth error handling
+        console.warn(`[API Query] Auth error: ${res.status} on ${queryKey[0]}`);
         
         // Check if we should handle 401 specially
         if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+          console.log(`[API Query] Returning null due to 401 as configured`);
           return null;
         }
         
@@ -141,6 +140,7 @@ export const getQueryFn: <T>(options: {
         
         // Only redirect if we're not already on the login page
         if (res.status === 401 && !isLoginPath) {
+          console.warn("[API Query] Redirecting to login due to auth error");
           setTimeout(() => {
             window.location.href = '/auth/login';
           }, 100);
@@ -151,7 +151,7 @@ export const getQueryFn: <T>(options: {
       await throwIfResNotOk(res);
       return await res.json();
     } catch (error) {
-      // Silent error handling to reduce console noise
+      console.error(`[API Query] Error fetching ${queryKey[0]}:`, error);
       throw error;
     }
   };
