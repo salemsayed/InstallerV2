@@ -85,6 +85,228 @@ export default function AdvancedScanPage() {
     }
   };
 
+  // Function to validate OCR code (6-digit alphanumeric)
+  const validateOcrCode = async (code: string) => {
+    setIsValidating(true);
+    setError(null);
+    setResult(null);
+    setShowNotification(false);
+
+    try {
+      // Step 1: Format validation (already done in OCR listener, but double-check)
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        setError("صيغة الرمز غير صالحة. يجب أن يكون الرمز مكون من 6 أحرف وأرقام فقط. (رمز الخطأ: INVALID_OCR_FORMAT)\n\nالرمز المكتشف: " + code);
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        resetScannerAfterDelay();
+        return;
+      }
+
+      // Step 2: Send to server for validation and processing
+      if (!user || !user.id) {
+        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        return;
+      }
+      
+      console.log("Sending OCR scan request with:", {
+        endpoint: `/api/scan-ocr`,
+        user: user,
+        code: code
+      });
+      
+      const scanResult = await apiRequest(
+        "POST", 
+        `/api/scan-ocr`, 
+        {
+          code
+        }
+      );
+      
+      const result = await scanResult.json();
+      
+      if (!result.success) {
+        const errorCode = result.error_code ? ` (${result.error_code})` : '';
+        
+        // Translate common server error responses to Arabic
+        let arabicErrorMessage = result.message;
+        let arabicErrorDetails = '';
+        
+        // Translate server response details to Arabic
+        if (result.details) {
+          if (typeof result.details === 'string') {
+            arabicErrorDetails = translateErrorDetails(result.details);
+          } else if (result.details.duplicate) {
+            arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
+          } else if (result.details.message) {
+            arabicErrorDetails = translateErrorDetails(result.details.message);
+          } else {
+            const detailsStr = JSON.stringify(result.details, null, 2);
+            arabicErrorDetails = translateErrorDetails(detailsStr);
+          }
+        }
+        
+        // Map common English error messages to Arabic
+        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
+          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
+        } 
+        else if (result.message.includes("not found") || result.message.includes("invalid")) {
+          arabicErrorMessage = "منتج غير صالح أو غير موجود";
+        }
+        else if (result.message.includes("expired")) {
+          arabicErrorMessage = "انتهت صلاحية رمز المنتج";
+        }
+        else if (result.message.includes("limit exceeded")) {
+          arabicErrorMessage = "تم تجاوز الحد المسموح من المسح";
+        }
+        else if (result.message.includes("unauthorized") || result.message.includes("permission")) {
+          arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
+        }
+        
+        // Format the complete error message with any translated details
+        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
+        if (arabicErrorDetails) {
+          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
+        }
+        
+        setError(completeErrorMessage);
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        console.error('OCR Validation Error:', {
+          message: result.message,
+          code: result.error_code,
+          details: result.details
+        });
+        
+        if (result.details?.duplicate) {
+          // If it's a duplicate, allow user to scan again
+          resetScannerAfterDelay();
+        } else {
+          resetScannerAfterDelay(3000);
+        }
+        
+        return;
+      }
+      
+      // Success path
+      setIsValidating(false);
+      setResult(`تم التحقق من المنتج: ${result.productName}`);
+      
+      // Set points awarded if available in the response
+      if (result.pointsAwarded) {
+        setPointsAwarded(result.pointsAwarded);
+      } else {
+        // Default points when not provided by API
+        setPointsAwarded(50);
+      }
+      
+      // Trigger success haptic feedback - one long vibration
+      triggerHapticFeedback([200]);
+      
+      setNotificationType('success');
+      setShowNotification(true);
+      
+      // Hide notification after a few seconds
+      setTimeout(() => {
+        setShowNotification(false);
+        // Reset points after animation completes
+        setPointsAwarded(0);
+      }, 3500);
+      
+      // Log success and product name
+      console.log("Scanned product via OCR:", result.productName);
+      
+      // Call refreshUser to update user data directly in the auth context
+      refreshUser()
+        .then(() => console.log("User refreshed after successful OCR scan"))
+        .catch((err: any) => console.error("Error refreshing user after OCR scan:", err));
+      
+      // Aggressively invalidate and immediately refetch all relevant queries
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
+      // Force instant refetch of all invalidated queries
+      queryClient.refetchQueries({ 
+        queryKey: [`/api/transactions?userId=${user?.id}`],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/badges', user?.id],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/users/me'],
+        exact: true 
+      });
+      
+      // Show success toast
+      toast({
+        title: "تم التحقق من المنتج بنجاح ✓",
+        description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
+        variant: "default",
+      });
+      
+      // Reset scanner after showing success for a moment
+      resetScannerAfterDelay(2000);
+      
+    } catch (err: any) {
+      console.error("OCR Validation error:", err);
+      
+      // Ensure error message is in Arabic
+      let arabicErrorMessage = "خطأ في التحقق من الرمز المطبوع. يرجى المحاولة مرة أخرى.";
+      
+      // Add error code
+      arabicErrorMessage += " (رمز الخطأ: OCR_VALIDATION_ERROR)";
+      
+      // Add translated error details if available
+      if (err.message) {
+        const translatedDetail = translateErrorDetails(err.message);
+        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
+      } else {
+        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
+      }
+      
+      setError(arabicErrorMessage);
+      setIsValidating(false);
+      setNotificationType('error');
+      setShowNotification(true);
+      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+      
+      // Auto-dismiss error after 5 seconds
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+      
+      resetScannerAfterDelay(3000);
+    }
+  };
+
   // Function to validate QR code
   const validateQrCode = async (url: string) => {
     setIsValidating(true);
@@ -504,8 +726,9 @@ export default function AdvancedScanPage() {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // We'll handle text capture later with a different approach
-        // Just use core and barcode for now
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const label = await import("@scandit/web-datacapture-label");
         const {
           configure,
           DataCaptureView,
@@ -528,6 +751,16 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
+        const {
+          LabelCapture,
+          labelCaptureLoader,
+          LabelCaptureSettings,
+          LabelDefinition,
+          TextField,
+          TextFieldBuilder,
+          LabelDefinitionBuilder
+        } = label as any;
+
         try {
           /* Initialise the engine (downloads WASM files automatically) */
           console.log("Using license key from environment secret");
@@ -535,7 +768,7 @@ export default function AdvancedScanPage() {
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
               "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
-            moduleLoaders: [barcodeCaptureLoader()],
+            moduleLoaders: [barcodeCaptureLoader(), labelCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
@@ -727,11 +960,79 @@ export default function AdvancedScanPage() {
         });
         await capture.setEnabled(true);
 
+        /* Set up Label Capture for OCR Mode (6-digit alphanumeric codes) */
+        const labelCaptureSettings = new LabelCaptureSettings();
+        
+        // Create a text field definition for 6-digit alphanumeric codes
+        const textField = new TextFieldBuilder()
+          .setRegex("^[A-Z0-9]{6}$") // Exactly 6 alphanumeric characters
+          .setCharacterSet("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+          .build();
+        
+        // Create a label definition with the text field
+        const labelDefinition = new LabelDefinitionBuilder()
+          .addField("serialNumber", textField)
+          .build();
+        
+        labelCaptureSettings.addLabelDefinition(labelDefinition);
+        
+        // Create label capture instance
+        const labelCapture = await LabelCapture.forContext(context, labelCaptureSettings);
+        textCaptureRef.current = labelCapture; // Store label capture in ref (reusing the textCaptureRef)
+        
+        labelCapture.addListener({
+          didCaptureLabel: async (_mode: any, session: any) => {
+            const capturedLabels = session.newlyCapturedLabels;
+            if (!capturedLabels || capturedLabels.length === 0) return;
+            
+            // Disable label capture while processing
+            await labelCapture.setEnabled(false);
+            
+            // Get the first captured label
+            const capturedLabel = capturedLabels[0];
+            const serialNumberField = capturedLabel.getField("serialNumber");
+            
+            if (serialNumberField && serialNumberField.value) {
+              const textValue = serialNumberField.value.trim().toUpperCase();
+              
+              console.log("OCR text detected:", textValue);
+              
+              // Validate that it's exactly 6 alphanumeric characters
+              if (/^[A-Z0-9]{6}$/.test(textValue)) {
+                // Process the OCR code with validation
+                await validateOcrCode(textValue);
+              } else {
+                console.log("OCR text doesn't match expected pattern:", textValue);
+                // Re-enable label capture for continued scanning
+                setTimeout(() => {
+                  if (textCaptureRef.current && scannerMode === 'ocr') {
+                    textCaptureRef.current.setEnabled(true).catch(console.error);
+                  }
+                }, 1000);
+              }
+            } else {
+              console.log("No serial number field found in captured label");
+              // Re-enable label capture for continued scanning
+              setTimeout(() => {
+                if (textCaptureRef.current && scannerMode === 'ocr') {
+                  textCaptureRef.current.setEnabled(true).catch(console.error);
+                }
+              }, 1000);
+            }
+          }
+        });
+        
+        // Initially disable label capture (will be enabled when switching to OCR mode)
+        await labelCapture.setEnabled(false);
+
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
           try {
             if (capture) {
               await capture.setEnabled(false);
+            }
+            if (textCaptureRef.current) {
+              await textCaptureRef.current.setEnabled(false);
             }
             if (context) {
               await context.dispose();
