@@ -650,7 +650,16 @@ export default function AdvancedScanPage() {
   
   // Toggle auto-switching feature
   const toggleAutoSwitch = () => {
-    setAutoSwitchEnabled(!autoSwitchEnabled);
+    const newValue = !autoSwitchEnabled;
+    console.log(`[SCANNER_CONFIG] Auto-switch ${newValue ? 'enabled' : 'disabled'}`);
+    setAutoSwitchEnabled(newValue);
+  };
+  
+  // Manual mode switch function (separate from auto-switching logic)
+  const manualSwitchMode = () => {
+    console.log(`[SCANNER_MODE] Manual switch requested from ${scannerMode} to ${scannerMode === 'qr' ? 'ocr' : 'qr'}`);
+    // Directly switch to the opposite mode
+    switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr');
   };
 
   // Reset the scanner after processing a result
@@ -1226,9 +1235,9 @@ export default function AdvancedScanPage() {
             </div>
           </div>
           
-          {/* Enhanced Scanner Mode Status Message - More visible */}
+          {/* Enhanced Scanner Mode Status Message with Manual Switch Button */}
           {licenseStatus === 'initialized' && (
-            <div className="flex justify-center mt-2">
+            <div className="flex justify-center mt-2 gap-2">
               <div 
                 className={`
                   px-4 py-2 rounded-full text-sm 
@@ -1246,6 +1255,30 @@ export default function AdvancedScanPage() {
                   {statusMessage}
                 </span>
               </div>
+              
+              {/* Manual Mode Switch Button */}
+              <button 
+                onClick={manualSwitchMode}
+                className={`
+                  px-3 py-2 rounded-full text-sm border font-medium flex items-center gap-1
+                  ${scannerMode === 'qr' 
+                    ? 'bg-amber-500/10 text-amber-700 border-amber-500/30 hover:bg-amber-500/20' 
+                    : 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'}
+                  transition-all
+                `}
+              >
+                {scannerMode === 'qr' ? (
+                  <>
+                    <TextCursorInput className="h-4 w-4" />
+                    <span>تبديل إلى وضع النص</span>
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="h-4 w-4" />
+                    <span>تبديل إلى وضع QR</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>
