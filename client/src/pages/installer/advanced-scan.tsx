@@ -7,6 +7,17 @@ import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } fro
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
+// Type definitions for global Scandit SDK
+declare global {
+  interface Window {
+    ScanditSDK: {
+      core: any;
+      barcode: any;
+      loaded: boolean;
+    };
+  }
+}
+
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
@@ -708,15 +719,16 @@ export default function AdvancedScanPage() {
 
     (async () => {
       try {
-        /* Dynamically import the three SDK packages loaded via the CDN */
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const core = await import("@scandit/web-datacapture-core");
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const barcode = await import("@scandit/web-datacapture-barcode");
+        /* Wait for Scandit SDK to load from global preloader */
+        // Check if SDK is loaded, if not wait for it
+        while (!window.ScanditSDK?.loaded) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        const core = window.ScanditSDK.core;
+        const barcode = window.ScanditSDK.barcode;
         // Note: Label capture temporarily disabled due to CDN issues
-        // const label = await import("@scandit/web-datacapture-label");
+        // const label = window.ScanditSDK.label;
         const {
           configure,
           DataCaptureView,
