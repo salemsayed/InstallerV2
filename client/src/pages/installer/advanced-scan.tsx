@@ -471,6 +471,62 @@ export default function AdvancedScanPage() {
     }, delay);
   };
 
+  // Simulate OCR detection (for demo purposes)
+  const simulateOcrDetection = useCallback(() => {
+    if (scannerMode === 'ocr') {
+      // Generate a random 6-character alphanumeric code
+      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let detectedCode = '';
+      for (let i = 0; i < 6; i++) {
+        detectedCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      // Show success message
+      setResult(`تم اكتشاف الرمز المطبوع: ${detectedCode}`);
+      setNotificationType('success');
+      setShowNotification(true);
+      triggerHapticFeedback([200]); // Success vibration
+      
+      // Set points awarded
+      setPointsAwarded(50);
+      
+      // Show toast
+      toast({
+        title: "تم التحقق من الرمز المطبوع ✓",
+        description: `الرمز: ${detectedCode}\nالنقاط المكتسبة: 50`,
+        variant: "default",
+      });
+      
+      // Reset scanner after showing success
+      resetScannerAfterDelay(2000);
+      
+      // Clear the OCR auto-switch timer
+      if (modeTimerRef.current) {
+        clearTimeout(modeTimerRef.current);
+        modeTimerRef.current = null;
+      }
+    }
+  }, [scannerMode, toast, triggerHapticFeedback, resetScannerAfterDelay]);
+  
+  // Simulate occasional OCR detection when in OCR mode
+  useEffect(() => {
+    let simulationTimer: NodeJS.Timeout | null = null;
+    
+    if (scannerMode === 'ocr' && !isValidating && !showNotification) {
+      // Randomly detect a code after 2-4 seconds of being in OCR mode
+      const detectionTime = 2000 + Math.random() * 2000;
+      simulationTimer = setTimeout(() => {
+        simulateOcrDetection();
+      }, detectionTime);
+    }
+    
+    return () => {
+      if (simulationTimer) {
+        clearTimeout(simulationTimer);
+      }
+    };
+  }, [scannerMode, simulateOcrDetection, isValidating, showNotification]);
+  
   // Initialize auto-mode switching when component mounts
   useEffect(() => {
     // Start the auto-switch timer if enabled when component mounts
