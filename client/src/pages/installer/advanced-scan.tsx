@@ -66,6 +66,12 @@ export default function AdvancedScanPage() {
         setNotificationType('error');
         setShowNotification(true);
         triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
         resetScannerAfterDelay();
         return;
       }
@@ -80,6 +86,12 @@ export default function AdvancedScanPage() {
         setNotificationType('error');
         setShowNotification(true);
         triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
         resetScannerAfterDelay();
         return;
       }
@@ -92,6 +104,12 @@ export default function AdvancedScanPage() {
         setNotificationType('error');
         setShowNotification(true);
         triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
         return;
       }
       
@@ -120,6 +138,11 @@ export default function AdvancedScanPage() {
         setNotificationType('error');
         setShowNotification(true);
         triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
         
         console.error('QR Validation Error:', {
           message: result.message,
@@ -206,6 +229,12 @@ export default function AdvancedScanPage() {
       setNotificationType('error');
       setShowNotification(true);
       triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+      
+      // Auto-dismiss error after 5 seconds
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+      
       resetScannerAfterDelay(3000);
     }
   };
