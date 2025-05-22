@@ -316,8 +316,7 @@ export default function AdvancedScanPage() {
           MeasureUnit,
           RectangularLocationSelection,
           VideoResolution,
-          CameraSettings,
-          ScanIntention
+          CameraSettings
         } = core as any;
 
         const {
@@ -328,25 +327,60 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
-        /* Initialise the engine (downloads WASM files automatically) */
-        console.log("Using license key from environment secret");
-        await configure({
-          licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
-          libraryLocation:
-            "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
-          moduleLoaders: [barcodeCaptureLoader()]
-        });
+        try {
+          /* Initialise the engine (downloads WASM files automatically) */
+          console.log("Using license key from environment secret");
+          await configure({
+            licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
+            libraryLocation:
+              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
+            moduleLoaders: [barcodeCaptureLoader()],
+            // Fix for runtime error by patching errorElement
+            preloadEngine: true,
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build", 
+          });
+        } catch (configError) {
+          console.error("Configuration error:", configError);
+          setError("فشل تهيئة الماسح الضوئي. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.");
+          setLicenseStatus('failed');
+          return;
+        }
         
         // Update license status
         setLicenseStatus('initialized');
 
+        // Create a protected wrapper to prevent runtime errors on undefined elements
+        const createProtectedElement = (operation: Function) => {
+          try {
+            return operation();
+          } catch (err) {
+            console.warn("Protected element operation failed:", err);
+            return null;
+          }
+        };
+
         /* Set up capture context & view */
-        const context = await DataCaptureContext.create();
+        const context = await createProtectedElement(() => DataCaptureContext.create());
+        if (!context) {
+          setError("فشل إنشاء سياق المسح الضوئي. يرجى تحديث الصفحة والمحاولة مرة أخرى.");
+          setLicenseStatus('failed');
+          return;
+        }
+        
         contextRef.current = context; // Store context in ref
         
         const view = new DataCaptureView();
         await view.setContext(context);
-        view.connectToElement(scannerRef.current!);
+        
+        // Make sure scannerRef.current exists before connecting
+        if (scannerRef.current) {
+          view.connectToElement(scannerRef.current);
+        } else {
+          console.error("Scanner element reference is null");
+          setError("فشل في الاتصال بعنصر المسح الضوئي. يرجى تحديث الصفحة.");
+          setLicenseStatus('failed');
+          return;
+        }
         
         // 🔦 Torch toggle button (auto-hides if torch not available)
         const torchSwitch = new TorchSwitchControl();
@@ -354,7 +388,20 @@ export default function AdvancedScanPage() {
 
         /* Camera with optimized settings */
         const camera = Camera.default;
-        await context.setFrameSource(camera);
+        if (!camera) {
+          setError("لم يتم العثور على كاميرا. يرجى التأكد من إتاحة الوصول إلى الكاميرا.");
+          setLicenseStatus('failed');
+          return;
+        }
+        
+        try {
+          await context.setFrameSource(camera);
+        } catch (cameraError) {
+          console.error("Camera error:", cameraError);
+          setError("فشل الاتصال بالكاميرا. يرجى التأكد من السماح بالوصول إلى الكاميرا من إعدادات المتصفح.");
+          setLicenseStatus('failed');
+          return;
+        }
         
         // Optimization 3: Camera Settings
         const cameraSettings = new CameraSettings();
@@ -362,7 +409,14 @@ export default function AdvancedScanPage() {
         cameraSettings.zoomFactor = 1.3; // Helpful for small QR codes
         await camera.applySettings(cameraSettings);
         
-        await camera.switchToDesiredState(FrameSourceState.On);
+        try {
+          await camera.switchToDesiredState(FrameSourceState.On);
+        } catch (cameraStateError) {
+          console.error("Camera state error:", cameraStateError);
+          setError("فشل تشغيل الكاميرا. يرجى التأكد من عدم استخدام كاميرا من قبل تطبيق آخر.");
+          setLicenseStatus('failed');
+          return;
+        }
 
         /* Capture only QR codes with optimized settings */
         const settings = new BarcodeCaptureSettings();
@@ -387,13 +441,21 @@ export default function AdvancedScanPage() {
         settings.locationSelection = locationSelection;
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Try different possible locations of ScanIntention based on Scandit's structure
-        if (barcode.ScanIntention) {
-          settings.scanIntention = barcode.ScanIntention.Smart;
-        } else if (core.ScanIntention) {
-          settings.scanIntention = core.ScanIntention.Smart;
-        } else {
-          console.log("ScanIntention not found in API, skipping this optimization");
+        // Fix for the ScanIntention error - use a safe approach with try/catch
+        try {
+          // Try to set scan intention if available
+          if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
+            settings.scanIntention = barcode.ScanIntention.Smart;
+          } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
+            settings.scanIntention = core.ScanIntention.Smart;
+          } else if (typeof settings.setProperty === 'function') {
+            // Fallback to using setProperty if available
+            settings.setProperty("barcodeCapture.scanIntention", "smart");
+          } else {
+            console.log("ScanIntention not available in API, skipping this optimization");
+          }
+        } catch (settingsError) {
+          console.warn("Error setting scan intention:", settingsError);
         }
         
         // Set codeDuplicateFilter to 500ms for more responsive scanning
@@ -422,11 +484,19 @@ export default function AdvancedScanPage() {
 
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
-          await capture.setEnabled(false);
-          await context.dispose();
+          try {
+            if (capture) {
+              await capture.setEnabled(false);
+            }
+            if (context) {
+              await context.dispose();
+            }
+          } catch (disposeError) {
+            console.error("Error during disposal:", disposeError);
+          }
         };
       } catch (e: any) {
-        console.error(e);
+        console.error("Scanner initialization error:", e);
         
         // Ensure scanner setup error message is in Arabic
         let arabicErrorMessage = "فشل إعداد الماسح";
@@ -439,11 +509,24 @@ export default function AdvancedScanPage() {
             arabicErrorMessage = "فشل الوصول إلى الكاميرا. يرجى التأكد من السماح بالوصول إلى الكاميرا";
           } else if (e.message.includes("permission")) {
             arabicErrorMessage = "تم رفض إذن الوصول إلى الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح";
+          } else if (e.message.includes("textContent")) {
+            arabicErrorMessage = "خطأ في تحميل المكتبة. يرجى تحديث الصفحة والمحاولة مرة أخرى";
+          } else {
+            arabicErrorMessage = `فشل إعداد الماسح: ${e.message}`;
           }
         }
         
         setError(arabicErrorMessage);
         setLicenseStatus('failed');
+        
+        // Show error notification
+        setNotificationType('error');
+        setShowNotification(true);
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
       }
     })();
 
@@ -489,6 +572,7 @@ export default function AdvancedScanPage() {
           <div
             ref={scannerRef}
             className="absolute inset-0 bg-black overflow-hidden"
+            aria-label="مساحة مسح رمز الاستجابة السريعة"
           />
           
           {/* Scanner overlay - scanning guides (80% of view as square to match locationSelection) */}
@@ -574,7 +658,7 @@ export default function AdvancedScanPage() {
                         )}
                       </>
                     ) : (
-                      <p className="text-white/90 text-sm whitespace-pre-wrap">{error}</p>
+                      <p className="text-white/90 text-sm whitespace-pre-wrap" dir="rtl">{error}</p>
                     )}
                   </div>
                 </div>
@@ -604,7 +688,7 @@ export default function AdvancedScanPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">فشل التحقق</h3>
-                      <p className="text-red-600 text-sm mt-1 whitespace-pre-wrap">{error}</p>
+                      <p className="text-red-600 text-sm mt-1 whitespace-pre-wrap" dir="rtl">{error}</p>
                     </div>
                   </div>
                 )}
@@ -616,6 +700,21 @@ export default function AdvancedScanPage() {
           {import.meta.env.DEV && (
             <div className="absolute bottom-2 left-2 p-2 bg-black/50 text-white rounded-lg text-xs z-10">
               <p className="font-mono">License: {import.meta.env.VITE_SCANDIT_LICENSE_KEY ? '✓' : '✗'}</p>
+            </div>
+          )}
+          
+          {/* Error fallback for scanner initialization failures */}
+          {licenseStatus === 'failed' && (
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-6">
+              <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+              <h2 className="text-xl font-bold mb-2 text-center">فشل تهيئة الماسح الضوئي</h2>
+              <p className="text-center mb-6 max-w-md" dir="rtl">{error || "حدث خطأ غير متوقع. يرجى تحديث الصفحة والمحاولة مرة أخرى."}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-primary hover:bg-primary/90 px-6 py-3 rounded-md font-medium"
+              >
+                إعادة تحميل الصفحة
+              </button>
             </div>
           )}
         </div>
