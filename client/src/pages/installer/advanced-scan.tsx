@@ -767,11 +767,10 @@ export default function AdvancedScanPage() {
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
-              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
+              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.3.0/sdc-lib/",
             moduleLoaders: [barcodeCaptureLoader(), labelCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
-            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
             // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
