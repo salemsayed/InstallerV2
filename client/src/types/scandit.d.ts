@@ -3,6 +3,16 @@
  * These are minimal declarations to satisfy TypeScript requirements
  */
 
+// Global Scandit SDK window object definition
+interface Window {
+  ScanditSDK: {
+    core: any;
+    barcode: any;
+    text: any;
+    loaded: boolean;
+  }
+}
+
 declare module '@scandit/web-datacapture-core' {
   export class DataCaptureContext {
     static forLicenseKey(licenseKey: string): DataCaptureContext;

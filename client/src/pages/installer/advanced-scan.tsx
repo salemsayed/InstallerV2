@@ -519,7 +519,7 @@ export default function AdvancedScanPage() {
             moduleLoaders: [barcodeCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
-            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build", 
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
             // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
@@ -814,15 +814,37 @@ export default function AdvancedScanPage() {
                  licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
               </span>
               
-              {/* Color inversion indicator */}
+              {/* Scanner Mode Indicator */}
               <div className="flex items-center gap-1 mr-2 border-r pr-2 border-gray-300">
-                <div className="flex items-center justify-center bg-black rounded-sm h-4 w-4">
-                  <div className="bg-white h-2 w-2 rounded-sm"></div>
-                </div>
-                <span className="text-xs">مسح معكوس</span>
+                {scannerMode === 'qr' ? (
+                  <>
+                    <QrCode className="h-4 w-4" />
+                    <span className="text-xs">وضع QR</span>
+                  </>
+                ) : (
+                  <>
+                    <TextCursorInput className="h-4 w-4" />
+                    <span className="text-xs">وضع النص</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
+          
+          {/* Scanner Mode Status Message */}
+          {licenseStatus === 'initialized' && (
+            <div className="flex justify-center mt-2">
+              <div 
+                className={`px-4 py-1 rounded-full text-sm ${
+                  scannerMode === 'qr' 
+                    ? 'bg-primary/10 text-primary' 
+                    : 'bg-amber-500/10 text-amber-700'
+                }`}
+              >
+                <span className="text-xs font-medium">{statusMessage}</span>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Scanner viewport - using grid cell to take all available space */}
