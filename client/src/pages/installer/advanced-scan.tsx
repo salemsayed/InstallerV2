@@ -873,11 +873,48 @@ export default function AdvancedScanPage() {
               </div>
             </div>
             
-            {/* Scanning instruction message */}
+            {/* Scanning instruction message - changes based on mode */}
             <div className="absolute bottom-20 left-0 right-0 flex justify-center">
               <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
-                وجه الكاميرا نحو رمز QR الخاص بالمنتج
+                {scannerMode === 'qr' 
+                  ? 'وجه الكاميرا نحو رمز QR الخاص بالمنتج'
+                  : 'وجه الكاميرا نحو الرمز المطبوع بجانب QR'
+                }
               </div>
+            </div>
+            
+            {/* Mode toggle buttons */}
+            <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+              <Button
+                onClick={() => switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr')}
+                className="rounded-full shadow-lg"
+                size="sm"
+                variant="secondary"
+              >
+                {scannerMode === 'qr' ? (
+                  <span className="flex items-center gap-1">
+                    <TextCursorInput className="h-4 w-4" />
+                    <span>وضع النص</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <QrCode className="h-4 w-4" />
+                    <span>وضع QR</span>
+                  </span>
+                )}
+              </Button>
+              
+              <Button
+                onClick={toggleAutoSwitch}
+                className={`rounded-full shadow-lg text-xs flex items-center gap-2 ${
+                  autoSwitchEnabled ? 'bg-primary' : 'bg-muted'
+                }`}
+                variant={autoSwitchEnabled ? "default" : "outline"}
+                size="sm"
+              >
+                <div className={`w-2 h-2 rounded-full ${autoSwitchEnabled ? 'bg-white animate-pulse' : 'bg-muted-foreground'}`} />
+                {autoSwitchEnabled ? 'تبديل تلقائي' : 'تبديل يدوي'}
+              </Button>
             </div>
           </div>
           
