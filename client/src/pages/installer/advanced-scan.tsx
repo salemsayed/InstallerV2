@@ -3,7 +3,7 @@ import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 
 // Validate if the UUID is a valid v4 UUID
@@ -29,15 +29,27 @@ export default function AdvancedScanPage() {
   const contextRef = useRef<any>(null);
   const captureRef = useRef<any>(null);
 
-  // State for scan success animation
-  const [showSuccess, setShowSuccess] = useState(false);
+  // State for scan result notification
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationType, setNotificationType] = useState<'success' | 'error' | null>(null);
+  
+  // Helper function for haptic feedback
+  const triggerHapticFeedback = (pattern: number[]) => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        console.error('Haptic feedback failed:', e);
+      }
+    }
+  };
 
   // Function to validate QR code
   const validateQrCode = async (url: string) => {
     setIsValidating(true);
     setError(null);
     setResult(null);
-    setShowSuccess(false);
+    setShowNotification(false);
 
     try {
       // Step 1: URL shape validation
@@ -51,6 +63,9 @@ export default function AdvancedScanPage() {
       if (!warrantyMatch && !shortMatch) {
         setError("صيغة رمز QR غير صالحة. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_FORMAT)\n\nالصيغة المتوقعة: https://warranty.bareeq.lighting/p/[UUID] أو https://w.bareeq.lighting/p/[UUID]");
         setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         resetScannerAfterDelay();
         return;
       }
@@ -62,6 +77,9 @@ export default function AdvancedScanPage() {
       if (!isValidUUIDv4(uuid)) {
         setError("رمز المنتج UUID غير صالح. يرجى مسح رمز ضمان صالح. (رمز الخطأ: INVALID_UUID)\n\nالرمز المكتشف: " + uuid);
         setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         resetScannerAfterDelay();
         return;
       }
@@ -71,6 +89,9 @@ export default function AdvancedScanPage() {
       if (!user || !user.id) {
         setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
         setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         return;
       }
       
@@ -96,6 +117,9 @@ export default function AdvancedScanPage() {
         
         setError(`${result.message}${errorCode}\n${errorDetails}`);
         setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         
         console.error('QR Validation Error:', {
           message: result.message,
@@ -125,11 +149,15 @@ export default function AdvancedScanPage() {
         setPointsAwarded(50);
       }
       
-      setShowSuccess(true);
+      // Trigger success haptic feedback - one long vibration
+      triggerHapticFeedback([200]);
       
-      // Hide success animation after a few seconds
+      setNotificationType('success');
+      setShowNotification(true);
+      
+      // Hide notification after a few seconds
       setTimeout(() => {
-        setShowSuccess(false);
+        setShowNotification(false);
         // Reset points after animation completes
         setPointsAwarded(0);
       }, 3500);
@@ -175,6 +203,9 @@ export default function AdvancedScanPage() {
       console.error("Validation error:", err);
       setError(`خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى. (رمز الخطأ: VALIDATION_ERROR)\n\nتفاصيل: ${err.message || "خطأ غير معروف"}`);
       setIsValidating(false);
+      setNotificationType('error');
+      setShowNotification(true);
+      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
       resetScannerAfterDelay(3000);
     }
   };
@@ -341,8 +372,8 @@ export default function AdvancedScanPage() {
 
   return (
     <InstallerLayout activeTab="advanced-scan">
-      {/* Full height container */}
-      <div className="flex flex-col h-[calc(100dvh-4.5rem)]">
+      {/* Responsive grid layout container */}
+      <div className="grid h-[calc(100dvh-4.5rem)] grid-rows-[auto_1fr] overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 bg-white shadow-sm z-10">
           <div className="flex justify-between items-center">
@@ -371,8 +402,8 @@ export default function AdvancedScanPage() {
           </div>
         </div>
         
-        {/* Scanner viewport - flex-grow to take all available space */}
-        <div className="flex-1 relative">
+        {/* Scanner viewport - using grid cell to take all available space */}
+        <div className="relative overflow-hidden">
           <div
             ref={scannerRef}
             className="absolute inset-0 bg-black overflow-hidden"
@@ -381,7 +412,7 @@ export default function AdvancedScanPage() {
           {/* Scanner overlay - scanning guides (80% of view as square to match locationSelection) */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[80vmin] h-[80vmin] max-w-sm max-h-sm">
+              <div className="relative w-[min(80vw,80vh)] max-w-md aspect-square">
                 {/* Scan animation */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
                 
@@ -414,61 +445,69 @@ export default function AdvancedScanPage() {
             </div>
           )}
           
-          {/* Success animation overlay */}
-          {showSuccess && (
+          {/* Unified Notification Overlay for Success and Error - Professional Design */}
+          {showNotification && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 animate-fade-in overflow-hidden">
-              {/* Confetti elements */}
-              {Array.from({ length: 40 }).map((_, i) => {
-                const colors = ["bg-blue-500", "bg-yellow-400", "bg-green-500", "bg-red-500", "bg-purple-500"];
-                const sizes = ["h-3 w-3", "h-4 w-4", "h-2 w-5", "h-5 w-2"];
-                const delays = ["delay-0", "delay-100", "delay-200", "delay-300", "delay-400", "delay-500"];
-                const leftPos = Math.floor(Math.random() * 100);
-                
-                return (
-                  <div 
-                    key={i}
-                    className={`absolute ${sizes[i % sizes.length]} ${colors[i % colors.length]} ${delays[i % delays.length]} rounded-sm animate-confetti-fall animate-confetti-sway`}
-                    style={{ 
-                      left: `${leftPos}%`, 
-                      opacity: 0.8,
-                      animationDelay: `${Math.random() * 0.5}s`,
-                      animationDuration: `${2 + Math.random() * 2}s`
-                    }}
-                  />
-                );
-              })}
-              
-              {/* Central success element */}
-              <div className="bg-gradient-to-r from-primary to-secondary p-8 rounded-xl shadow-lg backdrop-blur-sm flex flex-col items-center animate-scale-up">
-                <div className="h-24 w-24 rounded-full border-4 border-white flex items-center justify-center bg-green-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white animate-success-check" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="mt-4 text-white text-2xl font-bold">تم التحقق بنجاح!</p>
-                
-                {/* Points indicator */}
-                {pointsAwarded > 0 && (
-                  <div className="mt-3 bg-white/20 backdrop-blur-md rounded-full px-6 py-2 animate-points-bounce">
-                    <p className="text-white font-bold text-lg">
-                      <span className="ml-1 text-yellow-300">+{pointsAwarded}</span> نقطة
-                    </p>
+              <div className={`
+                w-[85%] max-w-md mx-auto rounded-lg shadow-xl p-6
+                ${notificationType === 'success' 
+                  ? 'bg-gradient-to-br from-primary/95 to-secondary/95' 
+                  : 'bg-gradient-to-br from-red-600/95 to-red-800/95'} 
+                backdrop-blur-md animate-scale-in
+              `}>
+                <div className="flex flex-col items-center">
+                  {/* Icon container with pulsing animation */}
+                  <div className={`
+                    h-20 w-20 rounded-full flex items-center justify-center mb-4
+                    ${notificationType === 'success' 
+                      ? 'bg-white/20' 
+                      : 'bg-white/20'}
+                    animate-pulse-gentle
+                  `}>
+                    {notificationType === 'success' ? (
+                      <CheckCircle2 className="h-12 w-12 text-white" />
+                    ) : (
+                      <AlertCircle className="h-12 w-12 text-white" />
+                    )}
                   </div>
-                )}
+                  
+                  {/* Title */}
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    {notificationType === 'success' 
+                      ? 'تم التحقق بنجاح!' 
+                      : 'فشل التحقق'}
+                  </h3>
+                  
+                  {/* Content */}
+                  <div className="text-center">
+                    {notificationType === 'success' ? (
+                      <>
+                        <p className="text-white/90 mb-3">{result}</p>
+                        {/* Points indicator */}
+                        {pointsAwarded > 0 && (
+                          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md rounded-full px-5 py-2 animate-bounce-gentle">
+                            <span className="text-yellow-300 font-bold text-lg">+{pointsAwarded}</span>
+                            <span className="text-white font-medium">نقطة</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-white/90 text-sm whitespace-pre-wrap">{error}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
           
-          {/* Floating Result Panel (instead of static bottom status bar) */}
-          <div className={`absolute bottom-6 left-4 right-4 transition-all duration-300 ${(result || error) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+          {/* Floating Result Panel (used when no full-screen notification) */}
+          <div className={`absolute bottom-6 left-4 right-4 transition-all duration-300 ${(!showNotification && (result || error)) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
             <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-xl overflow-hidden">
               <div className={`px-5 py-4 ${result ? 'border-l-4 border-green-500' : error ? 'border-l-4 border-red-500' : ''}`}>
-                {result && (
+                {result && !showNotification && (
                   <div className="flex items-start gap-3">
                     <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
+                      <CheckCircle2 className="h-4 w-4 text-white" />
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">تم التحقق من المنتج بنجاح</h3>
@@ -476,12 +515,10 @@ export default function AdvancedScanPage() {
                     </div>
                   </div>
                 )}
-                {error && (
+                {error && !showNotification && (
                   <div className="flex items-start gap-3">
                     <div className="h-6 w-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <AlertCircle className="h-4 w-4 text-white" />
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">فشل التحقق</h3>
