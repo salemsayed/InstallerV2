@@ -974,22 +974,17 @@ export default function AdvancedScanPage() {
         );
         settings.locationSelection = locationSelection;
         
-        // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Fix for the ScanIntention error - use a safe approach with try/catch
+        // Optimization 2: Remove ScanIntention that's causing issues
+        // Instead use well-supported configuration options
         try {
-          // Try to set scan intention if available
-          if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
-            settings.scanIntention = barcode.ScanIntention.Smart;
-          } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
-            settings.scanIntention = core.ScanIntention.Smart;
-          } else if (typeof settings.setProperty === 'function') {
-            // Fallback to using setProperty if available
-            settings.setProperty("barcodeCapture.scanIntention", "smart");
-          } else {
-            console.log("ScanIntention not available in API, skipping this optimization");
+          // Set advanced configuration options if possible
+          if (typeof settings.setProperty === 'function') {
+            // These properties are standardized and should be available
+            settings.setProperty("barcodeCapture.duplicateFilter", 500); // ms
+            settings.setProperty("barcodeCapture.feedback.success", true);
           }
         } catch (settingsError) {
-          console.warn("Error setting scan intention:", settingsError);
+          console.warn("Error setting advanced properties:", settingsError);
         }
         
         // Set codeDuplicateFilter to 500ms for more responsive scanning
