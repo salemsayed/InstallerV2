@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/auth-provider";
 import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } from "lucide-react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
+import Tesseract from 'tesseract.js';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -67,6 +68,13 @@ export default function AdvancedScanPage() {
   const captureRef = useRef<any>(null); // Reference for barcode capture
   const textCaptureRef = useRef<any>(null); // Reference for text capture
   
+  // OCR specific refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const ocrWorkerRef = useRef<Tesseract.Worker | null>(null);
+  const ocrIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Timers for auto-switching between modes
   const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -82,6 +90,234 @@ export default function AdvancedScanPage() {
       } catch (e) {
         console.error('Haptic feedback failed:', e);
       }
+    }
+  };
+
+  // Function to validate OCR code
+  const validateOcrCode = async (code: string) => {
+    setIsValidating(true);
+    setError(null);
+    setResult(null);
+    setShowNotification(false);
+
+    try {
+      // Step 1: Format validation - exactly 6 alphanumeric characters
+      const cleanCode = code.replace(/[^A-Za-z0-9]/g, ''); // Remove non-alphanumeric characters
+      
+      if (cleanCode.length !== 6) {
+        setError(`رمز غير صالح. يجب أن يكون الرمز مكون من 6 أحرف وأرقام بالضبط. (تم العثور على: ${cleanCode.length} أحرف)\n\nالرمز المكتشف: "${cleanCode}"`);
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 4 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 4000);
+        
+        resetScannerAfterDelay();
+        return;
+      }
+
+      // Step 2: Send to server for validation and processing
+      if (!user || !user.id) {
+        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        return;
+      }
+      
+      console.log("Sending OCR scan request with:", {
+        endpoint: `/api/scan-ocr`,
+        user: user,
+        code: cleanCode.toUpperCase()
+      });
+      
+      const scanResult = await apiRequest(
+        "POST", 
+        `/api/scan-ocr`, 
+        {
+          code: cleanCode.toUpperCase()
+        }
+      );
+      
+      const result = await scanResult.json();
+      
+      if (!result.success) {
+        const errorCode = result.error_code ? ` (${result.error_code})` : '';
+        
+        // Translate common server error responses to Arabic
+        let arabicErrorMessage = result.message;
+        let arabicErrorDetails = '';
+        
+        // Translate server response details to Arabic
+        if (result.details) {
+          if (typeof result.details === 'string') {
+            // Handle string details
+            arabicErrorDetails = translateErrorDetails(result.details);
+          } else if (result.details.duplicate) {
+            // Handle duplicate scanning case
+            arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
+          } else if (result.details.message) {
+            // Handle object with message
+            arabicErrorDetails = translateErrorDetails(result.details.message);
+          } else {
+            // Handle other object details by stringifying but translating known patterns
+            const detailsStr = JSON.stringify(result.details, null, 2);
+            arabicErrorDetails = translateErrorDetails(detailsStr);
+          }
+        }
+        
+        // Map common English error messages to Arabic
+        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
+          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
+        } 
+        else if (result.message.includes("not found") || result.message.includes("invalid")) {
+          arabicErrorMessage = "رمز غير صالح أو غير موجود";
+        }
+        else if (result.message.includes("expired")) {
+          arabicErrorMessage = "انتهت صلاحية رمز المنتج";
+        }
+        else if (result.message.includes("limit exceeded")) {
+          arabicErrorMessage = "تم تجاوز الحد المسموح من المسح";
+        }
+        else if (result.message.includes("unauthorized") || result.message.includes("permission")) {
+          arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
+        }
+        
+        // Format the complete error message with any translated details
+        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
+        if (arabicErrorDetails) {
+          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
+        }
+        
+        setError(completeErrorMessage);
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        console.error('OCR Validation Error:', {
+          message: result.message,
+          code: result.error_code,
+          details: result.details
+        });
+        
+        if (result.details?.duplicate) {
+          // If it's a duplicate, allow user to scan again
+          resetScannerAfterDelay();
+        } else {
+          resetScannerAfterDelay(3000);
+        }
+        
+        return;
+      }
+      
+      // Success path
+      setIsValidating(false);
+      setResult(`تم التحقق من المنتج: ${result.productName || 'منتج بريق'}`);
+      
+      // Set points awarded if available in the response
+      if (result.pointsAwarded) {
+        setPointsAwarded(result.pointsAwarded);
+      } else {
+        // Default points when not provided by API
+        setPointsAwarded(50);
+      }
+      
+      // Trigger success haptic feedback - one long vibration
+      triggerHapticFeedback([200]);
+      
+      setNotificationType('success');
+      setShowNotification(true);
+      
+      // Hide notification after a few seconds
+      setTimeout(() => {
+        setShowNotification(false);
+        // Reset points after animation completes
+        setPointsAwarded(0);
+      }, 3500);
+      
+      // Log success and product name
+      console.log("Scanned OCR code:", cleanCode.toUpperCase(), "Product:", result.productName);
+      
+      // Call refreshUser to update user data directly in the auth context
+      refreshUser()
+        .then(() => console.log("User refreshed after successful OCR scan"))
+        .catch(err => console.error("Error refreshing user after OCR scan:", err));
+      
+      // Aggressively invalidate and immediately refetch all relevant queries
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
+      // Force instant refetch of all invalidated queries
+      queryClient.refetchQueries({ 
+        queryKey: [`/api/transactions?userId=${user?.id}`],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/badges', user?.id],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/users/me'],
+        exact: true 
+      });
+      
+      // Show success toast
+      toast({
+        title: "تم التحقق من المنتج بنجاح ✓",
+        description: `الرمز: ${cleanCode.toUpperCase()}\nالمنتج: ${result.productName || "منتج بريق"}\nالنقاط المكتسبة: ${result.pointsAwarded || 50}`,
+        variant: "default",
+      });
+      
+      // Reset scanner after showing success for a moment
+      resetScannerAfterDelay(2000);
+      
+    } catch (err: any) {
+      console.error("OCR Validation error:", err);
+      
+      // Ensure error message is in Arabic
+      let arabicErrorMessage = "خطأ في التحقق من رمز OCR. يرجى المحاولة مرة أخرى.";
+      
+      // Add error code
+      arabicErrorMessage += " (رمز الخطأ: OCR_VALIDATION_ERROR)";
+      
+      // Add translated error details if available
+      if (err.message) {
+        const translatedDetail = translateErrorDetails(err.message);
+        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
+      } else {
+        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
+      }
+      
+      setError(arabicErrorMessage);
+      setIsValidating(false);
+      setNotificationType('error');
+      setShowNotification(true);
+      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+      
+      // Auto-dismiss error after 5 seconds
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+      
+      resetScannerAfterDelay(3000);
     }
   };
 
@@ -379,6 +615,140 @@ export default function AdvancedScanPage() {
     }
   };
 
+  // Initialize OCR system
+  const initializeOCR = useCallback(async () => {
+    try {
+      console.log("Initializing OCR system...");
+      
+      // Initialize Tesseract worker
+      if (!ocrWorkerRef.current) {
+        ocrWorkerRef.current = await Tesseract.createWorker('eng', 1, {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              console.log(`OCR Progress: ${(m.progress * 100).toFixed(1)}%`);
+            }
+          }
+        });
+        
+        // Set parameters for optimal 6-digit alphanumeric recognition
+        await ocrWorkerRef.current.setParameters({
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+          tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+        });
+        
+        console.log("OCR worker initialized successfully");
+      }
+      
+      // Get camera stream
+      if (!streamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment', // Back camera
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        streamRef.current = stream;
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        
+        console.log("OCR camera stream initialized");
+      }
+      
+    } catch (error) {
+      console.error("Error initializing OCR:", error);
+      setError("فشل في تهيئة نظام OCR. يرجى التأكد من السماح بالوصول إلى الكاميرا.");
+      setNotificationType('error');
+      setShowNotification(true);
+    }
+  }, []);
+
+  // Start OCR processing
+  const startOCRProcessing = useCallback(async () => {
+    if (!ocrWorkerRef.current || !videoRef.current || !canvasRef.current) {
+      console.warn("OCR components not ready");
+      return;
+    }
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+
+      // Set canvas size to video size
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Get image data from canvas
+      const imageData = canvas.toDataURL('image/png');
+      
+      // Perform OCR on the image
+      const { data: { text } } = await ocrWorkerRef.current.recognize(imageData);
+      
+      // Clean and validate the detected text
+      const cleanText = text.replace(/[^A-Za-z0-9]/g, '');
+      
+      console.log("OCR detected text:", text, "Clean text:", cleanText);
+      
+      // Check if we found a valid 6-character code
+      if (cleanText.length === 6) {
+        console.log("Valid 6-character code detected:", cleanText);
+        
+        // Stop OCR processing
+        if (ocrIntervalRef.current) {
+          clearInterval(ocrIntervalRef.current);
+          ocrIntervalRef.current = null;
+        }
+        
+        // Process the detected code
+        await validateOcrCode(cleanText);
+      }
+      
+    } catch (error) {
+      console.error("OCR processing error:", error);
+    }
+  }, [validateOcrCode]);
+
+  // Stop OCR processing
+  const stopOCRProcessing = useCallback(() => {
+    if (ocrIntervalRef.current) {
+      clearInterval(ocrIntervalRef.current);
+      ocrIntervalRef.current = null;
+    }
+  }, []);
+
+  // Cleanup OCR resources
+  const cleanupOCR = useCallback(async () => {
+    try {
+      // Stop processing
+      stopOCRProcessing();
+      
+      // Stop camera stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Terminate worker
+      if (ocrWorkerRef.current) {
+        await ocrWorkerRef.current.terminate();
+        ocrWorkerRef.current = null;
+      }
+      
+      console.log("OCR resources cleaned up");
+    } catch (error) {
+      console.error("Error cleaning up OCR:", error);
+    }
+  }, [stopOCRProcessing]);
+
   // Function to switch between scanner modes
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
     try {
@@ -393,6 +763,9 @@ export default function AdvancedScanPage() {
       
       if (mode === 'qr') {
         setStatusMessage("جارٍ البحث عن رمز QR...");
+        
+        // Stop OCR processing and cleanup
+        stopOCRProcessing();
         
         // Disable text capture and enable barcode capture
         if (textCaptureRef.current) {
@@ -412,13 +785,20 @@ export default function AdvancedScanPage() {
       } else {
         setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // Disable barcode capture and enable text capture
+        // Disable barcode capture
         if (captureRef.current) {
           captureRef.current.setEnabled(false).catch(console.error);
         }
-        if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(true).catch(console.error);
-        }
+        
+        // Initialize and start OCR
+        (async () => {
+          await initializeOCR();
+          
+          // Start OCR processing with interval
+          if (!ocrIntervalRef.current) {
+            ocrIntervalRef.current = setInterval(startOCRProcessing, 2000); // Process every 2 seconds
+          }
+        })();
         
         // Set timer to auto-switch back to QR mode if enabled
         if (autoSwitchEnabled) {
@@ -434,7 +814,7 @@ export default function AdvancedScanPage() {
     } catch (err) {
       console.error("Error switching scanner mode:", err);
     }
-  }, [autoSwitchEnabled]);
+  }, [autoSwitchEnabled, initializeOCR, startOCRProcessing, stopOCRProcessing]);
   
   // Toggle auto-switching feature
   const toggleAutoSwitch = () => {
@@ -455,9 +835,12 @@ export default function AdvancedScanPage() {
               switchScannerMode('ocr');
             }, 10000);
           }
-        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
+        } else if (scannerMode === 'ocr') {
           console.log("Re-enabling OCR scanner after validation");
-          textCaptureRef.current.setEnabled(true).catch(console.error);
+          // Restart OCR processing
+          if (!ocrIntervalRef.current) {
+            ocrIntervalRef.current = setInterval(startOCRProcessing, 2000);
+          }
           // Restart the auto-switch timer
           if (autoSwitchEnabled && !modeTimerRef.current) {
             modeTimerRef.current = setTimeout(() => {
@@ -686,18 +1069,12 @@ export default function AdvancedScanPage() {
         settings.locationSelection = locationSelection;
         
         // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Fix for the ScanIntention error - use a safe approach with try/catch
+        // Use setProperty approach as it's more compatible across SDK versions
         try {
-          // Try to set scan intention if available
-          if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
-            settings.scanIntention = barcode.ScanIntention.Smart;
-          } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
-            settings.scanIntention = core.ScanIntention.Smart;
-          } else if (typeof settings.setProperty === 'function') {
-            // Fallback to using setProperty if available
+          if (typeof settings.setProperty === 'function') {
             settings.setProperty("barcodeCapture.scanIntention", "smart");
           } else {
-            console.log("ScanIntention not available in API, skipping this optimization");
+            console.log("ScanIntention property setting not available, skipping this optimization");
           }
         } catch (settingsError) {
           console.warn("Error setting scan intention:", settingsError);
@@ -809,8 +1186,21 @@ export default function AdvancedScanPage() {
     return () => {
       window.alert = originalAlert;
       if (dispose) dispose().catch(console.error);
+      
+      // Cleanup OCR resources
+      cleanupOCR().catch(console.error);
+      
+      // Clear any remaining timers
+      if (modeTimerRef.current) {
+        clearTimeout(modeTimerRef.current);
+        modeTimerRef.current = null;
+      }
+      if (ocrIntervalRef.current) {
+        clearInterval(ocrIntervalRef.current);
+        ocrIntervalRef.current = null;
+      }
     };
-  }, []);
+  }, [cleanupOCR]);
 
   return (
     <InstallerLayout activeTab="advanced-scan">
@@ -873,6 +1263,24 @@ export default function AdvancedScanPage() {
             className="absolute inset-0 bg-black overflow-hidden"
             aria-label="مساحة مسح رمز الاستجابة السريعة"
           />
+          
+          {/* OCR Video Stream - Only visible in OCR mode */}
+          {scannerMode === 'ocr' && (
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }} // Mirror for better user experience
+              />
+              <canvas
+                ref={canvasRef}
+                className="hidden" // Hidden canvas for OCR processing
+              />
+            </>
+          )}
           
           {/* Scanner overlay - changes based on scanner mode */}
           <div className="absolute inset-0 pointer-events-none">
