@@ -33,14 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    console.log("[AUTH] Initializing auth state");
-    
-    // Always check server-side session first
+    // Silent session check
     const checkServerSession = async () => {
       setIsLoading(true);
       
       try {
-        console.log("[AUTH] Checking server session");
+        // Check server session silently without logging
         const response = await fetch('/api/users/me', {
           credentials: 'include', // Critical for session cookies
         });
@@ -48,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.ok) {
           const data = await response.json();
           if (data.user) {
-            console.log("[AUTH] Valid session found:", data.user.name);
             setUser(data.user);
             localStorage.setItem("user", JSON.stringify(data.user));
             setIsLoading(false);
@@ -60,19 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           try {
-            console.log("[AUTH] No server session, trying localStorage");
+            // Try to load user from localStorage
             const parsedUser = JSON.parse(storedUser);
             setUser(parsedUser);
             
-            // Make a second attempt to validate with server
+            // Silent validation with server
             const validationResponse = await apiRequest("GET", `/api/users/me`);
             const validationData = await validationResponse.json();
             
             if (validationData.user) {
-              console.log("[AUTH] Session valid after retry");
+              // Update with latest user data
               setUser(validationData.user);
             } else {
-              console.log("[AUTH] Invalid session after retry, clearing");
+              // Clear invalid session data
               localStorage.removeItem("user");
               setUser(null);
             }
@@ -102,14 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     
-    console.log("[AUTH] Login called with userId:", userId, "userRole:", userRole);
-    
     // Try using auth data stored by the login form (if available)
     const storedAuthData = localStorage.getItem("auth_user_data");
     if (storedAuthData) {
       try {
         const authUser = JSON.parse(storedAuthData);
-        console.log("[AUTH] Using stored auth data", authUser.name);
         
         // Create direct user object for immediate login
         const directUser = {
