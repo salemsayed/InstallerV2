@@ -3,7 +3,7 @@ import { validate as uuidValidate, version as uuidVersion } from "uuid";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
-import { Loader2, CheckCircle2, AlertCircle, Info, ScanText } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 
 // Validate if the UUID is a valid v4 UUID
@@ -58,19 +58,12 @@ export default function AdvancedScanPage() {
   
   // Reference to context and capture for later use
   const contextRef = useRef<any>(null);
-  const barcodeCaptureRef = useRef<any>(null);
-  const idCaptureRef = useRef<any>(null);
+  const captureRef = useRef<any>(null);
 
   // State for scan result notification
   const [showNotification, setShowNotification] = useState(false);
   const [notificationType, setNotificationType] = useState<'success' | 'error' | null>(null);
   
-  // State for scan mode and OCR attempts
-  const [scanMode, setScanMode] = useState<'qr' | 'ocr'>('qr');
-  const [ocrAttemptTimer, setOcrAttemptTimer] = useState<NodeJS.Timeout | null>(null);
-  const [showOcrFallbackButton, setShowOcrFallbackButton] = useState(false);
-  const ocrFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   // Helper function for haptic feedback
   const triggerHapticFeedback = (pattern: number[]) => {
     if ('vibrate' in navigator) {
@@ -88,8 +81,6 @@ export default function AdvancedScanPage() {
     setError(null);
     setResult(null);
     setShowNotification(false);
-    setShowOcrFallbackButton(false);
-    if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
 
     try {
       // Step 1: URL shape validation
@@ -105,7 +96,7 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         
         // Auto-dismiss error after 5 seconds
         setTimeout(() => {
@@ -125,7 +116,7 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         
         // Auto-dismiss error after 5 seconds
         setTimeout(() => {
@@ -143,7 +134,7 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         
         // Auto-dismiss error after 5 seconds
         setTimeout(() => {
@@ -221,7 +212,7 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
+        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
         
         // Auto-dismiss error after 5 seconds
         setTimeout(() => {
@@ -304,7 +295,7 @@ export default function AdvancedScanPage() {
       });
       
       // Reset scanner after showing success for a moment
-      resetScannerAfterDelay(2000, 'qr');
+      resetScannerAfterDelay(2000);
       
       // Update all error messages in DOM to ensure Arabic
       setTimeout(() => {
@@ -367,7 +358,7 @@ export default function AdvancedScanPage() {
       setIsValidating(false);
       setNotificationType('error');
       setShowNotification(true);
-      triggerHapticFeedback([100, 50, 100]);
+      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
       
       // Auto-dismiss error after 5 seconds
       setTimeout(() => {
@@ -378,187 +369,17 @@ export default function AdvancedScanPage() {
     }
   };
 
-  // Function to validate OCR code (NEW)
-  const validateOcrCode = async (text: string) => {
-    setIsValidating(true);
-    setError(null);
-    setResult(null);
-    setShowNotification(false);
-
-    // Basic validation for 6 alphanumeric characters (already done by regex, but good for sanity check)
-    if (!/^[a-zA-Z0-9]{6}$/.test(text)) {
-      setError("صيغة الرمز النصي غير صالحة. يجب أن يتكون من 6 أحرف وأرقام. (رمز الخطأ: INVALID_OCR_FORMAT)");
-      setIsValidating(false);
-      setNotificationType('error');
-      setShowNotification(true);
-      triggerHapticFeedback([100, 50, 100]);
-      setTimeout(() => setShowNotification(false), 5000);
-      resetScannerAfterDelay(3000, 'ocr'); // Specify mode for reset
-      return;
-    }
-
-    try {
-      if (!user || !user.id) {
-        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND_OCR)");
-        setIsValidating(false);
-        setNotificationType('error');
-        setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
-        setTimeout(() => setShowNotification(false), 5000);
-        return;
-      }
-
-      console.log("Sending OCR scan request with:", {
-        endpoint: `/api/scan-ocr-code`, // New endpoint
-        user: user,
-        ocrCode: text
-      });
-
-      // Replace with actual API call to your new endpoint
-      const scanResult = await apiRequest(
-        "POST",
-        `/api/scan-ocr-code`,
-        { ocrCode: text } // Send the OCR code
-      );
-
-      const resultData = await scanResult.json();
-
-      if (!resultData.success) {
-        const errorCode = resultData.error_code ? ` (${resultData.error_code})` : '';
-        let arabicErrorMessage = resultData.message || "فشل التحقق من الرمز النصي";
-        let arabicErrorDetails = '';
-
-        if (resultData.details) {
-          arabicErrorDetails = translateErrorDetails(typeof resultData.details === 'string' ? resultData.details : JSON.stringify(resultData.details));
-        }
-        
-        // You might need more specific translations for OCR errors if the backend provides them
-        if (resultData.message.includes("not found") || resultData.message.includes("invalid")) {
-          arabicErrorMessage = "الرمز النصي غير صالح أو غير موجود";
-        }
-
-        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
-        if (arabicErrorDetails) {
-          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
-        }
-
-        setError(completeErrorMessage);
-        setIsValidating(false);
-        setNotificationType('error');
-        setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]);
-        setTimeout(() => setShowNotification(false), 5000);
-        console.error('OCR Validation Error:', resultData);
-        resetScannerAfterDelay(3000, 'ocr'); // Specify mode
-        return;
-      }
-
-      // Success path for OCR
-      setIsValidating(false);
-      setResult(`تم التحقق من الرمز النصي: ${resultData.productName || text}`);
-      if (resultData.pointsAwarded) setPointsAwarded(resultData.pointsAwarded);
-      else setPointsAwarded(30); // Default points for OCR scan, adjust as needed
-
-      triggerHapticFeedback([200]);
-      setNotificationType('success');
-      setShowNotification(true);
-      setTimeout(() => {
-        setShowNotification(false);
-        setPointsAwarded(0);
-      }, 3500);
-
-      console.log("Scanned via OCR:", resultData.productName || text);
-      refreshUser().catch(err => console.error("Error refreshing user after OCR scan:", err));
-      
-      // Invalidate queries similar to QR scan
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
-      queryClient.refetchQueries({ queryKey: [`/api/transactions?userId=${user?.id}`], exact: true });
-      queryClient.refetchQueries({ queryKey: ['/api/badges', user?.id], exact: true });
-      queryClient.refetchQueries({ queryKey: ['/api/users/me'], exact: true });
-
-      toast({
-        title: "تم التحقق من الرمز النصي بنجاح ✓",
-        description: `المنتج: ${resultData.productName || text}\nالنقاط المكتسبة: ${resultData.pointsAwarded || 30}`,
-        variant: "default",
-      });
-
-      resetScannerAfterDelay(2000, 'qr'); // Switch back to QR by default after successful OCR
-      setScanMode('qr'); // Explicitly set mode back
-      setShowOcrFallbackButton(false);
-
-    } catch (err: any) {
-      console.error("OCR Validation system error:", err);
-      let arabicErrorMessage = "خطأ في نظام التحقق من الرمز النصي.";
-      arabicErrorMessage += " (رمز الخطأ: OCR_VALIDATION_SYSTEM_ERROR)";
-      if (err.message) {
-        const translatedDetail = translateErrorDetails(err.message);
-        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
-      } else {
-        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
-      }
-      setError(arabicErrorMessage);
-      setIsValidating(false);
-      setNotificationType('error');
-      setShowNotification(true);
-      triggerHapticFeedback([100, 50, 100]);
-      setTimeout(() => setShowNotification(false), 5000);
-      resetScannerAfterDelay(3000, 'ocr'); // Stay in OCR mode on system error
-    }
-  };
-
-  const resetScannerAfterDelay = (delay = 1500, modeToEnable?: 'qr' | 'ocr') => {
+  const resetScannerAfterDelay = (delay = 1500) => {
     setTimeout(() => {
       try {
-        const targetMode = modeToEnable || scanMode;
-        if (targetMode === 'qr' && barcodeCaptureRef.current && !barcodeCaptureRef.current.isEnabled) {
-          console.log("Re-enabling QR scanner after validation/delay");
-          barcodeCaptureRef.current.setEnabled(true).catch(console.error);
-          if (idCaptureRef.current?.isEnabled) idCaptureRef.current.setEnabled(false).catch(console.error);
-          // Restart OCR fallback timer if we are re-enabling QR mode
-          if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-          ocrFallbackTimeoutRef.current = setTimeout(() => setShowOcrFallbackButton(true), 7000); // 7 seconds
-        } else if (targetMode === 'ocr' && idCaptureRef.current && !idCaptureRef.current.isEnabled) {
-          console.log("Re-enabling OCR scanner after validation/delay");
-          idCaptureRef.current.setEnabled(true).catch(console.error);
-          if (barcodeCaptureRef.current?.isEnabled) barcodeCaptureRef.current.setEnabled(false).catch(console.error);
+        if (captureRef.current) {
+          console.log("Re-enabling scanner after validation");
+          captureRef.current.setEnabled(true).catch(console.error);
         }
       } catch (err) {
         console.error("Error re-enabling scanner:", err);
       }
     }, delay);
-  };
-
-  const switchToOcrMode = async () => {
-    if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-    setShowOcrFallbackButton(false);
-    if (barcodeCaptureRef.current?.isEnabled) {
-      await barcodeCaptureRef.current.setEnabled(false);
-    }
-    if (idCaptureRef.current && !idCaptureRef.current.isEnabled) {
-      await idCaptureRef.current.setEnabled(true);
-    }
-    setScanMode('ocr');
-    setError(null); // Clear previous QR errors
-    setResult("الرجاء توجيه الكاميرا نحو الرمز المكون من 6 أرقام أو أحرف.");
-    toast({ title: "تم تفعيل وضع المسح النصي", description: "وجه الكاميرا نحو الرمز المكون من 6 أرقام/أحرف بجانب أو أسفل QR."});
-  };
-
-  const switchToQrMode = async () => {
-    if (idCaptureRef.current?.isEnabled) {
-      await idCaptureRef.current.setEnabled(false);
-    }
-    if (barcodeCaptureRef.current && !barcodeCaptureRef.current.isEnabled) {
-      await barcodeCaptureRef.current.setEnabled(true);
-       // Restart OCR fallback timer when switching to QR
-      if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-      ocrFallbackTimeoutRef.current = setTimeout(() => setShowOcrFallbackButton(true), 7000); // 7 seconds
-    }
-    setScanMode('qr');
-    setError(null);
-    setResult("وجه الكاميرا نحو رمز QR الخاص بالمنتج.");
-     toast({ title: "تم تفعيل وضع مسح QR", description: "وجه الكاميرا نحو رمز QR."});
   };
 
   useEffect(() => {
@@ -575,9 +396,6 @@ export default function AdvancedScanPage() {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const id = await import("@scandit/web-datacapture-id"); // Import ID module
 
         const {
           configure,
@@ -601,24 +419,18 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
-        const {
-          IdCapture,
-          IdCaptureSettings,
-          IdCaptureOverlay, // May not need overlay for simple text
-          idCaptureLoader, // Loader for the ID module
-          // Potentially TextFilter or similar for regex - to be discovered
-        } = id as any;
-
         try {
           /* Initialise the engine (downloads WASM files automatically) */
           console.log("Using license key from environment secret");
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
-              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/sdc-lib/", // Use core's sdc-lib
-            moduleLoaders: [barcodeCaptureLoader(), idCaptureLoader()], // Add idCaptureLoader
+              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
+            moduleLoaders: [barcodeCaptureLoader()],
+            // Fix for runtime error by patching errorElement
             preloadEngine: true,
-            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build", // Use core's build
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build", 
+            // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
                 // Translate Scandit error messages to Arabic
@@ -743,177 +555,74 @@ export default function AdvancedScanPage() {
         }
 
         /* Capture only QR codes with optimized settings */
-        const barcodeSettings = new BarcodeCaptureSettings();
-        barcodeSettings.enableSymbologies([Symbology.QR]);
+        const settings = new BarcodeCaptureSettings();
+        settings.enableSymbologies([Symbology.QR]);
         
-        const qrSymbologySettings = barcodeSettings.settingsForSymbology(Symbology.QR);
-        qrSymbologySettings.isColorInvertedEnabled = true;
+        // Enable inverted color scanning (white QR on black background)
+        const qrSettings = settings.settingsForSymbology(Symbology.QR);
+        qrSettings.isColorInvertedEnabled = true;
         
+        // Log the settings to confirm it's applied
         console.log("QR Code settings:", {
-          colorInverted: qrSymbologySettings.isColorInvertedEnabled,
+          colorInverted: qrSettings.isColorInvertedEnabled,
           symbology: "QR"
         });
         
-        const rectWidth = new NumberWithUnit(0.8, MeasureUnit.Fraction);
-        const rectHeightToWidth = 1; 
-        const rectangularLocation = RectangularLocationSelection.withWidthAndAspectRatio(
-          rectWidth, rectHeightToWidth
+        // Optimization 1: Rectangular location selection (focused scan area)
+        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
+        const heightToWidth = 1; // Square finder
+        const locationSelection = RectangularLocationSelection.withWidthAndAspectRatio(
+          width, heightToWidth
         );
-        barcodeSettings.locationSelection = rectangularLocation;
+        settings.locationSelection = locationSelection;
         
+        // Optimization 2: Smart scan intention to reduce duplicate scans
+        // Fix for the ScanIntention error - use a safe approach with try/catch
         try {
+          // Try to set scan intention if available
           if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
-            barcodeSettings.scanIntention = barcode.ScanIntention.Smart;
+            settings.scanIntention = barcode.ScanIntention.Smart;
           } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
-            barcodeSettings.scanIntention = core.ScanIntention.Smart;
-          } else if (typeof barcodeSettings.setProperty === 'function') {
-            barcodeSettings.setProperty("barcodeCapture.scanIntention", "smart");
+            settings.scanIntention = core.ScanIntention.Smart;
+          } else if (typeof settings.setProperty === 'function') {
+            // Fallback to using setProperty if available
+            settings.setProperty("barcodeCapture.scanIntention", "smart");
           } else {
-            console.log("ScanIntention not available in API for BarcodeCapture, skipping this optimization");
+            console.log("ScanIntention not available in API, skipping this optimization");
           }
         } catch (settingsError) {
-          console.warn("Error setting scan intention for BarcodeCapture:", settingsError);
+          console.warn("Error setting scan intention:", settingsError);
         }
         
-        barcodeSettings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
+        // Set codeDuplicateFilter to 500ms for more responsive scanning
+        settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
 
-        const localBarcodeCapture = await BarcodeCapture.forContext(context, barcodeSettings);
-        barcodeCaptureRef.current = localBarcodeCapture; 
+        const capture = await BarcodeCapture.forContext(context, settings);
+        captureRef.current = capture; // Store capture in ref
         
-        localBarcodeCapture.addListener({
+        capture.addListener({
           didScan: async (_mode: any, session: any) => {
-            const code = session.newlyRecognizedBarcodes[0];
+            const code = session.newlyRecognizedBarcode;
             if (!code) return;
             
-            await localBarcodeCapture.setEnabled(false);
-            if (idCaptureRef.current?.isEnabled) await idCaptureRef.current.setEnabled(false);
-
+            // Disable capture while processing
+            await capture.setEnabled(false);
+            
+            // Get barcode data
             const url = code.data;
             console.log("QR code detected:", url);
-            if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-            setShowOcrFallbackButton(false);
             
+            // Process the code with validation
             await validateQrCode(url);
           }
         });
-
-        /* Configure ID Capture for OCR */
-        const localIdCaptureSettings = new IdCaptureSettings();
-        // This is the crucial part: How to set a regex for generic text?
-        // Option 1: If TextFilter exists and can be applied to IdCaptureSettings
-        // const textFilter = new id.TextFilter(); // Hypothetical
-        // textFilter.regex = "^[a-zA-Z0-9]{6}$";
-        // localIdCaptureSettings.textFilter = textFilter; // Hypothetical
-
-        // Option 2: If IdCaptureSettings has a direct regex property or method for OCR
-        // localIdCaptureSettings.setOcrRegex("^[a-zA-Z0-9]{6}$"); // Hypothetical
-
-        // Option 3: Configure it to accept any text in a region and filter client-side (less ideal)
-        // For now, we enable generic ID scanning and hope it picks up text that we can filter.
-        // We might need to enable specific document types if generic text isn't directly supported.
-        // Example: localIdCaptureSettings.supportedDocuments = [id.IdDocumentType.Generic]; (Hypothetical)
-        
-        // A more direct approach might be to set a property if the API supports it:
-        // This is a guess based on older SDK patterns and common OCR configurations
-        try {
-            if (typeof localIdCaptureSettings.setProperty === 'function') {
-                localIdCaptureSettings.setProperty("textCapture.regex", "^[a-zA-Z0-9]{6}$");
-                console.log("Attempted to set textCapture.regex on IdCaptureSettings");
-            } else {
-                console.warn("IdCaptureSettings.setProperty not available. OCR Regex might not be applied.");
-            }
-        } catch(e) {
-            console.error("Error trying to set OCR regex property:", e);
-        }
-        // If there's a specific recognition mode for text in IdCapture:
-        // localIdCaptureSettings.recognitionMode = id.RecognitionMode.Text; // Hypothetical
-
-        const localIdCapture = await IdCapture.forContext(context, localIdCaptureSettings);
-        idCaptureRef.current = localIdCapture;
-
-        localIdCapture.addListener({
-          didCaptureId: async (_idCapture: any, session: any) => {
-            const capturedId = session.newlyCapturedId;
-            if (!capturedId || !capturedId.result) return; // result might contain OCRed text fields
-            
-            await localIdCapture.setEnabled(false);
-            if (barcodeCaptureRef.current?.isEnabled) await barcodeCaptureRef.current.setEnabled(false);
-
-            // We need to find where the 6-digit code would be in the capturedId.result
-            // This depends heavily on how IdCapture returns generic text or if it tries to parse it as an ID.
-            // For now, let's assume there's a field or a way to get raw text.
-            // This is highly speculative and will need adjustment based on actual SDK behavior.
-            let foundText: string | null = null;
-            
-            // Try to find a field that matches the regex from common ID fields.
-            // This is a placeholder until we know how IdCapture exposes OCR text.
-            const commonTextFields = ['documentNumber', 'personalNumber', 'mrzResult?.capturedMrz']; 
-            if (capturedId.result) {
-                for (const key of commonTextFields) {
-                    let potentialText = capturedId.result[key];
-                    if (typeof potentialText === 'string' && /^[a-zA-Z0-9]{6}$/.test(potentialText.replace(/[^a-zA-Z0-9]/g, '')) ) {
-                        foundText = potentialText.replace(/[^a-zA-Z0-9]/g, '').substring(0,6);
-                        break;
-                    }
-                }
-                // If not found in common fields, check if there's a generic text result array
-                if (!foundText && Array.isArray(capturedId.result.texts)) {
-                    for (const textItem of capturedId.result.texts) {
-                        if (typeof textItem.value === 'string' && /^[a-zA-Z0-9]{6}$/.test(textItem.value.replace(/[^a-zA-Z0-9]/g, ''))) {
-                            foundText = textItem.value.replace(/[^a-zA-Z0-9]/g, '').substring(0,6);
-                            break;
-                        }
-                    }
-                }
-                 // Last resort: stringify and regex search (crude)
-                if (!foundText) {
-                    const resultString = JSON.stringify(capturedId.result);
-                    const match = resultString.match(/[a-zA-Z0-9]{6}/);
-                    if (match) foundText = match[0];
-                }
-            }
-
-            if (foundText) {
-              console.log("OCR text potentially detected:", foundText);
-              await validateOcrCode(foundText);
-            } else {
-              console.log("No 6-digit alphanumeric code found in IdCapture result or format not as expected.", capturedId.result);
-              // Re-enable OCR scanning if no valid text found to allow retry
-              resetScannerAfterDelay(1000, 'ocr');
-            }
-          },
-          // didError is also important for IdCapture
-           didErrorOnIdCapture: (_idCapture: any, error: any, session: any) => {
-            console.error("Error in IdCapture:", error);
-            setError(`خطأ في مسح النص: ${error.message}. حاول مرة أخرى.`);
-            setNotificationType('error');
-            setShowNotification(true);
-            setTimeout(() => setShowNotification(false), 5000);
-            resetScannerAfterDelay(1500, 'ocr');
-          }
-        });
-        
-        // Set initial enabled state based on scanMode
-        if (scanMode === 'qr') {
-            await localBarcodeCapture.setEnabled(true);
-            await localIdCapture.setEnabled(false);
-            // Start OCR fallback timer
-            if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-            ocrFallbackTimeoutRef.current = setTimeout(() => setShowOcrFallbackButton(true), 7000); // 7 seconds timeout
-        } else { // scanMode === 'ocr'
-            await localBarcodeCapture.setEnabled(false);
-            await localIdCapture.setEnabled(true);
-        }
+        await capture.setEnabled(true);
 
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
           try {
-            if (ocrFallbackTimeoutRef.current) clearTimeout(ocrFallbackTimeoutRef.current);
-            if (localBarcodeCapture) {
-              await localBarcodeCapture.setEnabled(false);
-            }
-            if (localIdCapture) { // Dispose IdCapture too
-              await localIdCapture.setEnabled(false);
+            if (capture) {
+              await capture.setEnabled(false);
             }
             if (context) {
               await context.dispose();
@@ -1001,35 +710,26 @@ export default function AdvancedScanPage() {
         {/* Header */}
         <div className="px-4 py-3 bg-white shadow-sm z-10">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold">
-                {scanMode === 'qr' ? "المسح المتقدم (QR)" : "المسح المتقدم (نصي)"}
-            </h1>
+            <h1 className="text-xl font-bold">المسح المتقدم (Scandit)</h1>
             
-            {/* Mode Toggle and License Status */}
-            <div className="flex items-center gap-4">
-              {/* Mode Switcher - Show only if OCR fallback is not active OR if user manually switched */}
-              {licenseStatus === 'initialized' && (
-                <button
-                  onClick={() => scanMode === 'qr' ? switchToOcrMode() : switchToQrMode()}
-                  className="text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
-                  title={scanMode === 'qr' ? "التبديل إلى المسح النصي (OCR)" : "التبديل إلى مسح QR"}
-                >
-                  {scanMode === 'qr' ? <ScanText size={14} /> : <Info size={14} />} {/* Use appropriate QR icon if available */}
-                  <span>{scanMode === 'qr' ? "مسح نصي" : "مسح QR"}</span>
-                </button>
-              )}
-
-              {/* License Status Indicator */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs">حالة الترخيص:</span>
-                <div className={`h-2.5 w-2.5 rounded-full ${
-                  licenseStatus === 'initialized' ? 'bg-green-500' : 
-                  licenseStatus === 'failed' ? 'bg-red-500' : 'bg-gray-300'
-                }`}></div>
-                <span className="text-xs">
-                  {licenseStatus === 'initialized' ? 'مفعّل' : 
-                   licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
-                </span>
+            {/* License Status Indicator */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs">حالة الترخيص:</span>
+              <div className={`h-2.5 w-2.5 rounded-full ${
+                licenseStatus === 'initialized' ? 'bg-green-500' : 
+                licenseStatus === 'failed' ? 'bg-red-500' : 'bg-gray-300'
+              }`}></div>
+              <span className="text-xs">
+                {licenseStatus === 'initialized' ? 'مفعّل' : 
+                 licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
+              </span>
+              
+              {/* Color inversion indicator */}
+              <div className="flex items-center gap-1 mr-2 border-r pr-2 border-gray-300">
+                <div className="flex items-center justify-center bg-black rounded-sm h-4 w-4">
+                  <div className="bg-white h-2 w-2 rounded-sm"></div>
+                </div>
+                <span className="text-xs">مسح معكوس</span>
               </div>
             </div>
           </div>
@@ -1064,24 +764,10 @@ export default function AdvancedScanPage() {
             {/* Scanning instruction message */}
             <div className="absolute bottom-20 left-0 right-0 flex justify-center">
               <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
-                {scanMode === 'qr' 
-                  ? "وجه الكاميرا نحو رمز QR الخاص بالمنتج"
-                  : "وجه الكاميرا نحو الرمز المكون من 6 أرقام/أحرف"}
+                وجه الكاميرا نحو رمز QR الخاص بالمنتج
               </div>
             </div>
           </div>
-          
-          {/* OCR Fallback Button */}
-          {showOcrFallbackButton && scanMode === 'qr' && !isValidating && (
-            <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-20">
-              <button
-                onClick={switchToOcrMode}
-                className="bg-secondary hover:bg-secondary/90 text-white font-medium rounded-full px-6 py-3 text-sm shadow-lg animate-pulse"
-              >
-                لم يتم التعرف على QR؟ <span className="underline">جرب مسح الرمز النصي (6 أرقام)</span>
-              </button>
-            </div>
-          )}
           
           {/* Validation overlay */}
           {isValidating && (

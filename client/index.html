@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -25,7 +26,6 @@
     window.ScanditSDK = {
       core: null,
       barcode: null,
-      id: null,
       loaded: false
     };
     
@@ -35,15 +35,13 @@
         // Load Scandit SDK modules
         const coreModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build/js/index.js');
         const barcodeModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build/js/index.js');
-        const idModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-id@7.2.1/build/js/index.js');
         
         // Assign to global object
         window.ScanditSDK.core = coreModule;
         window.ScanditSDK.barcode = barcodeModule;
-        window.ScanditSDK.id = idModule;
         window.ScanditSDK.loaded = true;
         
-        console.log("Scandit SDK modules (core, barcode, id) loaded successfully");
+        console.log("Scandit SDK modules loaded successfully");
       } catch (error) {
         console.error("Failed to load Scandit SDK modules:", error);
       }
@@ -60,22 +58,16 @@
       "@scandit/web-datacapture-barcode":
         "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build/js/index.js",
       "@scandit/web-datacapture-barcode/":
-        "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/",
-      "@scandit/web-datacapture-id@7.2.1/":
-        "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-id@7.2.1/",
-      "@scandit/web-datacapture-id":
-        "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-id@7.2.1/build/js/index.js"
+        "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/"
     }
   }
   </script>
 
-  <!-- Scandit Smart Data Capture SDK (core + barcode + id) – v7.2.1 -->
+  <!-- Scandit Smart Data Capture SDK (core + barcode) – v7.2.1 -->
   <link rel="modulepreload"
         href="https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build/js/index.js" />
   <link rel="modulepreload"
         href="https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build/js/index.js" />
-  <link rel="modulepreload"
-        href="https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-id@7.2.1/build/js/index.js" />
 </head>
 
 <body>
