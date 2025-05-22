@@ -4,6 +4,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/auth-provider";
 import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } from "lucide-react";
+// NEW ───────────────
+import {
+  LabelCapture,
+  LabelCaptureSettings,
+  LabelDefinition,
+  labelCaptureLoader,
+} from "@scandit/web-datacapture-label";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
