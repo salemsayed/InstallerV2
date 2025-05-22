@@ -242,6 +242,46 @@ export default function AdvancedScanPage() {
       // Reset scanner after showing success for a moment
       resetScannerAfterDelay(2000);
       
+      // Update all error messages in DOM to ensure Arabic
+      setTimeout(() => {
+        // Find and translate any error messages that might be injected by the SDK
+        const translateErrorElements = () => {
+          try {
+            // Find common error message selectors that might be added by Scandit
+            const errorElements = document.querySelectorAll('.error-message, .scandit-error, [data-error]');
+            errorElements.forEach(el => {
+              const text = el.textContent || '';
+              if (text && text.trim() && text.length > 0) {
+                // Basic English to Arabic translations for common Scandit errors
+                if (text.includes('camera') || text.includes('Camera')) {
+                  el.textContent = 'خطأ في الوصول إلى الكاميرا. يرجى التحقق من الأذونات.';
+                } else if (text.includes('permission')) {
+                  el.textContent = 'تم رفض إذن الكاميرا. يرجى السماح بالوصول.';
+                } else if (text.includes('license')) {
+                  el.textContent = 'خطأ في التحقق من الترخيص.';
+                } else if (text.includes('network') || text.includes('connection')) {
+                  el.textContent = 'خطأ في الاتصال بالشبكة.';
+                } else {
+                  // Generic translation for other errors
+                  el.textContent = 'حدث خطأ. يرجى تحديث الصفحة.';
+                }
+                // Set RTL direction
+                el.setAttribute('dir', 'rtl');
+              }
+            });
+          } catch (e) {
+            console.warn('Error while translating error elements:', e);
+          }
+        };
+        
+        // Run initially and set interval to catch dynamically added errors
+        translateErrorElements();
+        const intervalId = setInterval(translateErrorElements, 1000);
+        
+        // Clear interval after 10 seconds
+        setTimeout(() => clearInterval(intervalId), 10000);
+      }, 500);
+      
     } catch (err: any) {
       console.error("Validation error:", err);
       
@@ -338,6 +378,31 @@ export default function AdvancedScanPage() {
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build", 
+            // Intercept and translate SDK error messages to Arabic
+            errorListener: {
+              onError: (error: any) => {
+                // Translate Scandit error messages to Arabic
+                console.error("Scandit error:", error);
+                let arabicMessage = "خطأ في تهيئة الماسح الضوئي";
+                
+                if (error && error.message) {
+                  if (error.message.includes("license")) {
+                    arabicMessage = "خطأ في ترخيص المكتبة، يرجى التحقق من صلاحية الترخيص";
+                  } else if (error.message.includes("camera") || error.message.includes("permission")) {
+                    arabicMessage = "تعذر الوصول إلى الكاميرا، يرجى التحقق من الأذونات";
+                  } else if (error.message.includes("network") || error.message.includes("download")) {
+                    arabicMessage = "خطأ في الاتصال بالشبكة، يرجى التحقق من اتصالك بالإنترنت";
+                  }
+                }
+                
+                setError(arabicMessage);
+                setLicenseStatus('failed');
+                setNotificationType('error');
+                setShowNotification(true);
+                
+                return arabicMessage; // Return Arabic message to SDK
+              }
+            }
           });
         } catch (configError) {
           console.error("Configuration error:", configError);
@@ -349,12 +414,29 @@ export default function AdvancedScanPage() {
         // Update license status
         setLicenseStatus('initialized');
 
-        // Create a protected wrapper to prevent runtime errors on undefined elements
+        // Create a patched version of scanner to intercept SDK errors
         const createProtectedElement = (operation: Function) => {
           try {
             return operation();
           } catch (err) {
             console.warn("Protected element operation failed:", err);
+            
+            // Translate any English error to Arabic
+            let arabicError = "خطأ أثناء تهيئة الماسح الضوئي";
+            if (err && typeof err === 'object') {
+              const errMsg = err.toString();
+              if (errMsg.includes("camera") || errMsg.includes("Camera")) {
+                arabicError = "تعذر الوصول إلى الكاميرا. يرجى التأكد من السماح بالوصول.";
+              } else if (errMsg.includes("permission")) {
+                arabicError = "تم رفض أذونات الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح.";
+              }
+            }
+            
+            // Show Arabic error
+            setError(arabicError);
+            setNotificationType('error');
+            setShowNotification(true);
+            
             return null;
           }
         };
@@ -530,7 +612,39 @@ export default function AdvancedScanPage() {
       }
     })();
 
+    // Override native error dialog with our custom Arabic one
+    // Apply a global error handler to catch Scandit SDK error dialogs
+    const originalAlert = window.alert;
+    window.alert = function(message) {
+      console.log("Alert intercepted:", message);
+      
+      // Translate alert messages to Arabic
+      let arabicMessage = "حدث خطأ في المسح الضوئي";
+      
+      if (typeof message === 'string') {
+        if (message.includes("camera") || message.includes("Camera")) {
+          arabicMessage = "تعذر الوصول إلى الكاميرا. يرجى التأكد من إتاحة الوصول.";
+        } else if (message.includes("permission")) {
+          arabicMessage = "تم رفض أذونات الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح.";
+        } else if (message.includes("license")) { 
+          arabicMessage = "خطأ في التحقق من ترخيص المكتبة.";
+        } else if (message.includes("network") || message.includes("error")) {
+          arabicMessage = "خطأ في الاتصال بالشبكة أو تحميل المكتبة.";
+        }
+      }
+      
+      // Show our custom Arabic error notification instead
+      setError(arabicMessage);
+      setNotificationType('error');
+      setShowNotification(true);
+      
+      // Don't show the original alert
+      return;
+    };
+
+    // Restore original alert on unmount
     return () => {
+      window.alert = originalAlert;
       if (dispose) dispose().catch(console.error);
     };
   }, []);
@@ -620,7 +734,12 @@ export default function AdvancedScanPage() {
                   ? 'bg-gradient-to-br from-primary/95 to-secondary/95' 
                   : 'bg-gradient-to-br from-red-600/95 to-red-800/95'} 
                 backdrop-blur-md animate-scale-in
-              `}>
+              `}
+              aria-live="polite"
+              role="dialog"
+              aria-labelledby="notification-title"
+              dir="rtl"
+              >
                 <div className="flex flex-col items-center">
                   {/* Icon container with pulsing animation */}
                   <div className={`
@@ -638,7 +757,10 @@ export default function AdvancedScanPage() {
                   </div>
                   
                   {/* Title */}
-                  <h3 className="text-xl font-bold text-white mb-2">
+                  <h3 
+                    className="text-xl font-bold text-white mb-2"
+                    id="notification-title"
+                  >
                     {notificationType === 'success' 
                       ? 'تم التحقق بنجاح!' 
                       : 'فشل التحقق'}
