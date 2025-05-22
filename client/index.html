@@ -26,6 +26,7 @@
     window.ScanditSDK = {
       core: null,
       barcode: null,
+      text: null,
       loaded: false
     };
     
@@ -35,10 +36,12 @@
         // Load Scandit SDK modules
         const coreModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build/js/index.js');
         const barcodeModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build/js/index.js');
+        const textModule = await import('https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-text@7.2.1/build/js/index.js');
         
         // Assign to global object
         window.ScanditSDK.core = coreModule;
         window.ScanditSDK.barcode = barcodeModule;
+        window.ScanditSDK.text = textModule;
         window.ScanditSDK.loaded = true;
         
         console.log("Scandit SDK modules loaded successfully");
