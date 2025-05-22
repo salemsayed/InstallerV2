@@ -7,6 +7,9 @@ import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } fro
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
+// Tesseract.js for OCR without camera interruption
+import { createWorker } from 'tesseract.js';
+
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
@@ -44,7 +47,7 @@ const translateErrorDetails = (details: string): string => {
 };
 
 /**
- * Advanced scanner page – powered by Scandit Web SDK
+ * Advanced scanner page – powered by Scandit Web SDK for QR + Tesseract.js for OCR
  * Note: Scandit modules are pulled dynamically via CDN import-map (see index.html).
  */
 export default function AdvancedScanPage() {
@@ -64,11 +67,16 @@ export default function AdvancedScanPage() {
   
   // References to context and capture objects
   const contextRef = useRef<any>(null);
-  const captureRef = useRef<any>(null); // Reference for barcode capture
-  const textCaptureRef = useRef<any>(null); // Reference for text capture
+  const captureRef = useRef<any>(null); // Reference for barcode capture only
+  
+  // Tesseract OCR worker reference
+  const ocrWorkerRef = useRef<any>(null);
+  const ocrProcessingRef = useRef<boolean>(false);
   
   // Timers for auto-switching between modes
   const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // OCR frame capture timer
+  const ocrTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for scan result notification
   const [showNotification, setShowNotification] = useState(false);
@@ -601,6 +609,92 @@ export default function AdvancedScanPage() {
     }
   };
 
+  // Initialize Tesseract OCR worker
+  const initializeOCRWorker = useCallback(async () => {
+    try {
+      if (ocrWorkerRef.current) {
+        await ocrWorkerRef.current.terminate();
+      }
+      
+      const worker = await createWorker();
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+        tessedit_pageseg_mode: '8', // Single word
+      });
+      
+      ocrWorkerRef.current = worker;
+      console.log("OCR worker initialized successfully");
+      
+      // Start OCR frame processing
+      startOCRProcessing();
+    } catch (error) {
+      console.error("Failed to initialize OCR worker:", error);
+    }
+  }, [startOCRProcessing]);
+
+  // OCR frame processing function
+  const startOCRProcessing = useCallback(() => {
+    if (!ocrWorkerRef.current || ocrProcessingRef.current) return;
+    
+    const processFrame = async () => {
+      if (!ocrWorkerRef.current || scannerMode !== 'ocr' || ocrProcessingRef.current) return;
+      
+      try {
+        ocrProcessingRef.current = true;
+        
+        // Get the video element from Scandit
+        const videoElement = scannerRef.current?.querySelector('video');
+        if (!videoElement) return;
+        
+        // Create canvas to capture frame
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        ctx.drawImage(videoElement, 0, 0);
+        
+        // Get image data for OCR
+        const imageData = canvas.toDataURL('image/png');
+        
+        // Process with Tesseract
+        const { data: { text } } = await ocrWorkerRef.current.recognize(imageData);
+        
+        // Clean and validate the text
+        const cleanText = text.replace(/\s+/g, '').toUpperCase();
+        const matches = cleanText.match(/[A-Z0-9]{6}/g);
+        
+        if (matches && matches.length > 0) {
+          const code = matches[0];
+          console.log("OCR detected code:", code);
+          
+          // Stop OCR processing temporarily
+          ocrProcessingRef.current = false;
+          
+          // Validate the code
+          await validateOcrCode(code);
+          return;
+        }
+        
+      } catch (error) {
+        console.error("OCR processing error:", error);
+      } finally {
+        ocrProcessingRef.current = false;
+      }
+      
+      // Continue processing if still in OCR mode
+      if (scannerMode === 'ocr') {
+        ocrTimerRef.current = setTimeout(processFrame, 1000); // Process every 1 second
+      }
+    };
+    
+    // Start processing
+    processFrame();
+  }, [scannerMode]);
+
   // Function to switch between scanner modes
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
     try {
@@ -610,16 +704,26 @@ export default function AdvancedScanPage() {
         modeTimerRef.current = null;
       }
       
+      // Clear OCR timer
+      if (ocrTimerRef.current) {
+        clearTimeout(ocrTimerRef.current);
+        ocrTimerRef.current = null;
+      }
+      
       // Set new mode and update status message
       setScannerMode(mode);
       
       if (mode === 'qr') {
         setStatusMessage("جارٍ البحث عن رمز QR...");
         
-        // Disable text capture and enable barcode capture
-        if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(false).catch(console.error);
+        // Stop OCR processing
+        ocrProcessingRef.current = false;
+        if (ocrWorkerRef.current) {
+          ocrWorkerRef.current.terminate().catch(console.error);
+          ocrWorkerRef.current = null;
         }
+        
+        // Ensure QR scanner is enabled
         if (captureRef.current) {
           captureRef.current.setEnabled(true).catch(console.error);
         }
@@ -634,13 +738,8 @@ export default function AdvancedScanPage() {
       } else {
         setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // Disable barcode capture and enable label capture
-        if (captureRef.current) {
-          captureRef.current.setEnabled(false).catch(console.error);
-        }
-        if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(true).catch(console.error);
-        }
+        // Keep QR scanner running but initialize OCR
+        initializeOCRWorker();
         
         // Set timer to auto-switch back to QR mode if enabled
         if (autoSwitchEnabled) {
@@ -656,7 +755,7 @@ export default function AdvancedScanPage() {
     } catch (err) {
       console.error("Error switching scanner mode:", err);
     }
-  }, [autoSwitchEnabled]);
+  }, [autoSwitchEnabled, initializeOCRWorker]);
   
   // Toggle auto-switching feature
   const toggleAutoSwitch = () => {
@@ -677,9 +776,13 @@ export default function AdvancedScanPage() {
               switchScannerMode('ocr');
             }, 10000);
           }
-        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
+        } else if (scannerMode === 'ocr') {
           console.log("Re-enabling OCR scanner after validation");
-          textCaptureRef.current.setEnabled(true).catch(console.error);
+          // Restart OCR processing
+          ocrProcessingRef.current = false;
+          if (ocrWorkerRef.current) {
+            startOCRProcessing();
+          }
           // Restart the auto-switch timer
           if (autoSwitchEnabled && !modeTimerRef.current) {
             modeTimerRef.current = setTimeout(() => {
@@ -726,9 +829,8 @@ export default function AdvancedScanPage() {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const label = await import("@scandit/web-datacapture-label");
+        // Label capture not needed anymore since we use Tesseract.js for OCR
+        // const label = await import("@scandit/web-datacapture-label");
         const {
           configure,
           DataCaptureView,
@@ -751,13 +853,8 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
-        const {
-          LabelCapture,
-          labelCaptureLoader,
-          LabelCaptureSettings,
-          LabelDefinition,
-          TextField
-        } = label as any;
+        // Label imports not needed anymore since we use Tesseract.js for OCR
+        // const { LabelCapture, labelCaptureLoader, LabelCaptureSettings, LabelDefinition, TextField } = label as any;
 
         try {
           /* Initialise the engine (downloads WASM files automatically) */
@@ -765,7 +862,7 @@ export default function AdvancedScanPage() {
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.3.0/build/wasm/",
-            moduleLoaders: [barcodeCaptureLoader(), labelCaptureLoader()],
+            moduleLoaders: [barcodeCaptureLoader()], // Only need barcode loader now
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             // Intercept and translate SDK error messages to Arabic
@@ -956,53 +1053,7 @@ export default function AdvancedScanPage() {
         });
         await capture.setEnabled(true);
 
-        /* Set up Smart Label Capture for OCR Mode (6-digit alphanumeric codes) */
-        const labelCaptureSettings = new LabelCaptureSettings();
-        
-        // Create a simple text field for 6-digit alphanumeric codes
-        const textField = new TextField("serialNumber", "^[A-Z0-9]{6}$");
-        
-        // Create a label definition with the text field
-        const labelDefinition = new LabelDefinition([textField]);
-        labelCaptureSettings.addLabelDefinition(labelDefinition);
-        
-        // Create label capture instance
-        const labelCapture = await LabelCapture.forContext(context, labelCaptureSettings);
-        textCaptureRef.current = labelCapture; // Store label capture in ref
-        
-        labelCapture.addListener({
-          didCaptureLabel: async (_labelCapture: any, session: any) => {
-            const capturedLabels = session.newlyCapturedLabels;
-            if (!capturedLabels || capturedLabels.length === 0) return;
-            
-            // Get the first captured label
-            const capturedLabel = capturedLabels[0];
-            const fields = capturedLabel.fields;
-            
-            // Look for our serial number field
-            if (fields && fields.serialNumber && fields.serialNumber.value) {
-              const code = fields.serialNumber.value.toUpperCase().trim();
-              console.log("OCR code detected:", code);
-              
-              // Validate the format (6-digit alphanumeric)
-              if (!/^[A-Z0-9]{6}$/.test(code)) {
-                console.warn("Invalid OCR format detected:", code);
-                return;
-              }
-              
-              // Disable capture while processing
-              await labelCapture.setEnabled(false);
-              
-              // Process the OCR code with validation
-              await validateOcrCode(code);
-            }
-          }
-        });
-        
-        // Initially disabled - will be enabled when OCR mode is selected
-        await labelCapture.setEnabled(false);
-        
-        console.log("Smart Label Capture (OCR) initialized successfully");
+        console.log("Scandit QR scanner initialized successfully");
 
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
@@ -1010,11 +1061,22 @@ export default function AdvancedScanPage() {
             if (capture) {
               await capture.setEnabled(false);
             }
-            if (textCaptureRef.current) {
-              await textCaptureRef.current.setEnabled(false);
-            }
             if (context) {
               await context.dispose();
+            }
+            // Clean up OCR worker
+            if (ocrWorkerRef.current) {
+              await ocrWorkerRef.current.terminate();
+              ocrWorkerRef.current = null;
+            }
+            // Clear timers
+            if (modeTimerRef.current) {
+              clearTimeout(modeTimerRef.current);
+              modeTimerRef.current = null;
+            }
+            if (ocrTimerRef.current) {
+              clearTimeout(ocrTimerRef.current);
+              ocrTimerRef.current = null;
             }
           } catch (disposeError) {
             console.error("Error during disposal:", disposeError);
