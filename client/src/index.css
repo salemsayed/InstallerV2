@@ -16,6 +16,34 @@
   }
 }
 
+@keyframes ocr-scan {
+  0% {
+    left: 0;
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-slide {
+  0% {
+    left: 0;
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 4px);
+    opacity: 0.7;
+  }
+}
+
 @keyframes fade-in {
   0% {
     opacity: 0;

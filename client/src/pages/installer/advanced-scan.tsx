@@ -874,22 +874,43 @@ export default function AdvancedScanPage() {
             aria-label="مساحة مسح رمز الاستجابة السريعة"
           />
           
-          {/* Scanner overlay - scanning guides (80% of view as square to match locationSelection) */}
+          {/* Scanner overlay - changes based on scanner mode */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[min(80vw,80vh)] max-w-md aspect-square">
-                {/* Scan animation */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
-                
-                {/* Visual border to indicate the scan area */}
-                <div className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-md"></div>
-                
-                {/* Corners */}
-                <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
-                <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
-                <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
-                <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
-              </div>
+              {scannerMode === 'qr' ? (
+                /* QR Mode - square guide */
+                <div className="relative w-[min(80vw,80vh)] max-w-md aspect-square">
+                  {/* QR Scan animation */}
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
+                  
+                  {/* Visual border for QR scanning */}
+                  <div className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-md"></div>
+                  
+                  {/* Corners */}
+                  <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
+                  <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
+                  <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
+                  <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
+                </div>
+              ) : (
+                /* OCR Mode - rectangle for text scanning */
+                <div className="relative w-[min(85vw,400px)] h-24 border-2 border-amber-500 rounded-md flex items-center justify-center bg-black/20">
+                  {/* OCR scanning animation - moving line */}
+                  <div 
+                    className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
+                    style={{
+                      animation: 'pulse-slide 2s infinite ease-in-out',
+                      left: 0
+                    }}
+                  ></div>
+                  
+                  {/* OCR guidance text */}
+                  <div className="text-amber-500 text-sm font-medium px-4 text-center">
+                    <div>وجه الكاميرا نحو الرمز المطبوع</div>
+                    <div className="text-xs opacity-70 mt-1">رمز من ٦ أحرف وأرقام</div>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Scanning instruction message - changes based on mode */}
@@ -902,23 +923,22 @@ export default function AdvancedScanPage() {
               </div>
             </div>
             
-            {/* Mode toggle buttons */}
+            {/* Mode toggle buttons - control panel in top right */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
               <Button
                 onClick={() => switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr')}
-                className="rounded-full shadow-lg"
+                className={`rounded-full shadow-lg ${scannerMode === 'qr' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-primary/90'}`}
                 size="sm"
-                variant="secondary"
               >
                 {scannerMode === 'qr' ? (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-white">
                     <TextCursorInput className="h-4 w-4" />
-                    <span>وضع النص</span>
+                    <span>تبديل إلى وضع النص</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-white">
                     <QrCode className="h-4 w-4" />
-                    <span>وضع QR</span>
+                    <span>تبديل إلى وضع QR</span>
                   </span>
                 )}
               </Button>
@@ -926,13 +946,12 @@ export default function AdvancedScanPage() {
               <Button
                 onClick={toggleAutoSwitch}
                 className={`rounded-full shadow-lg text-xs flex items-center gap-2 ${
-                  autoSwitchEnabled ? 'bg-primary' : 'bg-muted'
+                  autoSwitchEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'
                 }`}
-                variant={autoSwitchEnabled ? "default" : "outline"}
                 size="sm"
               >
-                <div className={`w-2 h-2 rounded-full ${autoSwitchEnabled ? 'bg-white animate-pulse' : 'bg-muted-foreground'}`} />
-                {autoSwitchEnabled ? 'تبديل تلقائي' : 'تبديل يدوي'}
+                <div className={`w-2 h-2 rounded-full ${autoSwitchEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`} />
+                <span className="text-white">{autoSwitchEnabled ? 'التبديل التلقائي: مفعّل' : 'التبديل التلقائي: معطل'}</span>
               </Button>
             </div>
           </div>
