@@ -1408,7 +1408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalRedemptions = redemptionTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
       const pointsBalance = totalEarnings - totalRedemptions;
       
-      console.log(`[BADGE SYSTEM] User ${userId} has ${pointsBalance} points balance (${totalEarnings} earned, ${totalRedemptions} redeemed)`);
+      badgeLog(`User ${userId} has ${pointsBalance} points balance (${totalEarnings} earned, ${totalRedemptions} redeemed)`);
       
       // Initialize clean badge arrays
       const currentBadgeIds = Array.isArray(user.badgeIds) ? [...user.badgeIds] : [];
@@ -1425,18 +1425,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (qualifies) {
           qualifiedBadgeIds.push(badge.id);
-          console.log(`[BADGE SYSTEM] User ${userId} qualifies for badge ${badge.id} (${badge.name})`);
+          badgeLog(`User ${userId} qualifies for badge ${badge.id} (${badge.name})`);
           
           if (!currentBadgeIds.includes(badge.id)) {
-            console.log(`[BADGE SYSTEM] Badge ${badge.id} (${badge.name}) is newly qualified`);
+            badgeLog(`Badge ${badge.id} (${badge.name}) is newly qualified`);
           }
         } else {
           // Log detailed qualification failure reasons for debugging
           if (!meetsPointsRequirement) {
-            console.log(`[BADGE SYSTEM] User ${userId} does not meet points requirement (${pointsBalance}/${badge.requiredPoints}) for badge ${badge.id} (${badge.name})`);
+            badgeLog(`User ${userId} does not meet points requirement (${pointsBalance}/${badge.requiredPoints}) for badge ${badge.id} (${badge.name})`);
           }
           if (!meetsInstallationRequirement) {
-            console.log(`[BADGE SYSTEM] User ${userId} does not meet installation requirement (${installationCount}/${badge.minInstallations}) for badge ${badge.id} (${badge.name})`);
+            badgeLog(`User ${userId} does not meet installation requirement (${installationCount}/${badge.minInstallations}) for badge ${badge.id} (${badge.name})`);
           }
         }
       }
@@ -1467,10 +1467,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update user's badges in database if new badges were earned or force update requested
       if (userBadgesUpdated) {
-        console.log(`[BADGE SYSTEM] Updating user ${userId} badges in database. Old: [${currentBadgeIds}], New: [${qualifiedBadgeIds}]`);
+        badgeLog(`Updating user ${userId} badges in database. Old: [${currentBadgeIds}], New: [${qualifiedBadgeIds}]`);
         await storage.updateUser(userId, { badgeIds: qualifiedBadgeIds });
       } else {
-        console.log(`[BADGE SYSTEM] No badge changes for user ${userId}`);
+        badgeLog(`No badge changes for user ${userId}`);
       }
       
       // Mark which badges the user has now qualified for
