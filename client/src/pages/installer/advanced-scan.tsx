@@ -573,33 +573,53 @@ export default function AdvancedScanPage() {
       } else {
         setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // Apply OCR-optimized settings to barcode capture
+        // Apply improved OCR settings to detect printed alphanumeric codes
         if (captureRef.current) {
           console.log("[SCANNER_MODE] Switching to OCR settings");
           
           try {
-            // Access current settings directly from the capture reference
-            const currentSettings = captureRef.current.settings;
+            // Special handling for alphanumeric printed codes (like A1B2C3)
+            // Use a combination of specific barcode types optimized for text-like content
             
-            // Reset existing symbologies
+            // Reset and apply OCR-optimized settings
+            const currentSettings = captureRef.current.settings;
             currentSettings.enableSymbologies([]);
             
-            // Enable multiple barcode types that could detect alphanumeric codes
-            // Using direct numeric values to avoid Symbology reference issues
-            // 1 = EAN13/UPC, 2 = Code39, 5 = Code128, 6 = DataMatrix, 0 = QR
-            currentSettings.enableSymbologies([2, 5, 6, 0]);
+            // Enable multiple symbologies to increase chance of detecting alphanumeric codes
+            // Code39 (2) and Code128 (5) are excellent for alphanumeric content
+            currentSettings.enableSymbologies([2, 5]);
             
-            // Try to enhance settings for better text detection
-            try {
-              // Enable color inversion for all symbologies if available
-              for (const symbologyId of [2, 5, 6, 0]) {
-                const symbSettings = currentSettings.settingsForSymbology(symbologyId);
-                if (symbSettings && typeof symbSettings.setColorInvertedEnabled === 'function') {
-                  symbSettings.setColorInvertedEnabled(true);
-                }
+            // Configure Code39 settings for alphanumeric text
+            const code39Settings = currentSettings.settingsForSymbology(2);
+            if (code39Settings) {
+              code39Settings.isColorInvertedEnabled = true;
+              // Make the scanner more lenient with printed codes
+              if (code39Settings.setExtendedMode) {
+                code39Settings.setExtendedMode(true);
               }
-            } catch (settingsError) {
-              console.error("[SCANNER_MODE] Error configuring symbology settings:", settingsError);
+              // Enable full ASCII mode if available
+              if (code39Settings.setFullASCIIEnabled) {
+                code39Settings.setFullASCIIEnabled(true);
+              }
+            }
+            
+            // Configure Code128 for optimal text detection
+            const code128Settings = currentSettings.settingsForSymbology(5);
+            if (code128Settings) {
+              code128Settings.isColorInvertedEnabled = true;
+            }
+            
+            // Apply special configuration for detecting 6-character alphanumeric codes
+            if (typeof currentSettings.setProperty === 'function') {
+              try {
+                // Improve detection of short codes
+                currentSettings.setProperty("barcodeCapture.minimumTextLength", 6);
+                currentSettings.setProperty("barcodeCapture.maximumTextLength", 6);
+                // Increase sensitivity for better detection
+                currentSettings.setProperty("barcodeCapture.duplicateFilter", 100);
+              } catch (propError) {
+                console.log("[OCR_DEBUG] Could not apply advanced properties:", propError);
+              }
             }
             
             // Apply these settings
