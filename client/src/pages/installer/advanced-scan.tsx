@@ -537,16 +537,29 @@ export default function AdvancedScanPage() {
         if (captureRef.current) {
           console.log("[SCANNER_MODE] Switching to QR settings");
           
-          // Create QR-specific settings
-          const qrSettings = new BarcodeCaptureSettings();
-          qrSettings.enableSymbologies([Symbology.QR]);
-          const symbologySettings = qrSettings.settingsForSymbology(Symbology.QR);
-          symbologySettings.isColorInvertedEnabled = true;
-          
-          // Apply these settings
-          captureRef.current.applySettings(qrSettings)
-            .then(() => captureRef.current.setEnabled(true))
-            .catch(e => console.error("[SCANNER_MODE] Error applying QR settings:", e));
+          try {
+            // Get existing settings
+            const currentSettings = captureRef.current.settings;
+            
+            // Reset the symbologies
+            currentSettings.enableSymbologies([]);
+            
+            // Enable only QR code detection
+            currentSettings.enableSymbologies([0]); // 0 is QR code in Scandit's enum
+            
+            // Enable inverted colors
+            const symbologySettings = currentSettings.settingsForSymbology(0);
+            if (symbologySettings && typeof symbologySettings.setColorInvertedEnabled === 'function') {
+              symbologySettings.setColorInvertedEnabled(true);
+            }
+            
+            // Apply these settings
+            captureRef.current.applySettings(currentSettings)
+              .then(() => captureRef.current.setEnabled(true))
+              .catch((err: any) => console.error("[SCANNER_MODE] Error applying QR settings:", err));
+          } catch (err) {
+            console.error("[SCANNER_MODE] Error in QR mode setup:", err);
+          }
         }
         
         // Set timer to auto-switch to OCR mode if enabled
@@ -564,28 +577,38 @@ export default function AdvancedScanPage() {
         if (captureRef.current) {
           console.log("[SCANNER_MODE] Switching to OCR settings");
           
-          // Create OCR-optimized settings for barcode scanning
-          const ocrSettings = new BarcodeCaptureSettings();
-          ocrSettings.enableSymbologies([
-            Symbology.Code128, 
-            Symbology.Code39, 
-            Symbology.DataMatrix
-          ]);
-          
-          // Enhance settings for text detection
-          const code128Settings = ocrSettings.settingsForSymbology(Symbology.Code128);
-          code128Settings.isColorInvertedEnabled = true;
-          
-          const code39Settings = ocrSettings.settingsForSymbology(Symbology.Code39);
-          code39Settings.isColorInvertedEnabled = true;
-          
-          const dataMatrixSettings = ocrSettings.settingsForSymbology(Symbology.DataMatrix);
-          dataMatrixSettings.isColorInvertedEnabled = true;
-          
-          // Apply these settings
-          captureRef.current.applySettings(ocrSettings)
-            .then(() => captureRef.current.setEnabled(true))
-            .catch(e => console.error("[SCANNER_MODE] Error applying OCR settings:", e));
+          try {
+            // Access current settings directly from the capture reference
+            const currentSettings = captureRef.current.settings;
+            
+            // Reset existing symbologies
+            currentSettings.enableSymbologies([]);
+            
+            // Enable multiple barcode types that could detect alphanumeric codes
+            // Using direct numeric values to avoid Symbology reference issues
+            // 1 = EAN13/UPC, 2 = Code39, 5 = Code128, 6 = DataMatrix, 0 = QR
+            currentSettings.enableSymbologies([2, 5, 6, 0]);
+            
+            // Try to enhance settings for better text detection
+            try {
+              // Enable color inversion for all symbologies if available
+              for (const symbologyId of [2, 5, 6, 0]) {
+                const symbSettings = currentSettings.settingsForSymbology(symbologyId);
+                if (symbSettings && typeof symbSettings.setColorInvertedEnabled === 'function') {
+                  symbSettings.setColorInvertedEnabled(true);
+                }
+              }
+            } catch (settingsError) {
+              console.error("[SCANNER_MODE] Error configuring symbology settings:", settingsError);
+            }
+            
+            // Apply these settings
+            captureRef.current.applySettings(currentSettings)
+              .then(() => captureRef.current.setEnabled(true))
+              .catch((err: any) => console.error("[SCANNER_MODE] Error applying OCR settings:", err));
+          } catch (err) {
+            console.error("[SCANNER_MODE] Error in OCR mode setup:", err);
+          }
         }
         
         // Set timer to auto-switch back to QR mode if enabled
@@ -603,7 +626,7 @@ export default function AdvancedScanPage() {
     } catch (err) {
       console.error("Error switching scanner mode:", err);
     }
-  }, [autoSwitchEnabled]);
+  }, [scannerMode, autoSwitchEnabled, triggerHapticFeedback]);
   
   // Toggle auto-switching feature
   const toggleAutoSwitch = () => {
@@ -624,14 +647,27 @@ export default function AdvancedScanPage() {
               switchScannerMode('ocr');
             }, 10000);
           }
-        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
+        } else if (scannerMode === 'ocr' && captureRef.current) {
           console.log("Re-enabling OCR scanner after validation");
-          textCaptureRef.current.setEnabled(true).catch(console.error);
-          // Restart the auto-switch timer
-          if (autoSwitchEnabled && !modeTimerRef.current) {
-            modeTimerRef.current = setTimeout(() => {
-              switchScannerMode('qr');
-            }, 10000);
+          
+          try {
+            // Re-apply OCR settings in case they were reset
+            const currentSettings = captureRef.current.settings;
+            currentSettings.enableSymbologies([2, 5, 6, 0]); // Text-oriented barcode types
+            
+            // Re-enable the scanner
+            captureRef.current.applySettings(currentSettings)
+              .then(() => captureRef.current.setEnabled(true))
+              .catch(err => console.error("[SCANNER_MODE] Error re-enabling OCR mode:", err));
+            
+            // Restart the auto-switch timer
+            if (autoSwitchEnabled && !modeTimerRef.current) {
+              modeTimerRef.current = setTimeout(() => {
+                switchScannerMode('qr');
+              }, 10000);
+            }
+          } catch (err) {
+            console.error("[SCANNER_MODE] Error resetting OCR mode:", err);
           }
         }
       } catch (err) {
