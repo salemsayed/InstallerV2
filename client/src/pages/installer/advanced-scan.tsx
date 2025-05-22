@@ -133,7 +133,27 @@ export default function AdvancedScanPage() {
         const errorDetails = result.details ? JSON.stringify(result.details, null, 2) : '';
         const errorCode = result.error_code ? ` (${result.error_code})` : '';
         
-        setError(`${result.message}${errorCode}\n${errorDetails}`);
+        // Translate common server error responses to Arabic
+        let arabicErrorMessage = result.message;
+        
+        // Map common English error messages to Arabic
+        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
+          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
+        } 
+        else if (result.message.includes("not found") || result.message.includes("invalid")) {
+          arabicErrorMessage = "منتج غير صالح أو غير موجود";
+        }
+        else if (result.message.includes("expired")) {
+          arabicErrorMessage = "انتهت صلاحية رمز المنتج";
+        }
+        else if (result.message.includes("limit exceeded")) {
+          arabicErrorMessage = "تم تجاوز الحد المسموح من المسح";
+        }
+        else if (result.message.includes("unauthorized") || result.message.includes("permission")) {
+          arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
+        }
+        
+        setError(`${arabicErrorMessage}${errorCode}\n${errorDetails ? 'تفاصيل إضافية:' : ''} ${errorDetails}`);
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
@@ -224,7 +244,25 @@ export default function AdvancedScanPage() {
       
     } catch (err: any) {
       console.error("Validation error:", err);
-      setError(`خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى. (رمز الخطأ: VALIDATION_ERROR)\n\nتفاصيل: ${err.message || "خطأ غير معروف"}`);
+      
+      // Ensure error message is in Arabic
+      let arabicErrorMessage = "خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى.";
+      
+      // Add error code
+      arabicErrorMessage += " (رمز الخطأ: VALIDATION_ERROR)";
+      
+      // Add translated error details if available
+      if (err.message) {
+        if (err.message.includes("network") || err.message.includes("timeout")) {
+          arabicErrorMessage += "\n\nتفاصيل: خطأ في الاتصال بالشبكة، يرجى التحقق من اتصال الإنترنت";
+        } else if (err.message.includes("server")) {
+          arabicErrorMessage += "\n\nتفاصيل: خطأ في الخادم، يرجى المحاولة مرة أخرى لاحقاً";
+        } else {
+          arabicErrorMessage += "\n\nتفاصيل: " + (err.message || "خطأ غير معروف");
+        }
+      }
+      
+      setError(arabicErrorMessage);
       setIsValidating(false);
       setNotificationType('error');
       setShowNotification(true);
@@ -389,7 +427,22 @@ export default function AdvancedScanPage() {
         };
       } catch (e: any) {
         console.error(e);
-        setError(e?.message ?? "فشل إعداد الماسح");
+        
+        // Ensure scanner setup error message is in Arabic
+        let arabicErrorMessage = "فشل إعداد الماسح";
+        
+        // Add more specific error details in Arabic if available
+        if (e?.message) {
+          if (e.message.includes("license")) {
+            arabicErrorMessage = "فشل التحقق من ترخيص الماسح";
+          } else if (e.message.includes("camera")) {
+            arabicErrorMessage = "فشل الوصول إلى الكاميرا. يرجى التأكد من السماح بالوصول إلى الكاميرا";
+          } else if (e.message.includes("permission")) {
+            arabicErrorMessage = "تم رفض إذن الوصول إلى الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح";
+          }
+        }
+        
+        setError(arabicErrorMessage);
         setLicenseStatus('failed');
       }
     })();
