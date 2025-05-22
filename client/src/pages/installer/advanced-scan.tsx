@@ -7,9 +7,6 @@ import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } fro
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
-// Tesseract.js for OCR without camera interruption
-import { createWorker, PSM } from 'tesseract.js';
-
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
@@ -47,7 +44,7 @@ const translateErrorDetails = (details: string): string => {
 };
 
 /**
- * Advanced scanner page – powered by Scandit Web SDK for QR + Tesseract.js for OCR
+ * Advanced scanner page – powered by Scandit Web SDK
  * Note: Scandit modules are pulled dynamically via CDN import-map (see index.html).
  */
 export default function AdvancedScanPage() {
@@ -67,16 +64,11 @@ export default function AdvancedScanPage() {
   
   // References to context and capture objects
   const contextRef = useRef<any>(null);
-  const captureRef = useRef<any>(null); // Reference for barcode capture only
-  
-  // Tesseract OCR worker reference
-  const ocrWorkerRef = useRef<any>(null);
-  const ocrProcessingRef = useRef<boolean>(false);
+  const captureRef = useRef<any>(null); // Reference for barcode capture
+  const textCaptureRef = useRef<any>(null); // Reference for text capture
   
   // Timers for auto-switching between modes
   const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  // OCR frame capture timer
-  const ocrTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for scan result notification
   const [showNotification, setShowNotification] = useState(false);
@@ -90,228 +82,6 @@ export default function AdvancedScanPage() {
       } catch (e) {
         console.error('Haptic feedback failed:', e);
       }
-    }
-  };
-
-  // Function to validate OCR code (6-digit alphanumeric)
-  const validateOcrCode = async (code: string) => {
-    setIsValidating(true);
-    setError(null);
-    setResult(null);
-    setShowNotification(false);
-
-    try {
-      // Step 1: Format validation (already done in OCR listener, but double-check)
-      if (!/^[A-Z0-9]{6}$/.test(code)) {
-        setError("صيغة الرمز غير صالحة. يجب أن يكون الرمز مكون من 6 أحرف وأرقام فقط. (رمز الخطأ: INVALID_OCR_FORMAT)\n\nالرمز المكتشف: " + code);
-        setIsValidating(false);
-        setNotificationType('error');
-        setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
-        
-        // Auto-dismiss error after 5 seconds
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 5000);
-        
-        resetScannerAfterDelay();
-        return;
-      }
-
-      // Step 2: Send to server for validation and processing
-      if (!user || !user.id) {
-        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
-        setIsValidating(false);
-        setNotificationType('error');
-        setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
-        
-        // Auto-dismiss error after 5 seconds
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 5000);
-        
-        return;
-      }
-      
-      console.log("Sending OCR scan request with:", {
-        endpoint: `/api/scan-ocr`,
-        user: user,
-        code: code
-      });
-      
-      const scanResult = await apiRequest(
-        "POST", 
-        `/api/scan-ocr`, 
-        {
-          code
-        }
-      );
-      
-      const result = await scanResult.json();
-      
-      if (!result.success) {
-        const errorCode = result.error_code ? ` (${result.error_code})` : '';
-        
-        // Translate common server error responses to Arabic
-        let arabicErrorMessage = result.message;
-        let arabicErrorDetails = '';
-        
-        // Translate server response details to Arabic
-        if (result.details) {
-          if (typeof result.details === 'string') {
-            arabicErrorDetails = translateErrorDetails(result.details);
-          } else if (result.details.duplicate) {
-            arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
-          } else if (result.details.message) {
-            arabicErrorDetails = translateErrorDetails(result.details.message);
-          } else {
-            const detailsStr = JSON.stringify(result.details, null, 2);
-            arabicErrorDetails = translateErrorDetails(detailsStr);
-          }
-        }
-        
-        // Map common English error messages to Arabic
-        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
-          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
-        } 
-        else if (result.message.includes("not found") || result.message.includes("invalid")) {
-          arabicErrorMessage = "منتج غير صالح أو غير موجود";
-        }
-        else if (result.message.includes("expired")) {
-          arabicErrorMessage = "انتهت صلاحية رمز المنتج";
-        }
-        else if (result.message.includes("limit exceeded")) {
-          arabicErrorMessage = "تم تجاوز الحد المسموح من المسح";
-        }
-        else if (result.message.includes("unauthorized") || result.message.includes("permission")) {
-          arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
-        }
-        
-        // Format the complete error message with any translated details
-        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
-        if (arabicErrorDetails) {
-          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
-        }
-        
-        setError(completeErrorMessage);
-        setIsValidating(false);
-        setNotificationType('error');
-        setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
-        
-        // Auto-dismiss error after 5 seconds
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 5000);
-        
-        console.error('OCR Validation Error:', {
-          message: result.message,
-          code: result.error_code,
-          details: result.details
-        });
-        
-        if (result.details?.duplicate) {
-          // If it's a duplicate, allow user to scan again
-          resetScannerAfterDelay();
-        } else {
-          resetScannerAfterDelay(3000);
-        }
-        
-        return;
-      }
-      
-      // Success path
-      setIsValidating(false);
-      setResult(`تم التحقق من المنتج: ${result.productName}`);
-      
-      // Set points awarded if available in the response
-      if (result.pointsAwarded) {
-        setPointsAwarded(result.pointsAwarded);
-      } else {
-        // Default points when not provided by API
-        setPointsAwarded(50);
-      }
-      
-      // Trigger success haptic feedback - one long vibration
-      triggerHapticFeedback([200]);
-      
-      setNotificationType('success');
-      setShowNotification(true);
-      
-      // Hide notification after a few seconds
-      setTimeout(() => {
-        setShowNotification(false);
-        // Reset points after animation completes
-        setPointsAwarded(0);
-      }, 3500);
-      
-      // Log success and product name
-      console.log("Scanned product via OCR:", result.productName);
-      
-      // Call refreshUser to update user data directly in the auth context
-      refreshUser()
-        .then(() => console.log("User refreshed after successful OCR scan"))
-        .catch((err: any) => console.error("Error refreshing user after OCR scan:", err));
-      
-      // Aggressively invalidate and immediately refetch all relevant queries
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
-      
-      // Force instant refetch of all invalidated queries
-      queryClient.refetchQueries({ 
-        queryKey: [`/api/transactions?userId=${user?.id}`],
-        exact: true 
-      });
-      queryClient.refetchQueries({ 
-        queryKey: ['/api/badges', user?.id],
-        exact: true 
-      });
-      queryClient.refetchQueries({ 
-        queryKey: ['/api/users/me'],
-        exact: true 
-      });
-      
-      // Show success toast
-      toast({
-        title: "تم التحقق من المنتج بنجاح ✓",
-        description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
-        variant: "default",
-      });
-      
-      // Reset scanner after showing success for a moment
-      resetScannerAfterDelay(2000);
-      
-    } catch (err: any) {
-      console.error("OCR Validation error:", err);
-      
-      // Ensure error message is in Arabic
-      let arabicErrorMessage = "خطأ في التحقق من الرمز المطبوع. يرجى المحاولة مرة أخرى.";
-      
-      // Add error code
-      arabicErrorMessage += " (رمز الخطأ: OCR_VALIDATION_ERROR)";
-      
-      // Add translated error details if available
-      if (err.message) {
-        const translatedDetail = translateErrorDetails(err.message);
-        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
-      } else {
-        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
-      }
-      
-      setError(arabicErrorMessage);
-      setIsValidating(false);
-      setNotificationType('error');
-      setShowNotification(true);
-      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
-      
-      // Auto-dismiss error after 5 seconds
-      setTimeout(() => {
-        setShowNotification(false);
-      }, 5000);
-      
-      resetScannerAfterDelay(3000);
     }
   };
 
@@ -609,64 +379,6 @@ export default function AdvancedScanPage() {
     }
   };
 
-  // OCR frame processing function (regular function, not useCallback)
-  function startOCRProcessing() {
-    if (!ocrWorkerRef.current || ocrProcessingRef.current) return;
-    const processFrame = async () => {
-      if (!ocrWorkerRef.current || scannerMode !== 'ocr' || ocrProcessingRef.current) return;
-      try {
-        ocrProcessingRef.current = true;
-        const videoElement = scannerRef.current?.querySelector('video');
-        if (!videoElement) return;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        canvas.width = videoElement.videoWidth;
-        canvas.height = videoElement.videoHeight;
-        ctx.drawImage(videoElement, 0, 0);
-        const imageData = canvas.toDataURL('image/png');
-        const { data: { text } } = await ocrWorkerRef.current.recognize(imageData);
-        const cleanText = text.replace(/\s+/g, '').toUpperCase();
-        const matches = cleanText.match(/[A-Z0-9]{6}/g);
-        if (matches && matches.length > 0) {
-          const code = matches[0];
-          console.log("OCR detected code:", code);
-          ocrProcessingRef.current = false;
-          await validateOcrCode(code);
-          return;
-        }
-      } catch (error) {
-        console.error("OCR processing error:", error);
-      } finally {
-        ocrProcessingRef.current = false;
-      }
-      if (scannerMode === 'ocr') {
-        ocrTimerRef.current = setTimeout(processFrame, 1000);
-      }
-    };
-    processFrame();
-  }
-
-  // Initialize Tesseract OCR worker (fix API usage)
-  const initializeOCRWorker = useCallback(async () => {
-    try {
-      if (ocrWorkerRef.current) {
-        await ocrWorkerRef.current.terminate();
-      }
-      // Correct Tesseract.js v6+ usage:
-      const worker = await createWorker('eng');
-      await worker.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-        tessedit_pageseg_mode: PSM.SINGLE_WORD,
-      });
-      ocrWorkerRef.current = worker;
-      console.log("OCR worker initialized successfully");
-      startOCRProcessing();
-    } catch (error) {
-      console.error("Failed to initialize OCR worker:", error);
-    }
-  }, []);
-
   // Function to switch between scanner modes
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
     try {
@@ -676,26 +388,16 @@ export default function AdvancedScanPage() {
         modeTimerRef.current = null;
       }
       
-      // Clear OCR timer
-      if (ocrTimerRef.current) {
-        clearTimeout(ocrTimerRef.current);
-        ocrTimerRef.current = null;
-      }
-      
       // Set new mode and update status message
       setScannerMode(mode);
       
       if (mode === 'qr') {
         setStatusMessage("جارٍ البحث عن رمز QR...");
         
-        // Stop OCR processing
-        ocrProcessingRef.current = false;
-        if (ocrWorkerRef.current) {
-          ocrWorkerRef.current.terminate().catch(console.error);
-          ocrWorkerRef.current = null;
+        // Disable text capture and enable barcode capture
+        if (textCaptureRef.current) {
+          textCaptureRef.current.setEnabled(false).catch(console.error);
         }
-        
-        // Ensure QR scanner is enabled
         if (captureRef.current) {
           captureRef.current.setEnabled(true).catch(console.error);
         }
@@ -710,8 +412,13 @@ export default function AdvancedScanPage() {
       } else {
         setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
         
-        // Keep QR scanner running but initialize OCR
-        initializeOCRWorker();
+        // Disable barcode capture and enable text capture
+        if (captureRef.current) {
+          captureRef.current.setEnabled(false).catch(console.error);
+        }
+        if (textCaptureRef.current) {
+          textCaptureRef.current.setEnabled(true).catch(console.error);
+        }
         
         // Set timer to auto-switch back to QR mode if enabled
         if (autoSwitchEnabled) {
@@ -727,7 +434,7 @@ export default function AdvancedScanPage() {
     } catch (err) {
       console.error("Error switching scanner mode:", err);
     }
-  }, [autoSwitchEnabled, initializeOCRWorker]);
+  }, [autoSwitchEnabled]);
   
   // Toggle auto-switching feature
   const toggleAutoSwitch = () => {
@@ -748,13 +455,9 @@ export default function AdvancedScanPage() {
               switchScannerMode('ocr');
             }, 10000);
           }
-        } else if (scannerMode === 'ocr') {
+        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
           console.log("Re-enabling OCR scanner after validation");
-          // Restart OCR processing
-          ocrProcessingRef.current = false;
-          if (ocrWorkerRef.current) {
-            startOCRProcessing();
-          }
+          textCaptureRef.current.setEnabled(true).catch(console.error);
           // Restart the auto-switch timer
           if (autoSwitchEnabled && !modeTimerRef.current) {
             modeTimerRef.current = setTimeout(() => {
@@ -794,15 +497,15 @@ export default function AdvancedScanPage() {
 
     (async () => {
       try {
-        /* Dynamically import the SDK packages with improved error handling */
+        /* Dynamically import the three SDK packages loaded via the CDN */
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const core = await import("@scandit/web-datacapture-core");
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // Label capture not needed anymore since we use Tesseract.js for OCR
-        // const label = await import("@scandit/web-datacapture-label");
+        // We'll handle text capture later with a different approach
+        // Just use core and barcode for now
         const {
           configure,
           DataCaptureView,
@@ -825,18 +528,17 @@ export default function AdvancedScanPage() {
           SymbologyDescription
         } = barcode as any;
 
-        // Label imports not needed anymore since we use Tesseract.js for OCR
-        // const { LabelCapture, labelCaptureLoader, LabelCaptureSettings, LabelDefinition, TextField } = label as any;
-
         try {
           /* Initialise the engine (downloads WASM files automatically) */
           console.log("Using license key from environment secret");
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
-            libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.3.0/build/wasm/",
-            moduleLoaders: [barcodeCaptureLoader()], // Only need barcode loader now
+            libraryLocation:
+              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
+            moduleLoaders: [barcodeCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
+            engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
             // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
@@ -983,6 +685,24 @@ export default function AdvancedScanPage() {
         );
         settings.locationSelection = locationSelection;
         
+        // Optimization 2: Smart scan intention to reduce duplicate scans
+        // Fix for the ScanIntention error - use a safe approach with try/catch
+        try {
+          // Try to set scan intention if available
+          if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
+            settings.scanIntention = barcode.ScanIntention.Smart;
+          } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
+            settings.scanIntention = core.ScanIntention.Smart;
+          } else if (typeof settings.setProperty === 'function') {
+            // Fallback to using setProperty if available
+            settings.setProperty("barcodeCapture.scanIntention", "smart");
+          } else {
+            console.log("ScanIntention not available in API, skipping this optimization");
+          }
+        } catch (settingsError) {
+          console.warn("Error setting scan intention:", settingsError);
+        }
+        
         // Set codeDuplicateFilter to 500ms for more responsive scanning
         settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
 
@@ -1007,8 +727,6 @@ export default function AdvancedScanPage() {
         });
         await capture.setEnabled(true);
 
-        console.log("Scandit QR scanner initialized successfully");
-
         /* Provide disposer so we shut everything down on unmount */
         dispose = async () => {
           try {
@@ -1017,20 +735,6 @@ export default function AdvancedScanPage() {
             }
             if (context) {
               await context.dispose();
-            }
-            // Clean up OCR worker
-            if (ocrWorkerRef.current) {
-              await ocrWorkerRef.current.terminate();
-              ocrWorkerRef.current = null;
-            }
-            // Clear timers
-            if (modeTimerRef.current) {
-              clearTimeout(modeTimerRef.current);
-              modeTimerRef.current = null;
-            }
-            if (ocrTimerRef.current) {
-              clearTimeout(ocrTimerRef.current);
-              ocrTimerRef.current = null;
             }
           } catch (disposeError) {
             console.error("Error during disposal:", disposeError);
