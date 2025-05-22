@@ -8,7 +8,7 @@ import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
 
 // Tesseract.js for OCR without camera interruption
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -609,91 +609,63 @@ export default function AdvancedScanPage() {
     }
   };
 
-  // Initialize Tesseract OCR worker
-  const initializeOCRWorker = useCallback(async () => {
-    try {
-      if (ocrWorkerRef.current) {
-        await ocrWorkerRef.current.terminate();
-      }
-      
-      const worker = await createWorker();
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      await worker.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-        tessedit_pageseg_mode: '8', // Single word
-      });
-      
-      ocrWorkerRef.current = worker;
-      console.log("OCR worker initialized successfully");
-      
-      // Start OCR frame processing
-      startOCRProcessing();
-    } catch (error) {
-      console.error("Failed to initialize OCR worker:", error);
-    }
-  }, [startOCRProcessing]);
-
-  // OCR frame processing function
-  const startOCRProcessing = useCallback(() => {
+  // OCR frame processing function (regular function, not useCallback)
+  function startOCRProcessing() {
     if (!ocrWorkerRef.current || ocrProcessingRef.current) return;
-    
     const processFrame = async () => {
       if (!ocrWorkerRef.current || scannerMode !== 'ocr' || ocrProcessingRef.current) return;
-      
       try {
         ocrProcessingRef.current = true;
-        
-        // Get the video element from Scandit
         const videoElement = scannerRef.current?.querySelector('video');
         if (!videoElement) return;
-        
-        // Create canvas to capture frame
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        
         canvas.width = videoElement.videoWidth;
         canvas.height = videoElement.videoHeight;
         ctx.drawImage(videoElement, 0, 0);
-        
-        // Get image data for OCR
         const imageData = canvas.toDataURL('image/png');
-        
-        // Process with Tesseract
         const { data: { text } } = await ocrWorkerRef.current.recognize(imageData);
-        
-        // Clean and validate the text
         const cleanText = text.replace(/\s+/g, '').toUpperCase();
         const matches = cleanText.match(/[A-Z0-9]{6}/g);
-        
         if (matches && matches.length > 0) {
           const code = matches[0];
           console.log("OCR detected code:", code);
-          
-          // Stop OCR processing temporarily
           ocrProcessingRef.current = false;
-          
-          // Validate the code
           await validateOcrCode(code);
           return;
         }
-        
       } catch (error) {
         console.error("OCR processing error:", error);
       } finally {
         ocrProcessingRef.current = false;
       }
-      
-      // Continue processing if still in OCR mode
       if (scannerMode === 'ocr') {
-        ocrTimerRef.current = setTimeout(processFrame, 1000); // Process every 1 second
+        ocrTimerRef.current = setTimeout(processFrame, 1000);
       }
     };
-    
-    // Start processing
     processFrame();
-  }, [scannerMode]);
+  }
+
+  // Initialize Tesseract OCR worker (fix API usage)
+  const initializeOCRWorker = useCallback(async () => {
+    try {
+      if (ocrWorkerRef.current) {
+        await ocrWorkerRef.current.terminate();
+      }
+      // Correct Tesseract.js v6+ usage:
+      const worker = await createWorker('eng');
+      await worker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+        tessedit_pageseg_mode: PSM.SINGLE_WORD,
+      });
+      ocrWorkerRef.current = worker;
+      console.log("OCR worker initialized successfully");
+      startOCRProcessing();
+    } catch (error) {
+      console.error("Failed to initialize OCR worker:", error);
+    }
+  }, []);
 
   // Function to switch between scanner modes
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
@@ -1010,24 +982,6 @@ export default function AdvancedScanPage() {
           width, heightToWidth
         );
         settings.locationSelection = locationSelection;
-        
-        // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Fix for the ScanIntention error - use a safe approach with try/catch
-        try {
-          // Try to set scan intention if available
-          if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
-            settings.scanIntention = barcode.ScanIntention.Smart;
-          } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
-            settings.scanIntention = core.ScanIntention.Smart;
-          } else if (typeof settings.setProperty === 'function') {
-            // Fallback to using setProperty if available
-            settings.setProperty("barcodeCapture.scanIntention", "smart");
-          } else {
-            console.log("ScanIntention not available in API, skipping this optimization");
-          }
-        } catch (settingsError) {
-          console.warn("Error setting scan intention:", settingsError);
-        }
         
         // Set codeDuplicateFilter to 500ms for more responsive scanning
         settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
