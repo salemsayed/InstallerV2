@@ -764,6 +764,7 @@ export default function AdvancedScanPage() {
           console.log("Using license key from environment secret");
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
+            libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.3.0/build/wasm/",
             moduleLoaders: [barcodeCaptureLoader(), labelCaptureLoader()],
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
