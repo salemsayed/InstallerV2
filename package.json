@@ -44,6 +44,7 @@
     "@radix-ui/react-tooltip": "^1.2.0",
     "@scandit/web-datacapture-barcode": "^7.3.0",
     "@scandit/web-datacapture-core": "^7.3.0",
+    "@scandit/web-datacapture-id": "^7.3.0",
     "@sendgrid/mail": "^8.1.5",
     "@tanstack/react-query": "^5.75.7",
     "@types/memoizee": "^0.4.12",
