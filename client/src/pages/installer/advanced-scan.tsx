@@ -615,9 +615,9 @@ export default function AdvancedScanPage() {
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
-              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/sdc-lib/", // Use core's sdc-lib
+              "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.3.0/sdc-lib/", // Update to current version
             moduleLoaders: [barcodeCaptureLoader(), idCaptureLoader()], // Add idCaptureLoader
-            preloadEngine: true,
+            preloadEngine: false, // Set to false to improve loading reliability
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.2.1/build", // Use core's build
             errorListener: {
               onError: (error: any) => {
@@ -648,6 +648,9 @@ export default function AdvancedScanPage() {
           });
         } catch (configError) {
           console.error("Configuration error:", configError);
+          
+          // Enable fallback method when Scandit fails to load
+          setShowOcrFallbackButton(true);
           setError("فشل تهيئة الماسح الضوئي. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.");
           setLicenseStatus('failed');
           return;
