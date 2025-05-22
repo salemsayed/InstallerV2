@@ -172,11 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
       } else {
-        console.warn(`[AUTH] Direct auth failed with status ${response.status}`);
+        // Silently handle auth failure
       }
       
       // Fallback to a basic user object if all else fails
-      console.log("[AUTH] All auth methods failed, using basic fallback user object");
       const fallbackUser = {
         id: parseInt(userId),
         name: `User ${userId}`,

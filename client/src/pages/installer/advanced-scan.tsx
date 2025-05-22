@@ -713,7 +713,16 @@ export default function AdvancedScanPage() {
 
         try {
           /* Initialise the engine (downloads WASM files automatically) */
-          console.log("Using license key from environment secret");
+          console.log("[SCANDIT_SDK] Initializing with license key from environment");
+          
+          // Create custom logger for Scandit SDK
+          const customLogger = {
+            debug: (message: string) => console.log(`[SCANDIT_SDK] DEBUG: ${message}`),
+            info: (message: string) => console.log(`[SCANDIT_SDK] INFO: ${message}`),
+            warn: (message: string) => console.warn(`[SCANDIT_SDK] WARN: ${message}`),
+            error: (message: string) => console.error(`[SCANDIT_SDK] ERROR: ${message}`)
+          };
+          
           await configure({
             licenseKey: import.meta.env.VITE_SCANDIT_LICENSE_KEY || "",
             libraryLocation:
@@ -722,11 +731,19 @@ export default function AdvancedScanPage() {
             // Fix for runtime error by patching errorElement
             preloadEngine: true,
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
+            logger: customLogger,
             // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
-                // Translate Scandit error messages to Arabic
-                console.error("Scandit error:", error);
+                // Log detailed Scandit error information
+                console.error("[SCANDIT_SDK] Error details:", {
+                  message: error?.message,
+                  name: error?.name,
+                  stack: error?.stack,
+                  code: error?.code,
+                  data: error?.data
+                });
+                
                 let arabicMessage = "خطأ في تهيئة الماسح الضوئي";
 
                 if (error && error.message) {
