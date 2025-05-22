@@ -378,6 +378,139 @@ export default function AdvancedScanPage() {
       resetScannerAfterDelay(3000);
     }
   };
+  
+  // Process 6-character alphanumeric codes detected in OCR mode
+  // Main OCR code processing function with API integration
+  const processOcrCode = async (code: string) => {
+    console.log("Processing OCR-detected code:", code);
+    setIsValidating(true);
+    setError(null);
+    setResult("جارٍ التحقق من الرمز المطبوع...");
+    
+    try {
+      // Validate the code format (6 alphanumeric characters)
+      if (!/^[A-Z0-9]{6}$/i.test(code)) {
+        console.error("Invalid OCR code format:", code);
+        setError("الرمز المطبوع غير صالح! يجب أن يتكون من 6 أحرف وأرقام");
+        setResult(null);
+        setNotificationType('error');
+        setShowNotification(true);
+        
+        // Trigger error haptic feedback
+        triggerHapticFeedback([100, 50, 100]);
+        
+        resetScannerAfterDelay(2000);
+        return;
+      }
+      
+      // Format the code (uppercase for consistency)
+      const formattedCode = code.toUpperCase();
+      
+      // Send API request to validate the printed code
+      const scanResult = await apiRequest(
+        "POST", 
+        "/api/scan-qr", 
+        { 
+          printedCode: formattedCode,
+          isOcrScan: true 
+        }
+      );
+      
+      const result = await scanResult.json();
+      
+      if (!result.success) {
+        const errorCode = result.error_code ? ` (${result.error_code})` : '';
+        
+        // Translate common server error responses to Arabic
+        let arabicErrorMessage = result.message;
+        
+        // Map common English error messages to Arabic
+        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
+          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
+        } 
+        else if (result.message.includes("not found") || result.message.includes("invalid")) {
+          arabicErrorMessage = "رمز مطبوع غير صالح أو غير موجود";
+        }
+        else if (result.message.includes("expired")) {
+          arabicErrorMessage = "انتهت صلاحية الرمز المطبوع";
+        }
+        
+        // Format the complete error message
+        const completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
+        
+        setError(completeErrorMessage);
+        setResult(null);
+        setNotificationType('error');
+        setShowNotification(true);
+        
+        // Vibration feedback for error
+        triggerHapticFeedback([100, 50, 100]);
+        
+        resetScannerAfterDelay(2000);
+        return;
+      }
+      
+      // Success response
+      setIsValidating(false);
+      setResult(`تم التحقق من المنتج: ${result.productName || "منتج جديد"}`);
+      
+      // Set points awarded if available
+      if (result.pointsAwarded) {
+        setPointsAwarded(result.pointsAwarded);
+      } else {
+        // Default points when not provided
+        setPointsAwarded(50);
+      }
+      
+      // Success haptic feedback
+      triggerHapticFeedback([200]);
+      
+      setNotificationType('success');
+      setShowNotification(true);
+      
+      // Update user data
+      refreshUser()
+        .then(() => console.log("User refreshed after successful OCR scan"))
+        .catch(err => console.error("Error refreshing user after OCR scan:", err));
+      
+      // Invalidate and refresh queries
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
+      // Force instant refetch
+      queryClient.refetchQueries({ 
+        queryKey: [`/api/transactions?userId=${user?.id}`],
+        exact: true 
+      });
+      
+      // Reset scanner after showing success
+      resetScannerAfterDelay(2000);
+      
+      // Show success toast
+      toast({
+        title: "تم التحقق من المنتج بنجاح ✓",
+        description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
+        variant: "default",
+      });
+      
+    } catch (error: any) {
+      console.error("Error processing OCR code:", error);
+      
+      // Ensure error message is in Arabic
+      let arabicErrorMessage = "خطأ في التحقق من الرمز المطبوع. يرجى المحاولة مرة أخرى.";
+      
+      setError(arabicErrorMessage);
+      setResult(null);
+      setNotificationType('error');
+      setShowNotification(true);
+      
+      // Error haptic feedback
+      triggerHapticFeedback([100, 50, 100]);
+      
+      resetScannerAfterDelay(2000);
+    }
+  };
 
   // Function to switch between scanner modes
   const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
@@ -472,7 +605,8 @@ export default function AdvancedScanPage() {
   };
 
   // Process a detected 6-character alphanumeric code from OCR scanning
-  const processOcrCode = useCallback((detectedCode: string) => {
+  // Processing function for simple detected OCR codes without API integration
+  const handleSimpleOcrDetection = useCallback((detectedCode: string) => {
     // Only process if it matches our pattern (6 alphanumeric chars)
     if (/^[A-Z0-9]{6}$/.test(detectedCode)) {
       console.log("OCR detected a valid 6-character code:", detectedCode);
