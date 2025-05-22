@@ -382,15 +382,19 @@ export default function AdvancedScanPage() {
   // Process 6-character alphanumeric codes detected in OCR mode
   // Main OCR code processing function with API integration
   const processOcrCode = async (code: string) => {
-    console.log("Processing OCR-detected code:", code);
+    console.log("[OCR_DEBUG] Processing OCR-detected code:", code);
+    console.log("[OCR_DEBUG] Code length:", code.length);
+    console.log("[OCR_DEBUG] Code character check:", code.split('').map(c => ({char: c, isAlphaNumeric: /[A-Z0-9]/i.test(c)})));
     setIsValidating(true);
     setError(null);
     setResult("جارٍ التحقق من الرمز المطبوع...");
     
     try {
       // Validate the code format (6 alphanumeric characters)
-      if (!/^[A-Z0-9]{6}$/i.test(code)) {
-        console.error("Invalid OCR code format:", code);
+      const isValidFormat = /^[A-Z0-9]{6}$/i.test(code);
+      console.log("[OCR_DEBUG] Is valid 6-char alphanumeric format:", isValidFormat);
+      if (!isValidFormat) {
+        console.error("[OCR_DEBUG] Invalid OCR code format:", code);
         setError("الرمز المطبوع غير صالح! يجب أن يتكون من 6 أحرف وأرقام");
         setResult(null);
         setNotificationType('error');
@@ -929,24 +933,54 @@ export default function AdvancedScanPage() {
               try {
                 // Check if the data contains a 6-character alphanumeric pattern
                 // This could come directly from the barcode or be part of a larger string
+                console.log("[OCR_DEBUG] Raw data from OCR scan:", data);
+                console.log("[OCR_DEBUG] Data type:", typeof data);
+                console.log("[OCR_DEBUG] Data length:", data?.length);
+                
+                // Try different pattern matching approaches
                 const codeMatch = data.match(/[A-Z0-9]{6}/i);
+                const altMatch = data.replace(/[^A-Z0-9]/gi, '').match(/.{6}/);
+                
+                console.log("[OCR_DEBUG] Standard regex match result:", codeMatch);
+                console.log("[OCR_DEBUG] Alternative match result:", altMatch);
                 
                 if (codeMatch) {
-                  // Found a 6-character code pattern
+                  // Found a 6-character code pattern with standard regex
                   const detectedCode = codeMatch[0].toUpperCase();
-                  console.log("OCR successfully detected a 6-character code:", detectedCode);
+                  console.log("[OCR_DEBUG] Successfully detected a 6-character code:", detectedCode);
                   
                   // Process the detected code with our custom function
                   await processOcrCode(detectedCode);
+                } else if (altMatch) {
+                  // Try alternative approach - take first 6 alphanumeric characters
+                  const detectedCode = altMatch[0].toUpperCase();
+                  console.log("[OCR_DEBUG] Used alternative method to detect code:", detectedCode);
+                  
+                  // Process with the alternative approach
+                  await processOcrCode(detectedCode);
                 } else {
                   // Data doesn't contain a valid 6-character code
-                  console.log("Detected barcode doesn't contain a valid 6-character code:", data);
-                  // Re-enable scanner after a short delay
-                  setTimeout(() => {
-                    if (captureRef.current) {
-                      captureRef.current.setEnabled(true).catch(console.error);
-                    }
-                  }, 500);
+                  console.log("[OCR_DEBUG] No valid 6-character code found in data:", data);
+                  
+                  // Try one last approach - extract any alphanumeric characters
+                  const alphaNumericOnly = data.replace(/[^A-Z0-9]/gi, '');
+                  console.log("[OCR_DEBUG] Alphanumeric characters only:", alphaNumericOnly);
+                  
+                  if (alphaNumericOnly.length >= 6) {
+                    // Take first 6 characters as a last resort
+                    const possibleCode = alphaNumericOnly.substring(0, 6).toUpperCase();
+                    console.log("[OCR_DEBUG] Last resort - first 6 alphanumeric chars:", possibleCode);
+                    
+                    // Process this potential code
+                    await processOcrCode(possibleCode);
+                  } else {
+                    // Re-enable scanner after a short delay
+                    setTimeout(() => {
+                      if (captureRef.current) {
+                        captureRef.current.setEnabled(true).catch(console.error);
+                      }
+                    }, 500);
+                  }
                 }
               } catch (err) {
                 console.error("Error processing OCR data:", err);
