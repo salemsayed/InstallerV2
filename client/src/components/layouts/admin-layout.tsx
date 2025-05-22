@@ -104,13 +104,8 @@ export default function AdminLayout({
                       localStorage.clear();
                       sessionStorage.clear();
                       
-                      // Use the auth context's logout function
-                      logout();
-                      
-                      // As a fallback, also try direct navigation to logout page
-                      setTimeout(() => {
-                        window.location.href = "/auth/logout?t=" + Date.now();
-                      }, 500);
+                      // Navigate directly to server logout endpoint
+                      window.location.href = "/auth/logout?t=" + Date.now();
                     }}
                     className="flex items-center w-full"
                   >
