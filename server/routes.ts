@@ -1353,6 +1353,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Robust helper function to accurately check badge qualifications and update user badges
   // This is the single source of truth for badge qualifications
+  // Debug flag for badge system - set to false to disable console logs
+  const BADGE_SYSTEM_DEBUG = false;
+  
+  // Helper for conditional logging
+  const badgeLog = (message: string) => {
+    if (BADGE_SYSTEM_DEBUG) console.log(`[BADGE SYSTEM] ${message}`);
+  };
+  
   async function calculateUserBadgeQualifications(userId: number, forceUpdate = false): Promise<{
     badges: any[], 
     userUpdated: boolean,
@@ -1361,7 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     pointsBalance: number
   }> {
     try {
-      console.log(`[BADGE SYSTEM] Calculating badge qualifications for user ${userId}, forceUpdate=${forceUpdate}`);
+      badgeLog(`Calculating badge qualifications for user ${userId}, forceUpdate=${forceUpdate}`);
       
       // Get user data
       const user = await storage.getUser(userId);
@@ -1371,11 +1379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all active badges
       const allBadges = await storage.listBadges(true);
-      console.log(`[BADGE SYSTEM] Found ${allBadges.length} active badges to check`);
+      badgeLog(`Found ${allBadges.length} active badges to check`);
       
       // Get all user transactions with a high limit to ensure we have complete data
       const transactions = await storage.getTransactionsByUserId(userId, 10000);
-      console.log(`[BADGE SYSTEM] Retrieved ${transactions.length} transactions for user ${userId}`);
+      badgeLog(`Retrieved ${transactions.length} transactions for user ${userId}`);
       
       // CRITICAL: Accurately count installations with case-insensitive type matching
       const installationTransactions = transactions.filter(t => {
@@ -1388,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Count total lifetime installations
       const installationCount = installationTransactions.length;
-      console.log(`[BADGE SYSTEM] User ${userId} has completed ${installationCount} total installations`);
+      badgeLog(`User ${userId} has completed ${installationCount} total installations`);
       
       // Calculate accurate points balance from transactions
       const earningTransactions = transactions.filter(t => 
