@@ -802,16 +802,26 @@ export default function AdvancedScanPage() {
                   const detectedCode = codeMatch[0].toUpperCase();
                   console.log("OCR successfully detected a 6-character code:", detectedCode);
                   
-                  // Process the detected code
-                  processOcrCode(detectedCode);
+                  // Process the detected code with our custom function
+                  await processOcrCode(detectedCode);
                 } else {
                   // Data doesn't contain a valid 6-character code
                   console.log("Detected barcode doesn't contain a valid 6-character code:", data);
-                  resetScannerAfterDelay(500);
+                  // Re-enable scanner after a short delay
+                  setTimeout(() => {
+                    if (captureRef.current) {
+                      captureRef.current.setEnabled(true).catch(console.error);
+                    }
+                  }, 500);
                 }
               } catch (err) {
                 console.error("Error processing OCR data:", err);
-                resetScannerAfterDelay(500);
+                // Re-enable scanner after error
+                setTimeout(() => {
+                  if (captureRef.current) {
+                    captureRef.current.setEnabled(true).catch(console.error);
+                  }
+                }, 500);
               }
             }
           }
