@@ -471,6 +471,25 @@ export default function AdvancedScanPage() {
     }, delay);
   };
 
+  // Initialize auto-mode switching when component mounts
+  useEffect(() => {
+    // Start the auto-switch timer if enabled when component mounts
+    if (autoSwitchEnabled && !modeTimerRef.current) {
+      modeTimerRef.current = setTimeout(() => {
+        console.log("Auto-switching to OCR mode after 10s without QR detection");
+        switchScannerMode('ocr');
+      }, 10000);
+    }
+    
+    // Clean up timer on unmount
+    return () => {
+      if (modeTimerRef.current) {
+        clearTimeout(modeTimerRef.current);
+        modeTimerRef.current = null;
+      }
+    };
+  }, [autoSwitchEnabled, switchScannerMode]);
+  
   useEffect(() => {
     document.title = "مسح متقدم | برنامج مكافآت بريق";
 
