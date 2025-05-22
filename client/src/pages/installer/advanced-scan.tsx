@@ -747,8 +747,8 @@ export default function AdvancedScanPage() {
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
         
-        // We're not using text capture module for now, but will use enhanced barcode settings
-        // to handle OCR-like scanning of alphanumeric codes
+        // Using only barcode module for now, with optimized settings
+        // for detecting printed alphanumeric codes
         const {
           configure,
           DataCaptureView,
