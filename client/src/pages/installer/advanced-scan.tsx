@@ -668,6 +668,7 @@ export default function AdvancedScanPage() {
       setLoadingStep("تحميل Tesseract...");
       console.log("Loading Tesseract worker for mobile…");
 
+      let worker: any = null;
       try {
         // Use the correct Tesseract.js v5.x API with iOS-optimized settings
         const workerOptions: any = {
@@ -687,7 +688,7 @@ export default function AdvancedScanPage() {
           workerOptions.workerPath = 'https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js';
         }
         
-        const worker = await createWorker('eng', 1, workerOptions);
+        worker = await createWorker('eng', 1, workerOptions);
         
         setLoadingStep("إعداد معاملات OCR...");
 
@@ -715,7 +716,11 @@ export default function AdvancedScanPage() {
 
       // Kick-off the continuous OCR scan loop
       console.log("📸 About to start OCR scanning from initializeOCR...");
-      startOcrScanning(worker); // Pass the worker directly to avoid React state timing issues
+      if (worker) {
+        startOcrScanning(worker); // Pass the worker directly to avoid React state timing issues
+      } else {
+        throw new Error("Worker not initialized properly");
+      }
     } catch (error: any) {
       console.error("OCR initialization error:", error);
 
