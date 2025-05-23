@@ -515,46 +515,91 @@ export default function AdvancedScanPage() {
 
       // Create Tesseract worker
       console.log("Creating Tesseract worker...");
+      
+      // Use a simpler approach that's less likely to have issues
       const worker = await createWorker();
+      console.log("Tesseract worker created successfully");
       
+      // Try to load and initialize the English language data
+      console.log("Loading OCR language...");
       await worker.loadLanguage('eng');
-      await worker.initialize('eng');
+      console.log("OCR language loaded successfully");
       
-      // Configure Tesseract for better digit recognition
+      console.log("Initializing OCR worker...");
+      await worker.initialize('eng');
+      console.log("OCR worker initialized successfully");
+      
+      // Configure Tesseract with optimal settings for product codes
+      console.log("Setting OCR parameters...");
       await worker.setParameters({
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-        tessedit_pageseg_mode: 8, // Single text line
-        preserve_interword_spaces: 0
+        // Use string for pageseg_mode to avoid type errors
+        tessedit_pageseg_mode: '8',
+        // Use string for preserve_interword_spaces to avoid type errors
+        preserve_interword_spaces: '0'
       });
+      console.log("OCR parameters set successfully");
 
+      // Store worker in state
       setOcrWorker(worker);
+      console.log("OCR worker state set successfully");
 
       // Get camera stream
       console.log("Requesting camera access for OCR...");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        console.log("Camera access granted for OCR");
+        
+        setOcrStream(stream);
+
+        if (ocrVideoRef.current) {
+          ocrVideoRef.current.srcObject = stream;
+          await ocrVideoRef.current.play();
+          console.log("OCR video stream started successfully");
+          
+          // Start OCR scanning loop
+          startOcrScanning();
+          setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
+        } else {
+          throw new Error("Video element not available");
         }
-      });
-
-      setOcrStream(stream);
-
-      if (ocrVideoRef.current) {
-        ocrVideoRef.current.srcObject = stream;
-        await ocrVideoRef.current.play();
-        console.log("OCR video stream started");
+      } catch (error: any) {
+        console.error("Camera access error for OCR:", error);
+        throw new Error("فشل الوصول للكاميرا: " + (error.message || "يرجى التأكد من صلاحيات الكاميرا"));
       }
 
-      // Start OCR scanning loop
-      startOcrScanning();
-      setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
       setIsOcrInitializing(false);
+      console.log("OCR initialization completed successfully");
 
-    } catch (err) {
-      console.error("OCR initialization error:", err);
-      setError("فشل تهيئة نظام قراءة النصوص. يرجى التأكد من السماح بالوصول إلى الكاميرا.");
+    } catch (error: any) {
+      console.error("OCR initialization error:", error);
+      let errorMessage = "فشل تهيئة نظام قراءة النصوص. ";
+      
+      if (error.message) {
+        if (error.message.includes("camera") || error.message.includes("Camera")) {
+          errorMessage += "يرجى التأكد من السماح بالوصول إلى الكاميرا.";
+        } else if (error.message.includes("permission")) {
+          errorMessage += "يرجى منح الإذن للوصول للكاميرا من إعدادات المتصفح.";
+        } else if (error.message.includes("Cannot load")) {
+          errorMessage += "تعذر تحميل مكتبة معالجة النصوص. يرجى التأكد من اتصال الإنترنت.";
+        } else {
+          errorMessage += error.message;
+        }
+      } else {
+        errorMessage += "خطأ غير معروف.";
+      }
+      
+      // Reset OCR state
+      await cleanupOCR();
+      
+      // Set error state
+      setError(errorMessage);
       setIsOcrInitializing(false);
       setNotificationType('error');
       setShowNotification(true);
@@ -562,6 +607,10 @@ export default function AdvancedScanPage() {
       setTimeout(() => {
         setShowNotification(false);
       }, 5000);
+      
+      // If OCR initialization fails, switch back to QR mode
+      setScannerMode('qr');
+      setStatusMessage("جارٍ البحث عن رمز QR...");
     }
   };
 
@@ -692,6 +741,12 @@ export default function AdvancedScanPage() {
     try {
       console.log(`Switching to ${mode} mode...`);
       
+      // Prevent switching while already initializing
+      if (isOcrInitializing) {
+        console.log("Cannot switch modes while OCR is initializing");
+        return;
+      }
+      
       // Reset any current state
       setError(null);
       setResult(null);
@@ -724,8 +779,10 @@ export default function AdvancedScanPage() {
     } catch (err) {
       console.error("Error switching scanner mode:", err);
       setError("فشل التبديل بين أوضاع المسح. يرجى تحديث الصفحة.");
+      // If an error occurs during switching, revert to QR mode
+      setScannerMode('qr');
     }
-  }, []);
+  }, [isOcrInitializing]); // Add dependency on isOcrInitializing
 
   useEffect(() => {
     document.title = "مسح متقدم | برنامج مكافآت بريق";
