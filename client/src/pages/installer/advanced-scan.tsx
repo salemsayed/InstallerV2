@@ -60,8 +60,8 @@ export default function AdvancedScanPage() {
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   
-  // Scanner mode state (QR or OCR)
-  const [scannerMode, setScannerMode] = useState<'qr' | 'ocr'>('qr');
+  // Scanner mode state (QR or OCR) – default to OCR for testing
+  const [scannerMode, setScannerMode] = useState<'qr' | 'ocr'>('ocr');
   const [statusMessage, setStatusMessage] = useState<string>("جارٍ البحث عن رمز QR...");
   
   // References to context and capture objects
@@ -1514,6 +1514,13 @@ export default function AdvancedScanPage() {
       };
     }
   }, [scannerMode, updateVideoState]);
+
+  // If we land directly in OCR mode, kick off initialization
+  useEffect(() => {
+    if (scannerMode === 'ocr' && !ocrWorker && !isOcrInitializing) {
+      initializeOCR();
+    }
+  }, [scannerMode, ocrWorker, isOcrInitializing]);
 
   return (
     <InstallerLayout activeTab="advanced-scan">
