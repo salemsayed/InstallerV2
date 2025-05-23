@@ -78,6 +78,11 @@ export default function AdvancedScanPage() {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationType, setNotificationType] = useState<'success' | 'error' | null>(null);
   
+  // OCR debugging state
+  const [ocrActivity, setOcrActivity] = useState(false);
+  const [lastDetectedText, setLastDetectedText] = useState<string>("");
+  const [scanCount, setScanCount] = useState(0);
+  
   // Helper function for haptic feedback
   const triggerHapticFeedback = (pattern: number[]) => {
     if ('vibrate' in navigator) {
@@ -607,11 +612,16 @@ export default function AdvancedScanPage() {
       }
 
       try {
+        setOcrActivity(true);
+        setScanCount(prev => prev + 1);
+        
         const video = ocrVideoRef.current;
         const canvas = ocrCanvasRef.current;
         const context = canvas.getContext('2d');
 
         if (!context || video.readyState !== 4) {
+          setOcrActivity(false);
+          console.log("OCR scan skipped - video not ready:", { readyState: video.readyState, context: !!context });
           return;
         }
 
@@ -625,25 +635,32 @@ export default function AdvancedScanPage() {
         // Get image data for OCR processing
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
 
+        console.log(`OCR Scan #${scanCount}: Processing frame ${video.videoWidth}x${video.videoHeight}`);
+
         // Perform OCR on the image
         const { data: { text } } = await ocrWorker.recognize(imageData);
+        
+        console.log("OCR Raw text detected:", JSON.stringify(text));
+        setLastDetectedText(text.trim());
         
         // Look for 6-character alphanumeric codes
         const codeRegex = /\b[A-Za-z0-9]{6}\b/g;
         const matches = text.match(codeRegex);
 
         if (matches && matches.length > 0) {
-          console.log("OCR detected codes:", matches);
+          console.log("✅ OCR detected codes:", matches);
           
           // Take the first valid 6-character code
           const detectedCode = matches[0].toUpperCase();
-          console.log("Processing detected code:", detectedCode);
+          console.log("🎯 Processing detected code:", detectedCode);
           
           // Stop scanning while validating
           if (ocrScanIntervalRef.current) {
             clearInterval(ocrScanIntervalRef.current);
             ocrScanIntervalRef.current = null;
           }
+          
+          setOcrActivity(false);
           
           // Validate the detected code
           await validateExtractedCode(detectedCode);
@@ -654,10 +671,14 @@ export default function AdvancedScanPage() {
               startOcrScanning();
             }
           }, 2000);
+        } else {
+          console.log("❌ No 6-character codes found in text");
+          setOcrActivity(false);
         }
 
       } catch (err) {
         console.error("OCR scanning error:", err);
+        setOcrActivity(false);
       }
     }, 1000); // Scan every second
   };
@@ -733,6 +754,11 @@ export default function AdvancedScanPage() {
       setResult(null);
       setShowNotification(false);
       setIsValidating(false);
+      
+      // Reset OCR debug state
+      setOcrActivity(false);
+      setLastDetectedText("");
+      setScanCount(0);
 
       if (mode === 'qr') {
         // Switching to QR mode - cleanup OCR and initialize Scandit
@@ -1199,6 +1225,29 @@ export default function AdvancedScanPage() {
             
             {/* Mode toggle buttons - control panel in top right - this needs pointer events to work! */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+              {/* OCR Debug Panel - only show in dev mode and OCR mode */}
+              {import.meta.env.DEV && scannerMode === 'ocr' && (
+                <div className="bg-black/80 backdrop-blur-sm text-white rounded-lg p-3 text-xs max-w-xs">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`h-2 w-2 rounded-full ${ocrActivity ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                    <span className="font-medium">OCR Debug</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div>Scans: {scanCount}</div>
+                    <div>Activity: {ocrActivity ? 'Processing...' : 'Waiting'}</div>
+                    <div>Worker: {ocrWorker ? '✓' : '✗'}</div>
+                    {lastDetectedText && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium">Last Text:</div>
+                        <div className="text-yellow-300 text-xs break-all max-h-16 overflow-y-auto">
+                          {lastDetectedText || 'None'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <Button
                 onClick={() => switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr')}
                 className={`rounded-full shadow-lg ${scannerMode === 'qr' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-primary/90'}`}
