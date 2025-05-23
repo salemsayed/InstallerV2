@@ -87,6 +87,25 @@ export default function AdvancedScanPage() {
   const [iosErrorDetails, setIosErrorDetails] = useState<string>("");
   const [loadingStep, setLoadingStep] = useState<string>("");
   
+  // Video diagnostic state for iOS debugging
+  const [videoState, setVideoState] = useState<{
+    readyState: number;
+    paused: boolean;
+    currentTime: number;
+    duration: number;
+    videoWidth: number;
+    videoHeight: number;
+    hasStream: boolean;
+  }>({
+    readyState: 0,
+    paused: true,
+    currentTime: 0,
+    duration: 0,
+    videoWidth: 0,
+    videoHeight: 0,
+    hasStream: false
+  });
+
   // Helper function for haptic feedback
   const triggerHapticFeedback = (pattern: number[]) => {
     if ('vibrate' in navigator) {
@@ -544,20 +563,15 @@ export default function AdvancedScanPage() {
           throw new Error("No cameras found on device");
         }
         
-        // iOS-specific camera constraints with progressive fallback
+        // Progressive camera constraint strategy for iOS
         let videoConstraints: any = {
-          facingMode: "environment",
-          width: isMobile ? { ideal: 720, max: 1280 } : { ideal: 1280 },
-          height: isMobile ? { ideal: 480, max: 720 } : { ideal: 720 },
+          facingMode: "environment"
         };
         
-        if (isIOS) {
-          // Start with basic iOS constraints
-          videoConstraints = {
-            facingMode: "environment",
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-          };
+        // Don't specify resolution constraints for iOS - let it choose optimal
+        if (!isIOS) {
+          videoConstraints.width = { ideal: isMobile ? 720 : 1280 };
+          videoConstraints.height = { ideal: isMobile ? 480 : 720 };
         }
         
         console.log("Using video constraints:", videoConstraints);
@@ -573,9 +587,9 @@ export default function AdvancedScanPage() {
           console.warn("Failed with specific constraints, trying basic:", constraintError);
           setLoadingStep("إعادة محاولة بإعدادات أساسية...");
           
-          // Fallback to basic constraints for iOS
+          // Ultra-basic fallback for iOS
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
+            video: true,
             audio: false
           });
         }
@@ -585,68 +599,109 @@ export default function AdvancedScanPage() {
         setLoadingStep("إعداد الفيديو...");
 
         if (ocrVideoRef.current) {
-          // Mobile-specific video element setup
           const video = ocrVideoRef.current;
           
-          // Set video attributes for mobile compatibility
-          video.setAttribute('playsinline', 'true'); // Critical for iOS
-          video.setAttribute('webkit-playsinline', 'true'); // Older iOS versions
-          video.setAttribute('muted', 'true'); // Required for autoplay on mobile
-          video.muted = true;
-          video.autoplay = true;
+          // Critical iOS Safari video setup sequence
+          video.srcObject = null; // Reset first
           
+          // iOS-specific attributes - MUST be set before srcObject
+          video.playsInline = true;
+          video.muted = true;
+          video.autoplay = false; // Don't use autoplay - manually control play
+          video.controls = false;
+          video.preload = "metadata";
+          
+          // Set attributes as well for older iOS versions
+          video.setAttribute('playsinline', 'true');
+          video.setAttribute('webkit-playsinline', 'true');
+          video.setAttribute('muted', 'true');
+          
+          // Now set the stream
           video.srcObject = stream;
           
           setLoadingStep("انتظار جاهزية الفيديو...");
           
-          // Enhanced video loading for iOS with multiple attempts
-          await new Promise((resolve, reject) => {
+          // Comprehensive iOS video loading strategy
+          await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
-              reject(new Error(`Video load timeout after 15 seconds on ${isIOS ? 'iOS' : 'mobile'}`));
-            }, 15000); // 15 second timeout for iOS
+              reject(new Error(`Video load timeout after 20 seconds on ${isIOS ? 'iOS' : 'mobile'}`));
+            }, 20000); // Increased timeout for iOS
             
             let resolved = false;
-            let playAttempted = false;
+            let loadAttempts = 0;
+            const maxAttempts = 5;
+            
+            const attemptPlay = async () => {
+              if (resolved || loadAttempts >= maxAttempts) return;
+              
+              loadAttempts++;
+              console.log(`Play attempt ${loadAttempts} on ${isIOS ? 'iOS' : 'mobile'}`);
+              
+              try {
+                await video.play();
+                
+                // Wait a bit then check if it's actually playing
+                setTimeout(() => {
+                  if (!resolved && !video.paused && video.readyState >= 2) {
+                    console.log("Video playing successfully");
+                    resolved = true;
+                    clearTimeout(timeout);
+                    cleanup();
+                    resolve();
+                  } else if (!resolved && loadAttempts < maxAttempts) {
+                    // Try again after a delay
+                    setTimeout(attemptPlay, 1000);
+                  }
+                }, 500);
+                
+              } catch (playError) {
+                console.warn(`Play attempt ${loadAttempts} failed:`, playError);
+                
+                if (loadAttempts < maxAttempts) {
+                  // Try again after progressively longer delays
+                  setTimeout(attemptPlay, loadAttempts * 1000);
+                } else if (!resolved) {
+                  // Final fallback - just check if video has some data
+                  if (video.readyState >= 1) {
+                    console.log("Video has some data, continuing anyway");
+                    resolved = true;
+                    clearTimeout(timeout);
+                    cleanup();
+                    resolve();
+                  }
+                }
+              }
+            };
             
             const onLoadedData = () => {
               if (resolved) return;
               console.log("Video loadeddata event, readyState:", video.readyState);
               
-              if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+              // On iOS, try to play when we get loadeddata
+              if (isIOS && video.readyState >= 2) {
+                attemptPlay();
+              } else if (!isIOS && video.readyState >= 3) {
+                // Desktop can be more strict
                 resolved = true;
                 clearTimeout(timeout);
                 cleanup();
-                console.log("Video loaded successfully, readyState:", video.readyState);
-                resolve(undefined);
+                resolve();
               }
             };
             
             const onCanPlay = () => {
               if (resolved) return;
               console.log("Video canplay event, readyState:", video.readyState);
-              
-              // For iOS, try to play again when canplay fires
-              if (isIOS && !playAttempted) {
-                playAttempted = true;
-                video.play().catch(err => console.warn("Canplay -> play failed:", err));
-              }
-              
-              if (video.readyState >= 3) { // HAVE_FUTURE_DATA or higher
-                resolved = true;
-                clearTimeout(timeout);
-                cleanup();
-                console.log("Video can play, readyState:", video.readyState);
-                resolve(undefined);
-              }
+              attemptPlay();
             };
             
             const onPlaying = () => {
               if (resolved) return;
-              console.log("Video playing event, readyState:", video.readyState);
+              console.log("Video playing event");
               resolved = true;
               clearTimeout(timeout);
               cleanup();
-              resolve(undefined);
+              resolve();
             };
             
             const onError = (error: any) => {
@@ -667,7 +722,7 @@ export default function AdvancedScanPage() {
               video.removeEventListener('error', onError);
             };
             
-            // Listen to multiple events for better iOS compatibility
+            // Set up event listeners
             video.addEventListener('loadeddata', onLoadedData);
             video.addEventListener('loadedmetadata', onLoadedData);
             video.addEventListener('canplay', onCanPlay);
@@ -675,40 +730,23 @@ export default function AdvancedScanPage() {
             video.addEventListener('playing', onPlaying);
             video.addEventListener('error', onError);
             
-            // Force multiple play attempts for iOS
-            const tryPlay = async (attempt = 1) => {
-              try {
-                console.log(`iOS play attempt ${attempt}`);
-                await video.play();
-                console.log(`Play attempt ${attempt} succeeded`);
-                
-                // Check if video is actually ready after play
-                setTimeout(() => {
-                  if (!resolved && video.readyState >= 2) {
-                    onLoadedData();
-                  }
-                }, 500);
-                
-              } catch (playError) {
-                console.warn(`Play attempt ${attempt} failed:`, playError);
-                
-                if (attempt < 3 && isIOS) {
-                  // Try again after a short delay
-                  setTimeout(() => tryPlay(attempt + 1), 1000);
-                }
+            // Start the loading process
+            video.load();
+            
+            // Initial attempt after a short delay
+            setTimeout(() => {
+              if (!resolved) {
+                attemptPlay();
               }
-            };
+            }, 500);
             
-            // Start the first play attempt
-            tryPlay();
-            
-            // Also try to trigger events if the video is already ready
+            // Also try if video already has data
             if (video.readyState >= 2) {
               setTimeout(onLoadedData, 100);
             }
           });
           
-          console.log("OCR video stream started successfully on mobile");
+          console.log("OCR video stream started successfully");
         }
         
       } catch (cameraError: any) {
@@ -720,11 +758,11 @@ export default function AdvancedScanPage() {
       /* ---------------------- Tesseract initialisation ------------------- */
       setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
       setLoadingStep("تحميل Tesseract...");
-      console.log("Loading Tesseract worker for mobile…");
+      console.log("Loading Tesseract worker...");
 
       let worker: any = null;
       try {
-        // Use the correct Tesseract.js v5.x API with better error handling
+        // Use optimized Tesseract.js settings for mobile
         const workerOptions: any = {
           logger: (m: any) => {
             console.log('Tesseract:', m);
@@ -734,36 +772,29 @@ export default function AdvancedScanPage() {
           }
         };
         
-        // Remove iOS-specific CDN overrides that cause network issues
-        // Let Tesseract use its default paths which work better on iOS
-        console.log("Creating worker with default paths for iOS compatibility");
-        
+        console.log("Creating Tesseract worker with optimal settings");
         worker = await createWorker('eng', 1, workerOptions);
         
         setLoadingStep("إعداد معاملات OCR...");
 
-        // Set parameters for better OCR recognition of alphanumeric codes on mobile
+        // Enhanced parameters for better OCR recognition
         await worker.setParameters({
           tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
           preserve_interword_spaces: "1",
-          tessedit_pageseg_mode: isMobile ? "6" : "8", // Different mode for mobile
-          tessedit_ocr_engine_mode: "1" // Neural nets LSTM engine only
+          tessedit_pageseg_mode: isMobile ? "6" : "8", // Uniform text block vs single text line
+          tessedit_ocr_engine_mode: "1", // Neural nets LSTM engine only
+          // Additional quality improvements
+          tessjs_create_hocr: "0",
+          tessjs_create_tsv: "0",
+          user_defined_dpi: "300"
         });
 
         setOcrWorker(worker);
-        console.log("Tesseract worker initialised successfully on mobile");
+        console.log("Tesseract worker initialized successfully");
         
       } catch (tesseractError: any) {
         console.error("Tesseract error:", tesseractError);
-        
-        let errorDetails = tesseractError.message;
-        if (tesseractError.message.includes("NetworkError") || tesseractError.message.includes("Load failed")) {
-          errorDetails = `Network loading error on iOS Safari: ${tesseractError.message}`;
-        } else if (tesseractError.message.includes("CORS")) {
-          errorDetails = `CORS error loading Tesseract files: ${tesseractError.message}`;
-        }
-        
-        setIosErrorDetails(errorDetails);
+        setIosErrorDetails(`Tesseract Error: ${tesseractError.message}`);
         throw new Error(`Tesseract initialization failed: ${tesseractError.message}`);
       }
 
@@ -772,10 +803,10 @@ export default function AdvancedScanPage() {
       setLoadingStep("اكتمال التهيئة ✓");
       setIsOcrInitializing(false);
 
-      // Kick-off the continuous OCR scan loop
-      console.log("📸 About to start OCR scanning from initializeOCR...");
+      // Start OCR scanning
+      console.log("Starting OCR scanning...");
       if (worker) {
-        startOcrScanning(worker); // Pass the worker directly to avoid React state timing issues
+        startOcrScanning(worker);
       } else {
         throw new Error("Worker not initialized properly");
       }
@@ -792,10 +823,6 @@ export default function AdvancedScanPage() {
           errorMessage += "لم يتم العثور على كاميرا. تأكد من وجود كاميرا خلفية.";
         } else if (error.message.includes("NetworkError") || error.message.includes("Load failed")) {
           errorMessage += "فشل تحميل ملفات التعرف على النصوص عبر الشبكة. تأكد من قوة الاتصال بالإنترنت وإعادة تحميل الصفحة.";
-        } else if (error.message.includes("CORS")) {
-          errorMessage += "خطأ في تحميل ملفات التعرف على النصوص (CORS). يرجى إعادة تحميل الصفحة.";
-        } else if (error.message.includes("language") || error.message.includes("Tesseract")) {
-          errorMessage += "تعذر تحميل ملفات التعرف على النصوص. تأكد من اتصال الإنترنت القوي وإعادة تحميل الصفحة.";
         } else if (error.message.includes("timeout")) {
           errorMessage += "انتهت مهلة تحميل الكاميرا. يرجى المحاولة مرة أخرى.";
         } else if (error.message.includes("HTTPS") || error.message.includes("secure")) {
@@ -854,7 +881,8 @@ export default function AdvancedScanPage() {
         ocrVideoRef: !!ocrVideoRef.current,
         ocrCanvasRef: !!ocrCanvasRef.current,
         isValidating: isValidating,
-        videoReadyState: ocrVideoRef.current?.readyState
+        videoReadyState: ocrVideoRef.current?.readyState,
+        videoPaused: ocrVideoRef.current?.paused
       });
       
       if (!activeWorker || !ocrVideoRef.current || !ocrCanvasRef.current || isValidating) {
@@ -871,53 +899,90 @@ export default function AdvancedScanPage() {
         const canvas = ocrCanvasRef.current;
         const context = canvas.getContext('2d');
 
-        // More lenient readyState check for iOS - allow scanning with HAVE_CURRENT_DATA (2) or higher
+        // Enhanced readyState and playing checks for iOS
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const minReadyState = isMobile ? 2 : 4; // iOS/mobile: allow readyState 2+, desktop: require 4
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         
-        if (!context || video.readyState < minReadyState) {
+        // For iOS, be more lenient with readyState but ensure video is actually playing
+        const minReadyState = isMobile ? 1 : 3; // iOS: HAVE_METADATA, Desktop: HAVE_FUTURE_DATA
+        const isVideoReady = video.readyState >= minReadyState && !video.paused;
+        
+        if (!context || !isVideoReady) {
           setOcrActivity(false);
           console.log("OCR scan skipped - video not ready:", { 
             readyState: video.readyState, 
             minRequired: minReadyState,
+            paused: video.paused,
             context: !!context,
-            isMobile 
+            isMobile,
+            isIOS 
           });
+          
+          // On iOS, try to resume playing if paused
+          if (isIOS && video.paused && video.readyState >= 1) {
+            console.log("Attempting to resume iOS video playback");
+            video.play().catch(err => console.warn("Failed to resume video:", err));
+          }
+          
           return;
         }
 
-        // Set canvas size to match video with mobile optimization
-        const scale = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1; // Limit scale on mobile
+        // Get video dimensions - handle cases where they might be 0
+        const videoWidth = video.videoWidth || video.offsetWidth || 640;
+        const videoHeight = video.videoHeight || video.offsetHeight || 480;
         
-        canvas.width = video.videoWidth * scale;
-        canvas.height = video.videoHeight * scale;
+        if (videoWidth === 0 || videoHeight === 0) {
+          console.log("Video dimensions not available yet:", { videoWidth, videoHeight });
+          setOcrActivity(false);
+          return;
+        }
+
+        // Optimize canvas for mobile performance
+        const scale = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+        const canvasWidth = Math.floor(videoWidth * scale);
+        const canvasHeight = Math.floor(videoHeight * scale);
         
-        // Scale context for high-DPI displays but limit for mobile performance
+        // Set canvas size
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        // Configure context for better quality
+        context.imageSmoothingEnabled = false; // Sharp edges for text
         context.scale(scale, scale);
 
         // Draw current video frame to canvas
-        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        try {
+          context.drawImage(video, 0, 0, videoWidth, videoHeight);
+        } catch (drawError) {
+          console.error("Failed to draw video frame:", drawError);
+          setOcrActivity(false);
+          return;
+        }
 
-        // Get image data for OCR processing - higher quality for mobile due to smaller text
-        const imageData = canvas.toDataURL('image/jpeg', isMobile ? 0.9 : 0.8);
+        // Get image data for OCR processing - optimize quality for text recognition
+        const imageQuality = isIOS ? 0.95 : 0.9; // Higher quality for iOS
+        const imageData = canvas.toDataURL('image/png', imageQuality); // Use PNG for text
 
-        console.log(`OCR Scan #${scanCount}: Processing frame ${video.videoWidth}x${video.videoHeight}, scale: ${scale}, mobile: ${isMobile}`);
+        console.log(`OCR Scan #${scanCount}: Processing frame ${videoWidth}x${videoHeight}, scale: ${scale}, quality: ${imageQuality}, mobile: ${isMobile}, iOS: ${isIOS}`);
 
         // Perform OCR on the image using the active worker
+        const startTime = Date.now();
         const { data: { text } } = await activeWorker.recognize(imageData);
+        const processingTime = Date.now() - startTime;
         
-        console.log("OCR Raw text detected:", JSON.stringify(text));
+        console.log(`OCR completed in ${processingTime}ms. Raw text detected:`, JSON.stringify(text));
         setLastDetectedText(text.trim());
         
-        // Look for 6-character alphanumeric codes
-        const codeRegex = /\b[A-Za-z0-9]{6}\b/g;
-        const matches = text.match(codeRegex);
+        // Enhanced code detection for better accuracy
+        const cleanText = text.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
+        const codeRegex = /\b[A-Z0-9]{6}\b/g;
+        const matches = cleanText.match(codeRegex);
 
         if (matches && matches.length > 0) {
           console.log("✅ OCR detected codes:", matches);
           
           // Take the first valid 6-character code
-          const detectedCode = matches[0].toUpperCase();
+          const detectedCode = matches[0];
           console.log("🎯 Processing detected code:", detectedCode);
           
           // Stop scanning while validating
@@ -938,15 +1003,20 @@ export default function AdvancedScanPage() {
             }
           }, 2000);
         } else {
-          console.log("❌ No 6-character codes found in text");
+          console.log("❌ No 6-character codes found in cleaned text:", cleanText);
           setOcrActivity(false);
         }
 
       } catch (err) {
         console.error("OCR scanning error:", err);
         setOcrActivity(false);
+        
+        // If OCR fails repeatedly, try to restart the worker
+        if (err && err.message && err.message.includes("Worker")) {
+          console.log("Worker error detected, may need to restart OCR");
+        }
       }
-    }, 1000); // Scan every second
+    }, 1500); // Slightly slower interval for better iOS performance
     
     console.log("✅ OCR scanning interval set up successfully");
   };
@@ -962,19 +1032,34 @@ export default function AdvancedScanPage() {
         ocrScanIntervalRef.current = null;
       }
 
-      // Stop video stream
+      // Stop video stream properly for iOS
       if (ocrStream) {
-        ocrStream.getTracks().forEach(track => track.stop());
+        console.log("Stopping video stream tracks...");
+        ocrStream.getTracks().forEach(track => {
+          console.log(`Stopping track: ${track.kind}, state: ${track.readyState}`);
+          track.stop();
+        });
         setOcrStream(null);
       }
 
-      // Clear video element
+      // Clean video element properly for iOS
       if (ocrVideoRef.current) {
-        ocrVideoRef.current.srcObject = null;
+        const video = ocrVideoRef.current;
+        console.log("Cleaning video element...");
+        
+        // Pause and reset video
+        video.pause();
+        video.srcObject = null;
+        video.src = "";
+        video.load(); // Force reset
+        
+        // Remove all event listeners to prevent memory leaks
+        video.removeAttribute('src');
       }
 
       // Terminate Tesseract worker
       if (ocrWorker) {
+        console.log("Terminating Tesseract worker...");
         await ocrWorker.terminate();
         setOcrWorker(null);
       }
@@ -1360,6 +1445,48 @@ export default function AdvancedScanPage() {
     };
   }, []);
 
+  // Update video state for debugging
+  const updateVideoState = useCallback(() => {
+    if (ocrVideoRef.current) {
+      const video = ocrVideoRef.current;
+      setVideoState({
+        readyState: video.readyState,
+        paused: video.paused,
+        currentTime: video.currentTime,
+        duration: video.duration || 0,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        hasStream: !!video.srcObject
+      });
+    }
+  }, []);
+
+  // Monitor video state changes for debugging
+  useEffect(() => {
+    if (scannerMode === 'ocr' && ocrVideoRef.current) {
+      const video = ocrVideoRef.current;
+      const events = ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'playing', 'pause', 'timeupdate'];
+      
+      const handleVideoEvent = (event: Event) => {
+        console.log(`Video event: ${event.type}, readyState: ${video.readyState}, paused: ${video.paused}`);
+        updateVideoState();
+      };
+      
+      events.forEach(eventName => {
+        video.addEventListener(eventName, handleVideoEvent);
+      });
+      
+      // Initial state update
+      updateVideoState();
+      
+      return () => {
+        events.forEach(eventName => {
+          video.removeEventListener(eventName, handleVideoEvent);
+        });
+      };
+    }
+  }, [scannerMode, updateVideoState]);
+
   return (
     <InstallerLayout activeTab="advanced-scan">
       {/* Responsive grid layout container */}
@@ -1440,7 +1567,11 @@ export default function AdvancedScanPage() {
               className="w-full h-full object-cover"
               playsInline
               muted
-              autoPlay
+              autoPlay={false}
+              controls={false}
+              preload="metadata"
+              webkit-playsinline="true"
+              x-webkit-airplay="deny"
             />
             <canvas
               ref={ocrCanvasRef}
@@ -1510,9 +1641,17 @@ export default function AdvancedScanPage() {
                     <div>Validating: {isValidating ? 'Yes' : 'No'}</div>
                     <div>Mobile: {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
                     <div>iOS: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
-                    {ocrVideoRef.current && (
-                      <div>Video Ready: {ocrVideoRef.current.readyState}/4</div>
-                    )}
+                    
+                    {/* Enhanced Video State */}
+                    <div className="border-t border-white/20 pt-1 mt-2">
+                      <div className="font-medium">Video State:</div>
+                      <div>Ready: {videoState.readyState}/4</div>
+                      <div>Paused: {videoState.paused ? 'Yes' : 'No'}</div>
+                      <div>Time: {videoState.currentTime.toFixed(1)}s</div>
+                      <div>Size: {videoState.videoWidth}x{videoState.videoHeight}</div>
+                      <div>HasStream: {videoState.hasStream ? 'Yes' : 'No'}</div>
+                    </div>
+                    
                     {loadingStep && (
                       <div className="border-t border-white/20 pt-1 mt-2">
                         <div className="font-medium">Loading:</div>
