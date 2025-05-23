@@ -83,6 +83,10 @@ export default function AdvancedScanPage() {
   const [lastDetectedText, setLastDetectedText] = useState<string>("");
   const [scanCount, setScanCount] = useState(0);
   
+  // iOS debug state
+  const [iosErrorDetails, setIosErrorDetails] = useState<string>("");
+  const [loadingStep, setLoadingStep] = useState<string>("");
+  
   // Helper function for haptic feedback
   const triggerHapticFeedback = (pattern: number[]) => {
     if ('vibrate' in navigator) {
@@ -517,9 +521,12 @@ export default function AdvancedScanPage() {
     try {
       setIsOcrInitializing(true);
       setStatusMessage("جارٍ تهيئة نظام قراءة النصوص...");
+      setIosErrorDetails("");
+      setLoadingStep("بدء التهيئة...");
 
       /* ---------------------- Camera initialisation ---------------------- */
       console.log("Requesting camera access for OCR...");
+      setLoadingStep("طلب إذن الكاميرا...");
       
       // Detect mobile devices
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -527,97 +534,183 @@ export default function AdvancedScanPage() {
       
       console.log("Device detection:", { isMobile, isIOS, userAgent: navigator.userAgent });
       
-      // Mobile-optimized camera constraints
-      const videoConstraints = {
-        facingMode: "environment",
-        width: isMobile ? { ideal: 720, max: 1280 } : { ideal: 1280 },
-        height: isMobile ? { ideal: 480, max: 720 } : { ideal: 720 },
-        ...(isIOS && {
-          // iOS-specific constraints
-          frameRate: { ideal: 30, max: 30 },
-          aspectRatio: { ideal: 16/9 }
-        })
-      };
-      
-      console.log("Using video constraints:", videoConstraints);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints,
-        audio: false // Explicitly disable audio for iOS
-      });
-      
-      console.log("Camera access granted for OCR");
-      setOcrStream(stream);
+      try {
+        // Test if camera is available first
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        console.log("Available cameras:", cameras.length);
+        
+        if (cameras.length === 0) {
+          throw new Error("No cameras found on device");
+        }
+        
+        // iOS-specific camera constraints with progressive fallback
+        let videoConstraints: any = {
+          facingMode: "environment",
+          width: isMobile ? { ideal: 720, max: 1280 } : { ideal: 1280 },
+          height: isMobile ? { ideal: 480, max: 720 } : { ideal: 720 },
+        };
+        
+        if (isIOS) {
+          // Start with basic iOS constraints
+          videoConstraints = {
+            facingMode: "environment",
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          };
+        }
+        
+        console.log("Using video constraints:", videoConstraints);
+        setLoadingStep("تشغيل الكاميرا...");
+        
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraints,
+            audio: false
+          });
+        } catch (constraintError) {
+          console.warn("Failed with specific constraints, trying basic:", constraintError);
+          setLoadingStep("إعادة محاولة بإعدادات أساسية...");
+          
+          // Fallback to basic constraints for iOS
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+            audio: false
+          });
+        }
+        
+        console.log("Camera access granted for OCR");
+        setOcrStream(stream);
+        setLoadingStep("إعداد الفيديو...");
 
-      if (ocrVideoRef.current) {
-        // Mobile-specific video element setup
-        const video = ocrVideoRef.current;
-        
-        // Set video attributes for mobile compatibility
-        video.setAttribute('playsinline', 'true'); // Critical for iOS
-        video.setAttribute('webkit-playsinline', 'true'); // Older iOS versions
-        video.muted = true; // Required for autoplay on mobile
-        video.autoplay = true;
-        
-        video.srcObject = stream;
-        
-        // Wait for video to be ready on mobile
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("Video load timeout on mobile"));
-          }, 10000); // 10 second timeout for mobile
+        if (ocrVideoRef.current) {
+          // Mobile-specific video element setup
+          const video = ocrVideoRef.current;
           
-          const onLoadedData = () => {
-            clearTimeout(timeout);
-            video.removeEventListener('loadeddata', onLoadedData);
-            video.removeEventListener('error', onError);
-            resolve(undefined);
-          };
+          // Set video attributes for mobile compatibility
+          video.setAttribute('playsinline', 'true'); // Critical for iOS
+          video.setAttribute('webkit-playsinline', 'true'); // Older iOS versions
+          video.setAttribute('muted', 'true'); // Required for autoplay on mobile
+          video.muted = true;
+          video.autoplay = true;
           
-          const onError = (error: any) => {
-            clearTimeout(timeout);
-            video.removeEventListener('loadeddata', onLoadedData);
-            video.removeEventListener('error', onError);
-            reject(error);
-          };
+          video.srcObject = stream;
           
-          video.addEventListener('loadeddata', onLoadedData);
-          video.addEventListener('error', onError);
+          setLoadingStep("انتظار جاهزية الفيديو...");
           
-          // Try to play the video
-          const playPromise = video.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(onError);
-          }
-        });
+          // Wait for video to be ready on mobile with better error handling
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error(`Video load timeout after 15 seconds on ${isIOS ? 'iOS' : 'mobile'}`));
+            }, 15000); // 15 second timeout for iOS
+            
+            let resolved = false;
+            
+            const onLoadedData = () => {
+              if (resolved) return;
+              resolved = true;
+              clearTimeout(timeout);
+              video.removeEventListener('loadeddata', onLoadedData);
+              video.removeEventListener('loadedmetadata', onLoadedData);
+              video.removeEventListener('canplay', onLoadedData);
+              video.removeEventListener('error', onError);
+              console.log("Video loaded successfully, readyState:", video.readyState);
+              resolve(undefined);
+            };
+            
+            const onError = (error: any) => {
+              if (resolved) return;
+              resolved = true;
+              clearTimeout(timeout);
+              video.removeEventListener('loadeddata', onLoadedData);
+              video.removeEventListener('loadedmetadata', onLoadedData);
+              video.removeEventListener('canplay', onLoadedData);
+              video.removeEventListener('error', onError);
+              console.error("Video error:", error);
+              reject(new Error(`Video loading error: ${error.type || 'Unknown'}`));
+            };
+            
+            // Listen to multiple events for better iOS compatibility
+            video.addEventListener('loadeddata', onLoadedData);
+            video.addEventListener('loadedmetadata', onLoadedData);
+            video.addEventListener('canplay', onLoadedData);
+            video.addEventListener('error', onError);
+            
+            // Try to play the video
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log("Video play() succeeded");
+                  if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+                    onLoadedData();
+                  }
+                })
+                .catch((playError) => {
+                  console.warn("Video play() failed:", playError);
+                  // Don't reject here, wait for other events
+                });
+            }
+          });
+          
+          console.log("OCR video stream started successfully on mobile");
+        }
         
-        console.log("OCR video stream started successfully on mobile");
+      } catch (cameraError: any) {
+        console.error("Camera error:", cameraError);
+        setIosErrorDetails(`Camera Error: ${cameraError.message}`);
+        throw new Error(`Camera initialization failed: ${cameraError.message}`);
       }
 
       /* ---------------------- Tesseract initialisation ------------------- */
       setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
+      setLoadingStep("تحميل Tesseract...");
       console.log("Loading Tesseract worker for mobile…");
 
-      // Use the correct Tesseract.js v5.x API with mobile-optimized settings
-      const worker = await createWorker('eng', 1, {
-        logger: m => console.log('Tesseract:', m),
-        // Mobile-specific core options
-        corePath: isIOS ? 'https://unpkg.com/tesseract.js@5.1.0/dist' : undefined
-      });
+      try {
+        // Use the correct Tesseract.js v5.x API with iOS-optimized settings
+        const workerOptions: any = {
+          logger: (m: any) => {
+            console.log('Tesseract:', m);
+            if (m.status) {
+              setLoadingStep(`Tesseract: ${m.status} (${Math.round(m.progress * 100)}%)`);
+            }
+          }
+        };
+        
+        // iOS-specific core path fallback
+        if (isIOS) {
+          setLoadingStep("تحميل ملفات iOS...");
+          // Try CDN fallback for iOS
+          workerOptions.corePath = 'https://unpkg.com/tesseract.js@5.1.0/dist';
+          workerOptions.workerPath = 'https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js';
+        }
+        
+        const worker = await createWorker('eng', 1, workerOptions);
+        
+        setLoadingStep("إعداد معاملات OCR...");
 
-      // Set parameters for better OCR recognition of alphanumeric codes on mobile
-      await worker.setParameters({
-        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        preserve_interword_spaces: "1",
-        tessedit_pageseg_mode: isMobile ? "6" : "8", // Different mode for mobile
-        tessedit_ocr_engine_mode: "1" // Neural nets LSTM engine only
-      });
+        // Set parameters for better OCR recognition of alphanumeric codes on mobile
+        await worker.setParameters({
+          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+          preserve_interword_spaces: "1",
+          tessedit_pageseg_mode: isMobile ? "6" : "8", // Different mode for mobile
+          tessedit_ocr_engine_mode: "1" // Neural nets LSTM engine only
+        });
 
-      setOcrWorker(worker);
-      console.log("Tesseract worker initialised successfully on mobile");
+        setOcrWorker(worker);
+        console.log("Tesseract worker initialised successfully on mobile");
+        
+      } catch (tesseractError: any) {
+        console.error("Tesseract error:", tesseractError);
+        setIosErrorDetails(`Tesseract Error: ${tesseractError.message}`);
+        throw new Error(`Tesseract initialization failed: ${tesseractError.message}`);
+      }
 
       /* ---------------------------- Done --------------------------------- */
       setStatusMessage("وضع قراءة النصوص جاهز");
+      setLoadingStep("اكتمال التهيئة ✓");
       setIsOcrInitializing(false);
 
       // Kick-off the continuous OCR scan loop
@@ -629,19 +722,25 @@ export default function AdvancedScanPage() {
       let errorMessage = "فشل تهيئة نظام قراءة النصوص. ";
       if (error?.message) {
         if (error.message.includes("camera") || error.message.includes("Camera")) {
-          errorMessage += "يرجى التأكد من السماح بالوصول إلى الكاميرا.";
-        } else if (error.message.includes("permission")) {
-          errorMessage += "يرجى منح الإذن للوصول للكاميرا من إعدادات المتصفح.";
-        } else if (error.message.includes("language")) {
-          errorMessage += "تعذر تحميل ملفات اللغة الخاصة بمحرك التعرف. تأكد من اتصال الإنترنت.";
+          errorMessage += "يرجى التأكد من السماح بالوصول إلى الكاميرا من إعدادات Safari.";
+        } else if (error.message.includes("permission") || error.message.includes("NotAllowedError")) {
+          errorMessage += "تم رفض إذن الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح.";
+        } else if (error.message.includes("NotFoundError") || error.message.includes("No cameras")) {
+          errorMessage += "لم يتم العثور على كاميرا. تأكد من وجود كاميرا خلفية.";
+        } else if (error.message.includes("language") || error.message.includes("Tesseract")) {
+          errorMessage += "تعذر تحميل ملفات التعرف على النصوص. تأكد من اتصال الإنترنت القوي.";
         } else if (error.message.includes("timeout")) {
           errorMessage += "انتهت مهلة تحميل الكاميرا. يرجى المحاولة مرة أخرى.";
+        } else if (error.message.includes("HTTPS") || error.message.includes("secure")) {
+          errorMessage += "يتطلب الوصول للكاميرا اتصال آمن (HTTPS).";
         } else {
           errorMessage += error.message;
         }
       } else {
         errorMessage += "خطأ غير معروف.";
       }
+      
+      setIosErrorDetails(error?.message || "Unknown error");
 
       // Reset OCR state and resources
       await cleanupOCR();
@@ -649,6 +748,7 @@ export default function AdvancedScanPage() {
       // Show error to the user
       setError(errorMessage);
       setIsOcrInitializing(false);
+      setLoadingStep("");
       setNotificationType("error");
       setShowNotification(true);
       triggerHapticFeedback([100, 50, 100]);
@@ -1337,6 +1437,22 @@ export default function AdvancedScanPage() {
                     <div>iOS: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
                     {ocrVideoRef.current && (
                       <div>Video Ready: {ocrVideoRef.current.readyState}/4</div>
+                    )}
+                    {loadingStep && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium">Loading:</div>
+                        <div className="text-blue-300 text-xs break-all">
+                          {loadingStep}
+                        </div>
+                      </div>
+                    )}
+                    {iosErrorDetails && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium">Error:</div>
+                        <div className="text-red-300 text-xs break-all max-h-16 overflow-y-auto">
+                          {iosErrorDetails}
+                        </div>
+                      </div>
                     )}
                     {lastDetectedText && (
                       <div className="border-t border-white/20 pt-1 mt-2">
