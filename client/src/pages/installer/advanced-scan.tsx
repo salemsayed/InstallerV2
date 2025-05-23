@@ -621,6 +621,13 @@ export default function AdvancedScanPage() {
           // Now set the stream
           video.srcObject = stream;
           
+          // Force load to ensure metadata is read (needed on certain iOS versions)
+          try {
+            video.load();
+          } catch (loadErr) {
+            console.warn("video.load() threw", loadErr);
+          }
+          
           // Immediate play attempt (within user gesture) – improves start-up on iOS
           try {
             await video.play();
