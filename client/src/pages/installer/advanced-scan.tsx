@@ -599,23 +599,53 @@ export default function AdvancedScanPage() {
           
           setLoadingStep("انتظار جاهزية الفيديو...");
           
-          // Wait for video to be ready on mobile with better error handling
+          // Enhanced video loading for iOS with multiple attempts
           await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
               reject(new Error(`Video load timeout after 15 seconds on ${isIOS ? 'iOS' : 'mobile'}`));
             }, 15000); // 15 second timeout for iOS
             
             let resolved = false;
+            let playAttempted = false;
             
             const onLoadedData = () => {
               if (resolved) return;
+              console.log("Video loadeddata event, readyState:", video.readyState);
+              
+              if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+                resolved = true;
+                clearTimeout(timeout);
+                cleanup();
+                console.log("Video loaded successfully, readyState:", video.readyState);
+                resolve(undefined);
+              }
+            };
+            
+            const onCanPlay = () => {
+              if (resolved) return;
+              console.log("Video canplay event, readyState:", video.readyState);
+              
+              // For iOS, try to play again when canplay fires
+              if (isIOS && !playAttempted) {
+                playAttempted = true;
+                video.play().catch(err => console.warn("Canplay -> play failed:", err));
+              }
+              
+              if (video.readyState >= 3) { // HAVE_FUTURE_DATA or higher
+                resolved = true;
+                clearTimeout(timeout);
+                cleanup();
+                console.log("Video can play, readyState:", video.readyState);
+                resolve(undefined);
+              }
+            };
+            
+            const onPlaying = () => {
+              if (resolved) return;
+              console.log("Video playing event, readyState:", video.readyState);
               resolved = true;
               clearTimeout(timeout);
-              video.removeEventListener('loadeddata', onLoadedData);
-              video.removeEventListener('loadedmetadata', onLoadedData);
-              video.removeEventListener('canplay', onLoadedData);
-              video.removeEventListener('error', onError);
-              console.log("Video loaded successfully, readyState:", video.readyState);
+              cleanup();
               resolve(undefined);
             };
             
@@ -623,34 +653,58 @@ export default function AdvancedScanPage() {
               if (resolved) return;
               resolved = true;
               clearTimeout(timeout);
-              video.removeEventListener('loadeddata', onLoadedData);
-              video.removeEventListener('loadedmetadata', onLoadedData);
-              video.removeEventListener('canplay', onLoadedData);
-              video.removeEventListener('error', onError);
+              cleanup();
               console.error("Video error:", error);
               reject(new Error(`Video loading error: ${error.type || 'Unknown'}`));
+            };
+            
+            const cleanup = () => {
+              video.removeEventListener('loadeddata', onLoadedData);
+              video.removeEventListener('loadedmetadata', onLoadedData);
+              video.removeEventListener('canplay', onCanPlay);
+              video.removeEventListener('canplaythrough', onCanPlay);
+              video.removeEventListener('playing', onPlaying);
+              video.removeEventListener('error', onError);
             };
             
             // Listen to multiple events for better iOS compatibility
             video.addEventListener('loadeddata', onLoadedData);
             video.addEventListener('loadedmetadata', onLoadedData);
-            video.addEventListener('canplay', onLoadedData);
+            video.addEventListener('canplay', onCanPlay);
+            video.addEventListener('canplaythrough', onCanPlay);
+            video.addEventListener('playing', onPlaying);
             video.addEventListener('error', onError);
             
-            // Try to play the video
-            const playPromise = video.play();
-            if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  console.log("Video play() succeeded");
-                  if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            // Force multiple play attempts for iOS
+            const tryPlay = async (attempt = 1) => {
+              try {
+                console.log(`iOS play attempt ${attempt}`);
+                await video.play();
+                console.log(`Play attempt ${attempt} succeeded`);
+                
+                // Check if video is actually ready after play
+                setTimeout(() => {
+                  if (!resolved && video.readyState >= 2) {
                     onLoadedData();
                   }
-                })
-                .catch((playError) => {
-                  console.warn("Video play() failed:", playError);
-                  // Don't reject here, wait for other events
-                });
+                }, 500);
+                
+              } catch (playError) {
+                console.warn(`Play attempt ${attempt} failed:`, playError);
+                
+                if (attempt < 3 && isIOS) {
+                  // Try again after a short delay
+                  setTimeout(() => tryPlay(attempt + 1), 1000);
+                }
+              }
+            };
+            
+            // Start the first play attempt
+            tryPlay();
+            
+            // Also try to trigger events if the video is already ready
+            if (video.readyState >= 2) {
+              setTimeout(onLoadedData, 100);
             }
           });
           
@@ -817,14 +871,22 @@ export default function AdvancedScanPage() {
         const canvas = ocrCanvasRef.current;
         const context = canvas.getContext('2d');
 
-        if (!context || video.readyState !== 4) {
+        // More lenient readyState check for iOS - allow scanning with HAVE_CURRENT_DATA (2) or higher
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const minReadyState = isMobile ? 2 : 4; // iOS/mobile: allow readyState 2+, desktop: require 4
+        
+        if (!context || video.readyState < minReadyState) {
           setOcrActivity(false);
-          console.log("OCR scan skipped - video not ready:", { readyState: video.readyState, context: !!context });
+          console.log("OCR scan skipped - video not ready:", { 
+            readyState: video.readyState, 
+            minRequired: minReadyState,
+            context: !!context,
+            isMobile 
+          });
           return;
         }
 
         // Set canvas size to match video with mobile optimization
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const scale = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1; // Limit scale on mobile
         
         canvas.width = video.videoWidth * scale;
