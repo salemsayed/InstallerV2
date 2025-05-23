@@ -1174,8 +1174,9 @@ export default function AdvancedScanPage() {
           </div>
           
           {/* Scanner overlay - changes based on scanner mode */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0">
+            {/* This part is pointer-events-none so overlay elements don't block the scanner */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               {scannerMode === 'qr' ? (
                 /* QR Mode - square guide */
                 <div className="relative w-[min(80vw,80vh)] max-w-md aspect-square">
@@ -1206,7 +1207,7 @@ export default function AdvancedScanPage() {
             </div>
             
             {/* Scanning instruction message - changes based on mode */}
-            <div className="absolute bottom-20 left-0 right-0 flex justify-center">
+            <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
               <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
                 {scannerMode === 'qr' 
                   ? 'وجه الكاميرا نحو رمز QR الخاص بالمنتج'
@@ -1215,7 +1216,7 @@ export default function AdvancedScanPage() {
               </div>
             </div>
             
-            {/* Mode toggle buttons - control panel in top right */}
+            {/* Mode toggle buttons - control panel in top right - this needs pointer events to work! */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
               <Button
                 onClick={() => switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr')}
