@@ -561,6 +561,7 @@ export default function AdvancedScanPage() {
       setIsOcrInitializing(false);
 
       // Kick-off the continuous OCR scan loop
+      console.log("📸 About to start OCR scanning from initializeOCR...");
       startOcrScanning();
     } catch (error: any) {
       console.error("OCR initialization error:", error);
@@ -602,16 +603,33 @@ export default function AdvancedScanPage() {
 
   // Start OCR scanning process
   const startOcrScanning = () => {
+    console.log("🚀 startOcrScanning called");
+    
     if (ocrScanIntervalRef.current) {
+      console.log("Clearing existing OCR interval");
       clearInterval(ocrScanIntervalRef.current);
     }
 
+    console.log("Setting up OCR scanning interval...");
     ocrScanIntervalRef.current = setInterval(async () => {
+      console.log("⏰ OCR interval tick - checking conditions...");
+      
+      // Debug the conditions
+      console.log("OCR Conditions check:", {
+        ocrWorker: !!ocrWorker,
+        ocrVideoRef: !!ocrVideoRef.current,
+        ocrCanvasRef: !!ocrCanvasRef.current,
+        isValidating: isValidating,
+        videoReadyState: ocrVideoRef.current?.readyState
+      });
+      
       if (!ocrWorker || !ocrVideoRef.current || !ocrCanvasRef.current || isValidating) {
+        console.log("❌ OCR scan skipped due to conditions");
         return;
       }
 
       try {
+        console.log("✅ Starting OCR scan process");
         setOcrActivity(true);
         setScanCount(prev => prev + 1);
         
@@ -681,6 +699,8 @@ export default function AdvancedScanPage() {
         setOcrActivity(false);
       }
     }, 1000); // Scan every second
+    
+    console.log("✅ OCR scanning interval set up successfully");
   };
 
   // Cleanup OCR resources
@@ -1236,6 +1256,13 @@ export default function AdvancedScanPage() {
                     <div>Scans: {scanCount}</div>
                     <div>Activity: {ocrActivity ? 'Processing...' : 'Waiting'}</div>
                     <div>Worker: {ocrWorker ? '✓' : '✗'}</div>
+                    <div>Video: {ocrVideoRef.current ? '✓' : '✗'}</div>
+                    <div>Canvas: {ocrCanvasRef.current ? '✓' : '✗'}</div>
+                    <div>Stream: {ocrStream ? '✓' : '✗'}</div>
+                    <div>Validating: {isValidating ? 'Yes' : 'No'}</div>
+                    {ocrVideoRef.current && (
+                      <div>Video Ready: {ocrVideoRef.current.readyState}/4</div>
+                    )}
                     {lastDetectedText && (
                       <div className="border-t border-white/20 pt-1 mt-2">
                         <div className="font-medium">Last Text:</div>
