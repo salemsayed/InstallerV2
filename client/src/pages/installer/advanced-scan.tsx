@@ -621,6 +621,14 @@ export default function AdvancedScanPage() {
           // Now set the stream
           video.srcObject = stream;
           
+          // Immediate play attempt (within user gesture) – improves start-up on iOS
+          try {
+            await video.play();
+            console.log("Immediate video.play() succeeded");
+          } catch (immediatePlayErr) {
+            console.warn("Immediate video.play() failed:", immediatePlayErr);
+          }
+          
           setLoadingStep("انتظار جاهزية الفيديو...");
           
           // Comprehensive iOS video loading strategy
