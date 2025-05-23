@@ -511,105 +511,86 @@ export default function AdvancedScanPage() {
   const initializeOCR = async () => {
     try {
       setIsOcrInitializing(true);
-      setStatusMessage("جارٍ تهيئة الكاميرا لوضع قراءة النصوص...");
-      
-      // Step 1: Start with camera access only
+      setStatusMessage("جارٍ تهيئة نظام قراءة النصوص...");
+
+      /* ---------------------- Camera initialisation ---------------------- */
       console.log("Requesting camera access for OCR...");
-      
-      try {
-        // Get camera stream for video display
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        });
-        
-        console.log("Camera access granted for OCR");
-        setOcrStream(stream);
-        
-        if (ocrVideoRef.current) {
-          ocrVideoRef.current.srcObject = stream;
-          await ocrVideoRef.current.play();
-          console.log("OCR video stream started successfully");
-        }
-        
-        // For now, we'll skip Tesseract initialization
-        // and just set a dummy worker to mark OCR as ready
-        // This way the UI switch works without errors
-        setOcrWorker({} as any);
-        
-        setStatusMessage("وضع قراءة النصوص جاهز");
-        console.log("OCR mode ready (without Tesseract for now)");
-      } catch (error) {
-        console.error("Camera access error:", error);
-        throw new Error("فشل الوصول للكاميرا: يرجى التأكد من صلاحيات الكاميرا");
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        });
-        console.log("Camera access granted for OCR");
-        
-        setOcrStream(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      console.log("Camera access granted for OCR");
+      setOcrStream(stream);
 
-        if (ocrVideoRef.current) {
-          ocrVideoRef.current.srcObject = stream;
-          await ocrVideoRef.current.play();
-          console.log("OCR video stream started successfully");
-          
-          // Start OCR scanning loop
-          startOcrScanning();
-          setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
-        } else {
-          throw new Error("Video element not available");
-        }
-      } catch (error: any) {
-        console.error("Camera access error for OCR:", error);
-        throw new Error("فشل الوصول للكاميرا: " + (error.message || "يرجى التأكد من صلاحيات الكاميرا"));
+      if (ocrVideoRef.current) {
+        ocrVideoRef.current.srcObject = stream;
+        await ocrVideoRef.current.play();
+        console.log("OCR video stream started successfully");
       }
 
+      /* ---------------------- Tesseract initialisation ------------------- */
+      setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
+      console.log("Loading Tesseract worker …");
+
+      const worker = await createWorker({
+        logger: (m) => console.log("[Tesseract]", m),
+      });
+
+      await worker.load();
+      await worker.loadLanguage("eng");
+      await worker.initialize("eng");
+      // Restrict the character set to alphanumeric (A-Z, 0-9)
+      await worker.setParameters({
+        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        preserve_interword_spaces: "1",
+      });
+
+      setOcrWorker(worker);
+      console.log("Tesseract worker initialised successfully");
+
+      /* ---------------------------- Done --------------------------------- */
+      setStatusMessage("وضع قراءة النصوص جاهز");
       setIsOcrInitializing(false);
-      console.log("OCR initialization completed successfully");
 
+      // Kick-off the continuous OCR scan loop
+      startOcrScanning();
     } catch (error: any) {
       console.error("OCR initialization error:", error);
+
       let errorMessage = "فشل تهيئة نظام قراءة النصوص. ";
-      
-      if (error.message) {
+      if (error?.message) {
         if (error.message.includes("camera") || error.message.includes("Camera")) {
           errorMessage += "يرجى التأكد من السماح بالوصول إلى الكاميرا.";
         } else if (error.message.includes("permission")) {
           errorMessage += "يرجى منح الإذن للوصول للكاميرا من إعدادات المتصفح.";
-        } else if (error.message.includes("Cannot load")) {
-          errorMessage += "تعذر تحميل مكتبة معالجة النصوص. يرجى التأكد من اتصال الإنترنت.";
+        } else if (error.message.includes("language")) {
+          errorMessage += "تعذر تحميل ملفات اللغة الخاصة بمحرك التعرف. تأكد من اتصال الإنترنت.";
         } else {
           errorMessage += error.message;
         }
       } else {
         errorMessage += "خطأ غير معروف.";
       }
-      
-      // Reset OCR state
+
+      // Reset OCR state and resources
       await cleanupOCR();
-      
-      // Set error state
+
+      // Show error to the user
       setError(errorMessage);
       setIsOcrInitializing(false);
-      setNotificationType('error');
+      setNotificationType("error");
       setShowNotification(true);
-      
+      triggerHapticFeedback([100, 50, 100]);
+
       setTimeout(() => {
         setShowNotification(false);
       }, 5000);
-      
-      // If OCR initialization fails, switch back to QR mode
-      setScannerMode('qr');
+
+      // Revert back to QR mode for safety
+      setScannerMode("qr");
       setStatusMessage("جارٍ البحث عن رمز QR...");
     }
   };
