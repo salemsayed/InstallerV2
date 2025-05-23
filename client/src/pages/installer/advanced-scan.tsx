@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/auth-provider";
 import { Loader2, CheckCircle2, AlertCircle, Info, QrCode, TextCursorInput } from "lucide-react";
 import InstallerLayout from "@/components/layouts/installer-layout";
 import { Button } from "@/components/ui/button";
+import { createWorker } from 'tesseract.js';
 
 // Validate if the UUID is a valid v4 UUID
 function isValidUUIDv4(uuid: string): boolean {
@@ -44,11 +45,13 @@ const translateErrorDetails = (details: string): string => {
 };
 
 /**
- * Advanced scanner page – powered by Scandit Web SDK
+ * Advanced scanner page – powered by Scandit Web SDK for QR codes and Tesseract.js for OCR
  * Note: Scandit modules are pulled dynamically via CDN import-map (see index.html).
  */
 export default function AdvancedScanPage() {
   const scannerRef = useRef<HTMLDivElement>(null);
+  const ocrVideoRef = useRef<HTMLVideoElement>(null);
+  const ocrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [licenseStatus, setLicenseStatus] = useState<'initialized' | 'failed' | null>(null);
@@ -60,15 +63,16 @@ export default function AdvancedScanPage() {
   // Scanner mode state (QR or OCR)
   const [scannerMode, setScannerMode] = useState<'qr' | 'ocr'>('qr');
   const [statusMessage, setStatusMessage] = useState<string>("جارٍ البحث عن رمز QR...");
-  const [autoSwitchEnabled, setAutoSwitchEnabled] = useState<boolean>(true);
   
   // References to context and capture objects
   const contextRef = useRef<any>(null);
   const captureRef = useRef<any>(null); // Reference for barcode capture
-  const textCaptureRef = useRef<any>(null); // Reference for text capture
   
-  // Timers for auto-switching between modes
-  const modeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // OCR-specific state
+  const [isOcrInitializing, setIsOcrInitializing] = useState(false);
+  const [ocrWorker, setOcrWorker] = useState<any>(null);
+  const [ocrStream, setOcrStream] = useState<MediaStream | null>(null);
+  const ocrScanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // State for scan result notification
   const [showNotification, setShowNotification] = useState(false);
@@ -106,14 +110,18 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        triggerHapticFeedback([100, 50, 100]);
         
-        // Auto-dismiss error after 5 seconds
         setTimeout(() => {
           setShowNotification(false);
         }, 5000);
         
-        resetScannerAfterDelay();
+        // Re-enable QR scanner after delay
+        setTimeout(() => {
+          if (scannerMode === 'qr' && captureRef.current) {
+            captureRef.current.setEnabled(true).catch(console.error);
+          }
+        }, 1500);
         return;
       }
 
@@ -126,27 +134,29 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        triggerHapticFeedback([100, 50, 100]);
         
-        // Auto-dismiss error after 5 seconds
         setTimeout(() => {
           setShowNotification(false);
         }, 5000);
         
-        resetScannerAfterDelay();
+        // Re-enable QR scanner after delay
+        setTimeout(() => {
+          if (scannerMode === 'qr' && captureRef.current) {
+            captureRef.current.setEnabled(true).catch(console.error);
+          }
+        }, 1500);
         return;
       }
 
-      // Step 3: Send to server for validation and processing - using secure session for user identification
-      // No need to manually include userId as it will be derived from session on the server
+      // Step 3: Send to server for validation and processing
       if (!user || !user.id) {
         setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        triggerHapticFeedback([100, 50, 100]);
         
-        // Auto-dismiss error after 5 seconds
         setTimeout(() => {
           setShowNotification(false);
         }, 5000);
@@ -173,29 +183,22 @@ export default function AdvancedScanPage() {
       if (!result.success) {
         const errorCode = result.error_code ? ` (${result.error_code})` : '';
         
-        // Translate common server error responses to Arabic
         let arabicErrorMessage = result.message;
         let arabicErrorDetails = '';
         
-        // Translate server response details to Arabic
         if (result.details) {
           if (typeof result.details === 'string') {
-            // Handle string details
             arabicErrorDetails = translateErrorDetails(result.details);
           } else if (result.details.duplicate) {
-            // Handle duplicate scanning case
             arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
           } else if (result.details.message) {
-            // Handle object with message
             arabicErrorDetails = translateErrorDetails(result.details.message);
           } else {
-            // Handle other object details by stringifying but translating known patterns
             const detailsStr = JSON.stringify(result.details, null, 2);
             arabicErrorDetails = translateErrorDetails(detailsStr);
           }
         }
         
-        // Map common English error messages to Arabic
         if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
           arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
         } 
@@ -212,7 +215,6 @@ export default function AdvancedScanPage() {
           arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
         }
         
-        // Format the complete error message with any translated details
         let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
         if (arabicErrorDetails) {
           completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
@@ -222,9 +224,8 @@ export default function AdvancedScanPage() {
         setIsValidating(false);
         setNotificationType('error');
         setShowNotification(true);
-        triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+        triggerHapticFeedback([100, 50, 100]);
         
-        // Auto-dismiss error after 5 seconds
         setTimeout(() => {
           setShowNotification(false);
         }, 5000);
@@ -235,12 +236,12 @@ export default function AdvancedScanPage() {
           details: result.details
         });
         
-        if (result.details?.duplicate) {
-          // If it's a duplicate, allow user to scan again
-          resetScannerAfterDelay();
-        } else {
-          resetScannerAfterDelay(3000);
-        }
+        // Re-enable QR scanner after delay
+        setTimeout(() => {
+          if (scannerMode === 'qr' && captureRef.current) {
+            captureRef.current.setEnabled(true).catch(console.error);
+          }
+        }, 1500);
         
         return;
       }
@@ -249,41 +250,32 @@ export default function AdvancedScanPage() {
       setIsValidating(false);
       setResult(`تم التحقق من المنتج: ${result.productName}`);
       
-      // Set points awarded if available in the response
       if (result.pointsAwarded) {
         setPointsAwarded(result.pointsAwarded);
       } else {
-        // Default points when not provided by API
         setPointsAwarded(50);
       }
       
-      // Trigger success haptic feedback - one long vibration
       triggerHapticFeedback([200]);
       
       setNotificationType('success');
       setShowNotification(true);
       
-      // Hide notification after a few seconds
       setTimeout(() => {
         setShowNotification(false);
-        // Reset points after animation completes
         setPointsAwarded(0);
       }, 3500);
       
-      // Log success and product name
       console.log("Scanned product:", result.productName);
       
-      // Call refreshUser to update user data directly in the auth context
       refreshUser()
         .then(() => console.log("User refreshed after successful scan"))
         .catch(err => console.error("Error refreshing user after scan:", err));
       
-      // Aggressively invalidate and immediately refetch all relevant queries
       queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
       
-      // Force instant refetch of all invalidated queries
       queryClient.refetchQueries({ 
         queryKey: [`/api/transactions?userId=${user?.id}`],
         exact: true 
@@ -297,66 +289,25 @@ export default function AdvancedScanPage() {
         exact: true 
       });
       
-      // Show success toast
       toast({
         title: "تم التحقق من المنتج بنجاح ✓",
         description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
         variant: "default",
       });
       
-      // Reset scanner after showing success for a moment
-      resetScannerAfterDelay(2000);
-      
-      // Update all error messages in DOM to ensure Arabic
+      // Re-enable QR scanner after success
       setTimeout(() => {
-        // Find and translate any error messages that might be injected by the SDK
-        const translateErrorElements = () => {
-          try {
-            // Find common error message selectors that might be added by Scandit
-            const errorElements = document.querySelectorAll('.error-message, .scandit-error, [data-error]');
-            errorElements.forEach(el => {
-              const text = el.textContent || '';
-              if (text && text.trim() && text.length > 0) {
-                // Basic English to Arabic translations for common Scandit errors
-                if (text.includes('camera') || text.includes('Camera')) {
-                  el.textContent = 'خطأ في الوصول إلى الكاميرا. يرجى التحقق من الأذونات.';
-                } else if (text.includes('permission')) {
-                  el.textContent = 'تم رفض إذن الكاميرا. يرجى السماح بالوصول.';
-                } else if (text.includes('license')) {
-                  el.textContent = 'خطأ في التحقق من الترخيص.';
-                } else if (text.includes('network') || text.includes('connection')) {
-                  el.textContent = 'خطأ في الاتصال بالشبكة.';
-                } else {
-                  // Generic translation for other errors
-                  el.textContent = 'حدث خطأ. يرجى تحديث الصفحة.';
-                }
-                // Set RTL direction
-                el.setAttribute('dir', 'rtl');
-              }
-            });
-          } catch (e) {
-            console.warn('Error while translating error elements:', e);
-          }
-        };
-        
-        // Run initially and set interval to catch dynamically added errors
-        translateErrorElements();
-        const intervalId = setInterval(translateErrorElements, 1000);
-        
-        // Clear interval after 10 seconds
-        setTimeout(() => clearInterval(intervalId), 10000);
-      }, 500);
+        if (scannerMode === 'qr' && captureRef.current) {
+          captureRef.current.setEnabled(true).catch(console.error);
+        }
+      }, 2000);
       
     } catch (err: any) {
-      console.error("Validation error:", err);
+      console.error("QR Validation error:", err);
       
-      // Ensure error message is in Arabic
       let arabicErrorMessage = "خطأ في التحقق من رمز QR. يرجى المحاولة مرة أخرى.";
+      arabicErrorMessage += " (رمز الخطأ: QR_VALIDATION_ERROR)";
       
-      // Add error code
-      arabicErrorMessage += " (رمز الخطأ: VALIDATION_ERROR)";
-      
-      // Add translated error details if available
       if (err.message) {
         const translatedDetail = translateErrorDetails(err.message);
         arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
@@ -368,130 +319,421 @@ export default function AdvancedScanPage() {
       setIsValidating(false);
       setNotificationType('error');
       setShowNotification(true);
-      triggerHapticFeedback([100, 50, 100]); // Error vibration pattern
+      triggerHapticFeedback([100, 50, 100]);
       
-      // Auto-dismiss error after 5 seconds
       setTimeout(() => {
         setShowNotification(false);
       }, 5000);
       
-      resetScannerAfterDelay(3000);
+      // Re-enable QR scanner after error
+      setTimeout(() => {
+        if (scannerMode === 'qr' && captureRef.current) {
+          captureRef.current.setEnabled(true).catch(console.error);
+        }
+      }, 3000);
+    }
+  };
+
+  // Function to validate extracted code (6-digit alphanumeric)
+  const validateExtractedCode = async (code: string) => {
+    setIsValidating(true);
+    setError(null);
+    setResult(null);
+    setShowNotification(false);
+
+    try {
+      console.log("Validating extracted code:", code);
+
+      if (!user || !user.id) {
+        setError("لم يتم العثور على معلومات المستخدم. يرجى تسجيل الدخول مرة أخرى. (رمز الخطأ: USER_NOT_FOUND)");
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]);
+        
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        return;
+      }
+      
+      console.log("Sending OCR scan request with:", {
+        endpoint: `/api/scan-ocr`,
+        user: user,
+        code: code
+      });
+      
+      const scanResult = await apiRequest(
+        "POST", 
+        `/api/scan-ocr`, 
+        {
+          code
+        }
+      );
+      
+      const result = await scanResult.json();
+      
+      if (!result.success) {
+        const errorCode = result.error_code ? ` (${result.error_code})` : '';
+        
+        let arabicErrorMessage = result.message;
+        let arabicErrorDetails = '';
+        
+        if (result.details) {
+          if (typeof result.details === 'string') {
+            arabicErrorDetails = translateErrorDetails(result.details);
+          } else if (result.details.duplicate) {
+            arabicErrorDetails = "تم مسح هذا الرمز مسبقاً";
+          } else if (result.details.message) {
+            arabicErrorDetails = translateErrorDetails(result.details.message);
+          } else {
+            const detailsStr = JSON.stringify(result.details, null, 2);
+            arabicErrorDetails = translateErrorDetails(detailsStr);
+          }
+        }
+        
+        if (result.message.includes("already scanned") || result.message.includes("duplicate")) {
+          arabicErrorMessage = "تم مسح هذا المنتج مسبقاً";
+        } 
+        else if (result.message.includes("not found") || result.message.includes("invalid")) {
+          arabicErrorMessage = "منتج غير صالح أو غير موجود";
+        }
+        else if (result.message.includes("expired")) {
+          arabicErrorMessage = "انتهت صلاحية رمز المنتج";
+        }
+        else if (result.message.includes("limit exceeded")) {
+          arabicErrorMessage = "تم تجاوز الحد المسموح من المسح";
+        }
+        else if (result.message.includes("unauthorized") || result.message.includes("permission")) {
+          arabicErrorMessage = "غير مصرح لك بمسح هذا المنتج";
+        }
+        
+        let completeErrorMessage = `${arabicErrorMessage}${errorCode}`;
+        if (arabicErrorDetails) {
+          completeErrorMessage += `\n\nتفاصيل: ${arabicErrorDetails}`;
+        }
+        
+        setError(completeErrorMessage);
+        setIsValidating(false);
+        setNotificationType('error');
+        setShowNotification(true);
+        triggerHapticFeedback([100, 50, 100]);
+        
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+        
+        console.error('OCR Validation Error:', {
+          message: result.message,
+          code: result.error_code,
+          details: result.details
+        });
+        
+        return;
+      }
+      
+      // Success path
+      setIsValidating(false);
+      setResult(`تم التحقق من المنتج: ${result.productName}`);
+      
+      if (result.pointsAwarded) {
+        setPointsAwarded(result.pointsAwarded);
+      } else {
+        setPointsAwarded(50);
+      }
+      
+      triggerHapticFeedback([200]);
+      
+      setNotificationType('success');
+      setShowNotification(true);
+      
+      setTimeout(() => {
+        setShowNotification(false);
+        setPointsAwarded(0);
+      }, 3500);
+      
+      console.log("Scanned product:", result.productName);
+      
+      refreshUser()
+        .then(() => console.log("User refreshed after successful scan"))
+        .catch(err => console.error("Error refreshing user after scan:", err));
+      
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions?userId=${user?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/badges', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
+      queryClient.refetchQueries({ 
+        queryKey: [`/api/transactions?userId=${user?.id}`],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/badges', user?.id],
+        exact: true 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/users/me'],
+        exact: true 
+      });
+      
+      toast({
+        title: "تم التحقق من المنتج بنجاح ✓",
+        description: `المنتج: ${result.productName || "غير معروف"}\nالنقاط المكتسبة: ${result.pointsAwarded || 10}`,
+        variant: "default",
+      });
+      
+    } catch (err: any) {
+      console.error("OCR Validation error:", err);
+      
+      let arabicErrorMessage = "خطأ في التحقق من الرمز المستخرج. يرجى المحاولة مرة أخرى.";
+      arabicErrorMessage += " (رمز الخطأ: OCR_VALIDATION_ERROR)";
+      
+      if (err.message) {
+        const translatedDetail = translateErrorDetails(err.message);
+        arabicErrorMessage += `\n\nتفاصيل: ${translatedDetail}`;
+      } else {
+        arabicErrorMessage += "\n\nتفاصيل: خطأ غير معروف";
+      }
+      
+      setError(arabicErrorMessage);
+      setIsValidating(false);
+      setNotificationType('error');
+      setShowNotification(true);
+      triggerHapticFeedback([100, 50, 100]);
+      
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+    }
+  };
+
+  // Initialize OCR mode with Tesseract.js
+  const initializeOCR = async () => {
+    try {
+      setIsOcrInitializing(true);
+      setStatusMessage("جارٍ تهيئة نظام قراءة النصوص...");
+
+      // Create Tesseract worker
+      console.log("Creating Tesseract worker...");
+      const worker = await createWorker();
+      
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      
+      // Configure Tesseract for better digit recognition
+      await worker.setParameters({
+        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        tessedit_pageseg_mode: 8, // Single text line
+        preserve_interword_spaces: 0
+      });
+
+      setOcrWorker(worker);
+
+      // Get camera stream
+      console.log("Requesting camera access for OCR...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+
+      setOcrStream(stream);
+
+      if (ocrVideoRef.current) {
+        ocrVideoRef.current.srcObject = stream;
+        await ocrVideoRef.current.play();
+        console.log("OCR video stream started");
+      }
+
+      // Start OCR scanning loop
+      startOcrScanning();
+      setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
+      setIsOcrInitializing(false);
+
+    } catch (err) {
+      console.error("OCR initialization error:", err);
+      setError("فشل تهيئة نظام قراءة النصوص. يرجى التأكد من السماح بالوصول إلى الكاميرا.");
+      setIsOcrInitializing(false);
+      setNotificationType('error');
+      setShowNotification(true);
+      
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+    }
+  };
+
+  // Start OCR scanning process
+  const startOcrScanning = () => {
+    if (ocrScanIntervalRef.current) {
+      clearInterval(ocrScanIntervalRef.current);
+    }
+
+    ocrScanIntervalRef.current = setInterval(async () => {
+      if (!ocrWorker || !ocrVideoRef.current || !ocrCanvasRef.current || isValidating) {
+        return;
+      }
+
+      try {
+        const video = ocrVideoRef.current;
+        const canvas = ocrCanvasRef.current;
+        const context = canvas.getContext('2d');
+
+        if (!context || video.readyState !== 4) {
+          return;
+        }
+
+        // Set canvas size to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw current video frame to canvas
+        context.drawImage(video, 0, 0);
+
+        // Get image data for OCR processing
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+        // Perform OCR on the image
+        const { data: { text } } = await ocrWorker.recognize(imageData);
+        
+        // Look for 6-character alphanumeric codes
+        const codeRegex = /\b[A-Za-z0-9]{6}\b/g;
+        const matches = text.match(codeRegex);
+
+        if (matches && matches.length > 0) {
+          console.log("OCR detected codes:", matches);
+          
+          // Take the first valid 6-character code
+          const detectedCode = matches[0].toUpperCase();
+          console.log("Processing detected code:", detectedCode);
+          
+          // Stop scanning while validating
+          if (ocrScanIntervalRef.current) {
+            clearInterval(ocrScanIntervalRef.current);
+            ocrScanIntervalRef.current = null;
+          }
+          
+          // Validate the detected code
+          await validateExtractedCode(detectedCode);
+          
+          // Resume scanning after a delay if still in OCR mode
+          setTimeout(() => {
+            if (scannerMode === 'ocr' && !isValidating) {
+              startOcrScanning();
+            }
+          }, 2000);
+        }
+
+      } catch (err) {
+        console.error("OCR scanning error:", err);
+      }
+    }, 1000); // Scan every second
+  };
+
+  // Cleanup OCR resources
+  const cleanupOCR = async () => {
+    try {
+      console.log("Cleaning up OCR resources...");
+
+      // Stop scanning interval
+      if (ocrScanIntervalRef.current) {
+        clearInterval(ocrScanIntervalRef.current);
+        ocrScanIntervalRef.current = null;
+      }
+
+      // Stop video stream
+      if (ocrStream) {
+        ocrStream.getTracks().forEach(track => track.stop());
+        setOcrStream(null);
+      }
+
+      // Clear video element
+      if (ocrVideoRef.current) {
+        ocrVideoRef.current.srcObject = null;
+      }
+
+      // Terminate Tesseract worker
+      if (ocrWorker) {
+        await ocrWorker.terminate();
+        setOcrWorker(null);
+      }
+
+      console.log("OCR cleanup completed");
+    } catch (err) {
+      console.error("Error during OCR cleanup:", err);
+    }
+  };
+
+  // Cleanup Scandit resources
+  const cleanupScandit = async () => {
+    try {
+      console.log("Cleaning up Scandit resources...");
+
+      if (captureRef.current) {
+        await captureRef.current.setEnabled(false);
+        captureRef.current = null;
+      }
+
+      if (contextRef.current) {
+        await contextRef.current.dispose();
+        contextRef.current = null;
+      }
+
+      console.log("Scandit cleanup completed");
+    } catch (err) {
+      console.error("Error during Scandit cleanup:", err);
     }
   };
 
   // Function to switch between scanner modes
-  const switchScannerMode = useCallback((mode: 'qr' | 'ocr') => {
+  const switchScannerMode = useCallback(async (mode: 'qr' | 'ocr') => {
     try {
-      // Clear any existing auto-switch timer
-      if (modeTimerRef.current) {
-        clearTimeout(modeTimerRef.current);
-        modeTimerRef.current = null;
-      }
+      console.log(`Switching to ${mode} mode...`);
       
-      // Set new mode and update status message
-      setScannerMode(mode);
-      
+      // Reset any current state
+      setError(null);
+      setResult(null);
+      setShowNotification(false);
+      setIsValidating(false);
+
       if (mode === 'qr') {
+        // Switching to QR mode - cleanup OCR and initialize Scandit
+        setStatusMessage("جارٍ التبديل إلى وضع QR...");
+        setScannerMode(mode);
+        
+        await cleanupOCR();
+        
+        // Reinitialize Scandit (this will be done in the useEffect)
+        setLicenseStatus(null);
         setStatusMessage("جارٍ البحث عن رمز QR...");
         
-        // Disable text capture and enable barcode capture
-        if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(false).catch(console.error);
-        }
-        if (captureRef.current) {
-          captureRef.current.setEnabled(true).catch(console.error);
-        }
-        
-        // Set timer to auto-switch to OCR mode if enabled
-        if (autoSwitchEnabled) {
-          modeTimerRef.current = setTimeout(() => {
-            console.log("Auto-switching to OCR mode after 10s without QR detection");
-            switchScannerMode('ocr');
-          }, 10000);
-        }
       } else {
-        setStatusMessage("جارٍ البحث عن الرمز المطبوع...");
+        // Switching to OCR mode - cleanup Scandit and initialize OCR
+        setStatusMessage("جارٍ التبديل إلى وضع النص...");
+        setScannerMode(mode);
         
-        // Disable barcode capture and enable text capture
-        if (captureRef.current) {
-          captureRef.current.setEnabled(false).catch(console.error);
-        }
-        if (textCaptureRef.current) {
-          textCaptureRef.current.setEnabled(true).catch(console.error);
-        }
+        await cleanupScandit();
         
-        // Set timer to auto-switch back to QR mode if enabled
-        if (autoSwitchEnabled) {
-          modeTimerRef.current = setTimeout(() => {
-            console.log("Auto-switching to QR mode after 10s without OCR detection");
-            switchScannerMode('qr');
-          }, 10000);
-        }
+        // Initialize OCR
+        await initializeOCR();
       }
       
-      // Trigger haptic feedback for mode change
       triggerHapticFeedback([50]);
     } catch (err) {
       console.error("Error switching scanner mode:", err);
+      setError("فشل التبديل بين أوضاع المسح. يرجى تحديث الصفحة.");
     }
-  }, [autoSwitchEnabled]);
-  
-  // Toggle auto-switching feature
-  const toggleAutoSwitch = () => {
-    setAutoSwitchEnabled(!autoSwitchEnabled);
-  };
+  }, []);
 
-  // Reset the scanner after processing a result
-  const resetScannerAfterDelay = (delay = 1500) => {
-    setTimeout(() => {
-      try {
-        // Re-enable the current capture mode after processing
-        if (scannerMode === 'qr' && captureRef.current) {
-          console.log("Re-enabling QR scanner after validation");
-          captureRef.current.setEnabled(true).catch(console.error);
-          // Restart the auto-switch timer
-          if (autoSwitchEnabled && !modeTimerRef.current) {
-            modeTimerRef.current = setTimeout(() => {
-              switchScannerMode('ocr');
-            }, 10000);
-          }
-        } else if (scannerMode === 'ocr' && textCaptureRef.current) {
-          console.log("Re-enabling OCR scanner after validation");
-          textCaptureRef.current.setEnabled(true).catch(console.error);
-          // Restart the auto-switch timer
-          if (autoSwitchEnabled && !modeTimerRef.current) {
-            modeTimerRef.current = setTimeout(() => {
-              switchScannerMode('qr');
-            }, 10000);
-          }
-        }
-      } catch (err) {
-        console.error("Error re-enabling scanner:", err);
-      }
-    }, delay);
-  };
-
-  // Initialize auto-mode switching when component mounts
-  useEffect(() => {
-    // Start the auto-switch timer if enabled when component mounts
-    if (autoSwitchEnabled && !modeTimerRef.current) {
-      modeTimerRef.current = setTimeout(() => {
-        console.log("Auto-switching to OCR mode after 10s without QR detection");
-        switchScannerMode('ocr');
-      }, 10000);
-    }
-    
-    // Clean up timer on unmount
-    return () => {
-      if (modeTimerRef.current) {
-        clearTimeout(modeTimerRef.current);
-        modeTimerRef.current = null;
-      }
-    };
-  }, [autoSwitchEnabled, switchScannerMode]);
-  
   useEffect(() => {
     document.title = "مسح متقدم | برنامج مكافآت بريق";
+
+    // Only initialize Scandit if we're in QR mode
+    if (scannerMode !== 'qr') {
+      return;
+    }
 
     let dispose: (() => Promise<void>) | undefined;
 
@@ -504,8 +746,7 @@ export default function AdvancedScanPage() {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const barcode = await import("@scandit/web-datacapture-barcode");
-        // We'll handle text capture later with a different approach
-        // Just use core and barcode for now
+
         const {
           configure,
           DataCaptureView,
@@ -536,13 +777,10 @@ export default function AdvancedScanPage() {
             libraryLocation:
               "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/sdc-lib/",
             moduleLoaders: [barcodeCaptureLoader()],
-            // Fix for runtime error by patching errorElement
             preloadEngine: true,
             engineLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.2.1/build",
-            // Intercept and translate SDK error messages to Arabic
             errorListener: {
               onError: (error: any) => {
-                // Translate Scandit error messages to Arabic
                 console.error("Scandit error:", error);
                 let arabicMessage = "خطأ في تهيئة الماسح الضوئي";
 
@@ -561,8 +799,6 @@ export default function AdvancedScanPage() {
                 setNotificationType('error');
                 setShowNotification(true);
 
-                // Do not return the message to the SDK, to prevent it from trying to display it.
-                // This might prevent the 'this.errorElement.textContent' error.
                 return; 
               }
             }
@@ -574,17 +810,14 @@ export default function AdvancedScanPage() {
           return;
         }
         
-        // Update license status
         setLicenseStatus('initialized');
 
-        // Create a patched version of scanner to intercept SDK errors
         const createProtectedElement = (operation: Function) => {
           try {
             return operation();
           } catch (err) {
             console.warn("Protected element operation failed:", err);
             
-            // Translate any English error to Arabic
             let arabicError = "خطأ أثناء تهيئة الماسح الضوئي";
             if (err && typeof err === 'object') {
               const errMsg = err.toString();
@@ -595,7 +828,6 @@ export default function AdvancedScanPage() {
               }
             }
             
-            // Show Arabic error
             setError(arabicError);
             setNotificationType('error');
             setShowNotification(true);
@@ -612,12 +844,11 @@ export default function AdvancedScanPage() {
           return;
         }
         
-        contextRef.current = context; // Store context in ref
+        contextRef.current = context;
         
         const view = new DataCaptureView();
         await view.setContext(context);
         
-        // Make sure scannerRef.current exists before connecting
         if (scannerRef.current) {
           view.connectToElement(scannerRef.current);
         } else {
@@ -627,7 +858,6 @@ export default function AdvancedScanPage() {
           return;
         }
         
-        // 🔦 Torch toggle button (auto-hides if torch not available)
         const torchSwitch = new TorchSwitchControl();
         await view.addControl(torchSwitch);
 
@@ -648,10 +878,9 @@ export default function AdvancedScanPage() {
           return;
         }
         
-        // Optimization 3: Camera Settings
         const cameraSettings = new CameraSettings();
-        cameraSettings.preferredResolution = VideoResolution.Auto; // Let device choose optimal resolution
-        cameraSettings.zoomFactor = 1.3; // Helpful for small QR codes
+        cameraSettings.preferredResolution = VideoResolution.Auto;
+        cameraSettings.zoomFactor = 1.3;
         await camera.applySettings(cameraSettings);
         
         try {
@@ -667,34 +896,27 @@ export default function AdvancedScanPage() {
         const settings = new BarcodeCaptureSettings();
         settings.enableSymbologies([Symbology.QR]);
         
-        // Enable inverted color scanning (white QR on black background)
         const qrSettings = settings.settingsForSymbology(Symbology.QR);
         qrSettings.isColorInvertedEnabled = true;
         
-        // Log the settings to confirm it's applied
         console.log("QR Code settings:", {
           colorInverted: qrSettings.isColorInvertedEnabled,
           symbology: "QR"
         });
         
-        // Optimization 1: Rectangular location selection (focused scan area)
-        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction); // 80% of the view
-        const heightToWidth = 1; // Square finder
+        const width = new NumberWithUnit(0.8, MeasureUnit.Fraction);
+        const heightToWidth = 1;
         const locationSelection = RectangularLocationSelection.withWidthAndAspectRatio(
           width, heightToWidth
         );
         settings.locationSelection = locationSelection;
         
-        // Optimization 2: Smart scan intention to reduce duplicate scans
-        // Fix for the ScanIntention error - use a safe approach with try/catch
         try {
-          // Try to set scan intention if available
           if (typeof barcode.ScanIntention === 'object' && barcode.ScanIntention?.Smart) {
             settings.scanIntention = barcode.ScanIntention.Smart;
           } else if (typeof core.ScanIntention === 'object' && core.ScanIntention?.Smart) {
             settings.scanIntention = core.ScanIntention.Smart;
           } else if (typeof settings.setProperty === 'function') {
-            // Fallback to using setProperty if available
             settings.setProperty("barcodeCapture.scanIntention", "smart");
           } else {
             console.log("ScanIntention not available in API, skipping this optimization");
@@ -703,25 +925,21 @@ export default function AdvancedScanPage() {
           console.warn("Error setting scan intention:", settingsError);
         }
         
-        // Set codeDuplicateFilter to 500ms for more responsive scanning
         settings.setProperty("barcodeCapture.codeDuplicateFilter", 500);
 
         const capture = await BarcodeCapture.forContext(context, settings);
-        captureRef.current = capture; // Store capture in ref
+        captureRef.current = capture;
         
         capture.addListener({
           didScan: async (_mode: any, session: any) => {
             const code = session.newlyRecognizedBarcode;
             if (!code) return;
             
-            // Disable capture while processing
             await capture.setEnabled(false);
             
-            // Get barcode data
             const url = code.data;
             console.log("QR code detected:", url);
             
-            // Process the code with validation
             await validateQrCode(url);
           }
         });
@@ -743,10 +961,8 @@ export default function AdvancedScanPage() {
       } catch (e: any) {
         console.error("Scanner initialization error:", e);
         
-        // Ensure scanner setup error message is in Arabic
         let arabicErrorMessage = "فشل إعداد الماسح";
         
-        // Add more specific error details in Arabic if available
         if (e?.message) {
           if (e.message.includes("license")) {
             arabicErrorMessage = "فشل التحقق من ترخيص الماسح";
@@ -764,24 +980,19 @@ export default function AdvancedScanPage() {
         setError(arabicErrorMessage);
         setLicenseStatus('failed');
         
-        // Show error notification
         setNotificationType('error');
         setShowNotification(true);
         
-        // Auto-dismiss error after 5 seconds
         setTimeout(() => {
           setShowNotification(false);
         }, 5000);
       }
     })();
 
-    // Override native error dialog with our custom Arabic one
-    // Apply a global error handler to catch Scandit SDK error dialogs
     const originalAlert = window.alert;
     window.alert = function(message) {
       console.log("Alert intercepted:", message);
       
-      // Translate alert messages to Arabic
       let arabicMessage = "حدث خطأ في المسح الضوئي";
       
       if (typeof message === 'string') {
@@ -796,19 +1007,24 @@ export default function AdvancedScanPage() {
         }
       }
       
-      // Show our custom Arabic error notification instead
       setError(arabicMessage);
       setNotificationType('error');
       setShowNotification(true);
       
-      // Don't show the original alert
       return;
     };
 
-    // Restore original alert on unmount
     return () => {
       window.alert = originalAlert;
       if (dispose) dispose().catch(console.error);
+    };
+  }, [scannerMode]); // Re-run when scanner mode changes
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupOCR();
+      cleanupScandit();
     };
   }, []);
 
@@ -819,18 +1035,24 @@ export default function AdvancedScanPage() {
         {/* Header */}
         <div className="px-4 py-3 bg-white shadow-sm z-10">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold">المسح المتقدم (Scandit)</h1>
+            <h1 className="text-xl font-bold">المسح المتقدم (Scandit + Tesseract)</h1>
             
             {/* License Status Indicator */}
             <div className="flex items-center gap-2">
-              <span className="text-xs">حالة الترخيص:</span>
+              <span className="text-xs">الحالة:</span>
               <div className={`h-2.5 w-2.5 rounded-full ${
-                licenseStatus === 'initialized' ? 'bg-green-500' : 
-                licenseStatus === 'failed' ? 'bg-red-500' : 'bg-gray-300'
+                (scannerMode === 'qr' && licenseStatus === 'initialized') || (scannerMode === 'ocr' && ocrWorker) ? 'bg-green-500' : 
+                (scannerMode === 'qr' && licenseStatus === 'failed') ? 'bg-red-500' : 
+                (scannerMode === 'ocr' && isOcrInitializing) ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'
               }`}></div>
               <span className="text-xs">
-                {licenseStatus === 'initialized' ? 'مفعّل' : 
-                 licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'}
+                {scannerMode === 'qr' ? (
+                  licenseStatus === 'initialized' ? 'مفعّل' : 
+                  licenseStatus === 'failed' ? 'فشل التفعيل' : 'جاري التحميل...'
+                ) : (
+                  ocrWorker ? 'جاهز' :
+                  isOcrInitializing ? 'جاري التهيئة...' : 'غير مفعّل'
+                )}
               </span>
               
               {/* Scanner Mode Indicator */}
@@ -843,7 +1065,7 @@ export default function AdvancedScanPage() {
                 ) : (
                   <>
                     <TextCursorInput className="h-4 w-4" />
-                    <span className="text-xs">وضع النص</span>
+                    <span className="text-xs">وضع OCR</span>
                   </>
                 )}
               </div>
@@ -851,7 +1073,7 @@ export default function AdvancedScanPage() {
           </div>
           
           {/* Scanner Mode Status Message */}
-          {licenseStatus === 'initialized' && (
+          {((scannerMode === 'qr' && licenseStatus === 'initialized') || (scannerMode === 'ocr' && (ocrWorker || isOcrInitializing))) && (
             <div className="flex justify-center mt-2">
               <div 
                 className={`px-4 py-1 rounded-full text-sm ${
@@ -868,11 +1090,31 @@ export default function AdvancedScanPage() {
         
         {/* Scanner viewport - using grid cell to take all available space */}
         <div className="relative overflow-hidden">
+          {/* Scandit QR Scanner */}
           <div
             ref={scannerRef}
-            className="absolute inset-0 bg-black overflow-hidden"
+            className={`absolute inset-0 bg-black overflow-hidden transition-opacity duration-300 ${
+              scannerMode === 'qr' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
             aria-label="مساحة مسح رمز الاستجابة السريعة"
           />
+          
+          {/* Tesseract OCR Scanner */}
+          <div className={`absolute inset-0 bg-black overflow-hidden transition-opacity duration-300 ${
+            scannerMode === 'ocr' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}>
+            <video
+              ref={ocrVideoRef}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+              autoPlay
+            />
+            <canvas
+              ref={ocrCanvasRef}
+              className="hidden"
+            />
+          </div>
           
           {/* Scanner overlay - changes based on scanner mode */}
           <div className="absolute inset-0 pointer-events-none">
@@ -880,13 +1122,8 @@ export default function AdvancedScanPage() {
               {scannerMode === 'qr' ? (
                 /* QR Mode - square guide */
                 <div className="relative w-[min(80vw,80vh)] max-w-md aspect-square">
-                  {/* QR Scan animation */}
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary animate-scanline"></div>
-                  
-                  {/* Visual border for QR scanning */}
                   <div className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-md"></div>
-                  
-                  {/* Corners */}
                   <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-primary"></div>
                   <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-primary"></div>
                   <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-primary"></div>
@@ -895,7 +1132,6 @@ export default function AdvancedScanPage() {
               ) : (
                 /* OCR Mode - rectangle for text scanning */
                 <div className="relative w-[min(85vw,400px)] h-24 border-2 border-amber-500 rounded-md flex items-center justify-center bg-black/20">
-                  {/* OCR scanning animation - moving line */}
                   <div 
                     className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
                     style={{
@@ -904,7 +1140,6 @@ export default function AdvancedScanPage() {
                     }}
                   ></div>
                   
-                  {/* OCR guidance text */}
                   <div className="text-amber-500 text-sm font-medium px-4 text-center">
                     <div>وجه الكاميرا نحو الرمز المطبوع</div>
                     <div className="text-xs opacity-70 mt-1">رمز من ٦ أحرف وأرقام</div>
@@ -918,7 +1153,7 @@ export default function AdvancedScanPage() {
               <div className="bg-black/70 backdrop-blur-sm text-white rounded-full px-6 py-3 text-sm">
                 {scannerMode === 'qr' 
                   ? 'وجه الكاميرا نحو رمز QR الخاص بالمنتج'
-                  : 'وجه الكاميرا نحو الرمز المطبوع بجانب QR'
+                  : 'وجه الكاميرا نحو الرمز المطبوع المكون من ٦ أحرف'
                 }
               </div>
             </div>
@@ -929,29 +1164,26 @@ export default function AdvancedScanPage() {
                 onClick={() => switchScannerMode(scannerMode === 'qr' ? 'ocr' : 'qr')}
                 className={`rounded-full shadow-lg ${scannerMode === 'qr' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-primary/90'}`}
                 size="sm"
+                disabled={isOcrInitializing || isValidating}
               >
-                {scannerMode === 'qr' ? (
+                {isOcrInitializing ? (
                   <span className="flex items-center gap-1 text-white">
-                    <TextCursorInput className="h-4 w-4" />
-                    <span>تبديل إلى وضع النص</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>جاري التهيئة...</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-white">
-                    <QrCode className="h-4 w-4" />
-                    <span>تبديل إلى وضع QR</span>
-                  </span>
+                  scannerMode === 'qr' ? (
+                    <span className="flex items-center gap-1 text-white">
+                      <TextCursorInput className="h-4 w-4" />
+                      <span>تبديل إلى وضع النص</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-white">
+                      <QrCode className="h-4 w-4" />
+                      <span>تبديل إلى وضع QR</span>
+                    </span>
+                  )
                 )}
-              </Button>
-              
-              <Button
-                onClick={toggleAutoSwitch}
-                className={`rounded-full shadow-lg text-xs flex items-center gap-2 ${
-                  autoSwitchEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'
-                }`}
-                size="sm"
-              >
-                <div className={`w-2 h-2 rounded-full ${autoSwitchEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`} />
-                <span className="text-white">{autoSwitchEnabled ? 'التبديل التلقائي: مفعّل' : 'التبديل التلقائي: معطل'}</span>
               </Button>
             </div>
           </div>
@@ -1067,7 +1299,7 @@ export default function AdvancedScanPage() {
           )}
           
           {/* Error fallback for scanner initialization failures */}
-          {licenseStatus === 'failed' && (
+          {licenseStatus === 'failed' && scannerMode === 'qr' && (
             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-6">
               <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
               <h2 className="text-xl font-bold mb-2 text-center">فشل تهيئة الماسح الضوئي</h2>
