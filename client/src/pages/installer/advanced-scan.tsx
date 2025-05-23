@@ -670,7 +670,7 @@ export default function AdvancedScanPage() {
 
       let worker: any = null;
       try {
-        // Use the correct Tesseract.js v5.x API with iOS-optimized settings
+        // Use the correct Tesseract.js v5.x API with better error handling
         const workerOptions: any = {
           logger: (m: any) => {
             console.log('Tesseract:', m);
@@ -680,13 +680,9 @@ export default function AdvancedScanPage() {
           }
         };
         
-        // iOS-specific core path fallback
-        if (isIOS) {
-          setLoadingStep("تحميل ملفات iOS...");
-          // Try CDN fallback for iOS
-          workerOptions.corePath = 'https://unpkg.com/tesseract.js@5.1.0/dist';
-          workerOptions.workerPath = 'https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js';
-        }
+        // Remove iOS-specific CDN overrides that cause network issues
+        // Let Tesseract use its default paths which work better on iOS
+        console.log("Creating worker with default paths for iOS compatibility");
         
         worker = await createWorker('eng', 1, workerOptions);
         
@@ -705,7 +701,15 @@ export default function AdvancedScanPage() {
         
       } catch (tesseractError: any) {
         console.error("Tesseract error:", tesseractError);
-        setIosErrorDetails(`Tesseract Error: ${tesseractError.message}`);
+        
+        let errorDetails = tesseractError.message;
+        if (tesseractError.message.includes("NetworkError") || tesseractError.message.includes("Load failed")) {
+          errorDetails = `Network loading error on iOS Safari: ${tesseractError.message}`;
+        } else if (tesseractError.message.includes("CORS")) {
+          errorDetails = `CORS error loading Tesseract files: ${tesseractError.message}`;
+        }
+        
+        setIosErrorDetails(errorDetails);
         throw new Error(`Tesseract initialization failed: ${tesseractError.message}`);
       }
 
@@ -732,8 +736,12 @@ export default function AdvancedScanPage() {
           errorMessage += "تم رفض إذن الكاميرا. يرجى السماح بالوصول من إعدادات المتصفح.";
         } else if (error.message.includes("NotFoundError") || error.message.includes("No cameras")) {
           errorMessage += "لم يتم العثور على كاميرا. تأكد من وجود كاميرا خلفية.";
+        } else if (error.message.includes("NetworkError") || error.message.includes("Load failed")) {
+          errorMessage += "فشل تحميل ملفات التعرف على النصوص عبر الشبكة. تأكد من قوة الاتصال بالإنترنت وإعادة تحميل الصفحة.";
+        } else if (error.message.includes("CORS")) {
+          errorMessage += "خطأ في تحميل ملفات التعرف على النصوص (CORS). يرجى إعادة تحميل الصفحة.";
         } else if (error.message.includes("language") || error.message.includes("Tesseract")) {
-          errorMessage += "تعذر تحميل ملفات التعرف على النصوص. تأكد من اتصال الإنترنت القوي.";
+          errorMessage += "تعذر تحميل ملفات التعرف على النصوص. تأكد من اتصال الإنترنت القوي وإعادة تحميل الصفحة.";
         } else if (error.message.includes("timeout")) {
           errorMessage += "انتهت مهلة تحميل الكاميرا. يرجى المحاولة مرة أخرى.";
         } else if (error.message.includes("HTTPS") || error.message.includes("secure")) {
