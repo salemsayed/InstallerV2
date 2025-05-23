@@ -535,18 +535,17 @@ export default function AdvancedScanPage() {
       setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
       console.log("Loading Tesseract worker …");
 
-      // NOTE: Do NOT `await` `createWorker` – it returns a ready-to-configure worker instance, not a Promise. 
-      // Passing functions (e.g. logger callbacks) into the worker options triggers a DataCloneError with
-      // some bundlers because functions cannot be structured-cloned. We therefore skip the logger option.
-      const worker = createWorker();
+      // Use the correct Tesseract.js v5.x API
+      const worker = await createWorker('eng', 1, {
+        logger: m => console.log('Tesseract:', m)
+      });
 
-      await worker.load();
-      await worker.loadLanguage("eng");
-      await worker.initialize("eng");
-      // Restrict the character set to alphanumeric (A-Z, 0-9)
+      // Set parameters for better OCR recognition of alphanumeric codes
       await worker.setParameters({
         tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         preserve_interword_spaces: "1",
+        tessedit_pageseg_mode: "8", // Single uniform block of text
+        tessedit_ocr_engine_mode: "1" // Neural nets LSTM engine only
       });
 
       setOcrWorker(worker);
