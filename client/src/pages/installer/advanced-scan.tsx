@@ -520,41 +520,101 @@ export default function AdvancedScanPage() {
 
       /* ---------------------- Camera initialisation ---------------------- */
       console.log("Requesting camera access for OCR...");
+      
+      // Detect mobile devices
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      console.log("Device detection:", { isMobile, isIOS, userAgent: navigator.userAgent });
+      
+      // Mobile-optimized camera constraints
+      const videoConstraints = {
+        facingMode: "environment",
+        width: isMobile ? { ideal: 720, max: 1280 } : { ideal: 1280 },
+        height: isMobile ? { ideal: 480, max: 720 } : { ideal: 720 },
+        ...(isIOS && {
+          // iOS-specific constraints
+          frameRate: { ideal: 30, max: 30 },
+          aspectRatio: { ideal: 16/9 }
+        })
+      };
+      
+      console.log("Using video constraints:", videoConstraints);
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: videoConstraints,
+        audio: false // Explicitly disable audio for iOS
       });
+      
       console.log("Camera access granted for OCR");
       setOcrStream(stream);
 
       if (ocrVideoRef.current) {
-        ocrVideoRef.current.srcObject = stream;
-        await ocrVideoRef.current.play();
-        console.log("OCR video stream started successfully");
+        // Mobile-specific video element setup
+        const video = ocrVideoRef.current;
+        
+        // Set video attributes for mobile compatibility
+        video.setAttribute('playsinline', 'true'); // Critical for iOS
+        video.setAttribute('webkit-playsinline', 'true'); // Older iOS versions
+        video.muted = true; // Required for autoplay on mobile
+        video.autoplay = true;
+        
+        video.srcObject = stream;
+        
+        // Wait for video to be ready on mobile
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Video load timeout on mobile"));
+          }, 10000); // 10 second timeout for mobile
+          
+          const onLoadedData = () => {
+            clearTimeout(timeout);
+            video.removeEventListener('loadeddata', onLoadedData);
+            video.removeEventListener('error', onError);
+            resolve(undefined);
+          };
+          
+          const onError = (error: any) => {
+            clearTimeout(timeout);
+            video.removeEventListener('loadeddata', onLoadedData);
+            video.removeEventListener('error', onError);
+            reject(error);
+          };
+          
+          video.addEventListener('loadeddata', onLoadedData);
+          video.addEventListener('error', onError);
+          
+          // Try to play the video
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(onError);
+          }
+        });
+        
+        console.log("OCR video stream started successfully on mobile");
       }
 
       /* ---------------------- Tesseract initialisation ------------------- */
       setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
-      console.log("Loading Tesseract worker …");
+      console.log("Loading Tesseract worker for mobile…");
 
-      // Use the correct Tesseract.js v5.x API
+      // Use the correct Tesseract.js v5.x API with mobile-optimized settings
       const worker = await createWorker('eng', 1, {
-        logger: m => console.log('Tesseract:', m)
+        logger: m => console.log('Tesseract:', m),
+        // Mobile-specific core options
+        corePath: isIOS ? 'https://unpkg.com/tesseract.js@5.1.0/dist' : undefined
       });
 
-      // Set parameters for better OCR recognition of alphanumeric codes
+      // Set parameters for better OCR recognition of alphanumeric codes on mobile
       await worker.setParameters({
         tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         preserve_interword_spaces: "1",
-        tessedit_pageseg_mode: "8", // Single uniform block of text
+        tessedit_pageseg_mode: isMobile ? "6" : "8", // Different mode for mobile
         tessedit_ocr_engine_mode: "1" // Neural nets LSTM engine only
       });
 
       setOcrWorker(worker);
-      console.log("Tesseract worker initialised successfully");
+      console.log("Tesseract worker initialised successfully on mobile");
 
       /* ---------------------------- Done --------------------------------- */
       setStatusMessage("وضع قراءة النصوص جاهز");
@@ -574,6 +634,8 @@ export default function AdvancedScanPage() {
           errorMessage += "يرجى منح الإذن للوصول للكاميرا من إعدادات المتصفح.";
         } else if (error.message.includes("language")) {
           errorMessage += "تعذر تحميل ملفات اللغة الخاصة بمحرك التعرف. تأكد من اتصال الإنترنت.";
+        } else if (error.message.includes("timeout")) {
+          errorMessage += "انتهت مهلة تحميل الكاميرا. يرجى المحاولة مرة أخرى.";
         } else {
           errorMessage += error.message;
         }
@@ -648,17 +710,23 @@ export default function AdvancedScanPage() {
           return;
         }
 
-        // Set canvas size to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Set canvas size to match video with mobile optimization
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const scale = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1; // Limit scale on mobile
+        
+        canvas.width = video.videoWidth * scale;
+        canvas.height = video.videoHeight * scale;
+        
+        // Scale context for high-DPI displays but limit for mobile performance
+        context.scale(scale, scale);
 
         // Draw current video frame to canvas
-        context.drawImage(video, 0, 0);
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
-        // Get image data for OCR processing
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        // Get image data for OCR processing - higher quality for mobile due to smaller text
+        const imageData = canvas.toDataURL('image/jpeg', isMobile ? 0.9 : 0.8);
 
-        console.log(`OCR Scan #${scanCount}: Processing frame ${video.videoWidth}x${video.videoHeight}`);
+        console.log(`OCR Scan #${scanCount}: Processing frame ${video.videoWidth}x${video.videoHeight}, scale: ${scale}, mobile: ${isMobile}`);
 
         // Perform OCR on the image using the active worker
         const { data: { text } } = await activeWorker.recognize(imageData);
@@ -1265,6 +1333,8 @@ export default function AdvancedScanPage() {
                     <div>Canvas: {ocrCanvasRef.current ? '✓' : '✗'}</div>
                     <div>Stream: {ocrStream ? '✓' : '✗'}</div>
                     <div>Validating: {isValidating ? 'Yes' : 'No'}</div>
+                    <div>Mobile: {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
+                    <div>iOS: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
                     {ocrVideoRef.current && (
                       <div>Video Ready: {ocrVideoRef.current.readyState}/4</div>
                     )}
