@@ -535,9 +535,10 @@ export default function AdvancedScanPage() {
       setStatusMessage("جارٍ تحميل محرك التعرف على النصوص...");
       console.log("Loading Tesseract worker …");
 
-      const worker = await createWorker({
-        logger: (m) => console.log("[Tesseract]", m),
-      });
+      // NOTE: Do NOT `await` `createWorker` – it returns a ready-to-configure worker instance, not a Promise. 
+      // Passing functions (e.g. logger callbacks) into the worker options triggers a DataCloneError with
+      // some bundlers because functions cannot be structured-cloned. We therefore skip the logger option.
+      const worker = createWorker();
 
       await worker.load();
       await worker.loadLanguage("eng");
