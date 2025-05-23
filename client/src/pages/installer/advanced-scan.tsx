@@ -607,7 +607,9 @@ export default function AdvancedScanPage() {
           // iOS-specific attributes - MUST be set before srcObject
           video.playsInline = true;
           video.muted = true;
-          video.autoplay = false; // Don't use autoplay - manually control play
+          // Enable autoplay for muted inline video to satisfy iOS autoplay policy
+          video.autoplay = true;
+          video.setAttribute('autoplay', 'true');
           video.controls = false;
           video.preload = "metadata";
           
@@ -731,7 +733,7 @@ export default function AdvancedScanPage() {
             video.addEventListener('error', onError);
             
             // Start the loading process
-            video.load();
+            // (Intentionally omitted `video.load()` to avoid iOS readyState = 0 bug)
             
             // Initial attempt after a short delay
             setTimeout(() => {
@@ -1567,7 +1569,7 @@ export default function AdvancedScanPage() {
               className="w-full h-full object-cover"
               playsInline
               muted
-              autoPlay={false}
+              autoPlay
               controls={false}
               preload="metadata"
               webkit-playsinline="true"
