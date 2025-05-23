@@ -562,7 +562,7 @@ export default function AdvancedScanPage() {
 
       // Kick-off the continuous OCR scan loop
       console.log("📸 About to start OCR scanning from initializeOCR...");
-      startOcrScanning();
+      startOcrScanning(worker); // Pass the worker directly to avoid React state timing issues
     } catch (error: any) {
       console.error("OCR initialization error:", error);
 
@@ -602,8 +602,8 @@ export default function AdvancedScanPage() {
   };
 
   // Start OCR scanning process
-  const startOcrScanning = () => {
-    console.log("🚀 startOcrScanning called");
+  const startOcrScanning = (workerOverride?: any) => {
+    console.log("🚀 startOcrScanning called", { workerOverride: !!workerOverride });
     
     if (ocrScanIntervalRef.current) {
       console.log("Clearing existing OCR interval");
@@ -614,16 +614,21 @@ export default function AdvancedScanPage() {
     ocrScanIntervalRef.current = setInterval(async () => {
       console.log("⏰ OCR interval tick - checking conditions...");
       
+      // Use workerOverride if provided, otherwise use state
+      const activeWorker = workerOverride || ocrWorker;
+      
       // Debug the conditions
       console.log("OCR Conditions check:", {
         ocrWorker: !!ocrWorker,
+        activeWorker: !!activeWorker,
+        workerOverride: !!workerOverride,
         ocrVideoRef: !!ocrVideoRef.current,
         ocrCanvasRef: !!ocrCanvasRef.current,
         isValidating: isValidating,
         videoReadyState: ocrVideoRef.current?.readyState
       });
       
-      if (!ocrWorker || !ocrVideoRef.current || !ocrCanvasRef.current || isValidating) {
+      if (!activeWorker || !ocrVideoRef.current || !ocrCanvasRef.current || isValidating) {
         console.log("❌ OCR scan skipped due to conditions");
         return;
       }
@@ -655,8 +660,8 @@ export default function AdvancedScanPage() {
 
         console.log(`OCR Scan #${scanCount}: Processing frame ${video.videoWidth}x${video.videoHeight}`);
 
-        // Perform OCR on the image
-        const { data: { text } } = await ocrWorker.recognize(imageData);
+        // Perform OCR on the image using the active worker
+        const { data: { text } } = await activeWorker.recognize(imageData);
         
         console.log("OCR Raw text detected:", JSON.stringify(text));
         setLastDetectedText(text.trim());
@@ -686,7 +691,7 @@ export default function AdvancedScanPage() {
           // Resume scanning after a delay if still in OCR mode
           setTimeout(() => {
             if (scannerMode === 'ocr' && !isValidating) {
-              startOcrScanning();
+              startOcrScanning(); // Resume with state-based worker
             }
           }, 2000);
         } else {
