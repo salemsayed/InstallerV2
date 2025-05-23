@@ -513,29 +513,38 @@ export default function AdvancedScanPage() {
       setIsOcrInitializing(true);
       setStatusMessage("جارٍ تهيئة نظام قراءة النصوص...");
 
-      // Create Tesseract worker
+      // Create Tesseract worker with all needed options
       console.log("Creating Tesseract worker...");
       
-      // Use a simpler approach that's less likely to have issues
-      const worker = await createWorker();
+      // Create worker with specific options to make it compatible
+      const worker = await createWorker({
+        logger: progress => {
+          console.log('Tesseract progress:', progress);
+          if (progress.status === 'recognizing text' && progress.progress === 1) {
+            console.log('OCR recognition complete');
+          }
+        },
+        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+        gzip: true,
+        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/worker.min.js',
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.2/tesseract-core.wasm.js',
+      });
+      
       console.log("Tesseract worker created successfully");
       
-      // Try to load and initialize the English language data
-      console.log("Loading OCR language...");
-      await worker.loadLanguage('eng');
-      console.log("OCR language loaded successfully");
-      
+      // Load language data and initialize in a single call
       console.log("Initializing OCR worker...");
+      await worker.load();
+      await worker.loadLanguage('eng');
       await worker.initialize('eng');
+      
       console.log("OCR worker initialized successfully");
       
       // Configure Tesseract with optimal settings for product codes
       console.log("Setting OCR parameters...");
       await worker.setParameters({
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-        // Use string for pageseg_mode to avoid type errors
         tessedit_pageseg_mode: '8',
-        // Use string for preserve_interword_spaces to avoid type errors
         preserve_interword_spaces: '0'
       });
       console.log("OCR parameters set successfully");
