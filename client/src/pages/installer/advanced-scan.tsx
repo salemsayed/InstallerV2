@@ -1159,6 +1159,10 @@ export default function AdvancedScanPage() {
         
         await cleanupScandit();
         
+        // Give the browser a short moment to fully release the previous
+        // camera stream before requesting a new one (especially Safari/iOS)
+        await new Promise(res => setTimeout(res, 750));
+        
         // Initialize OCR
         await initializeOCR();
       }
