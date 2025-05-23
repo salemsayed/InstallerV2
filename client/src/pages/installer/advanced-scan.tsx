@@ -1091,17 +1091,28 @@ export default function AdvancedScanPage() {
   const cleanupScandit = async () => {
     try {
       console.log("Cleaning up Scandit resources...");
-
+ 
       if (captureRef.current) {
         await captureRef.current.setEnabled(false);
         captureRef.current = null;
       }
-
+ 
       if (contextRef.current) {
+        try {
+          // Attempt to turn the camera off before disposing context
+          const core = await import(/* @vite-ignore */ "@scandit/web-datacapture-core");
+          if (core?.Camera?.default) {
+            console.log("Switching Scandit camera to OFF state");
+            await core.Camera.default.switchToDesiredState(core.FrameSourceState.Off);
+          }
+        } catch (camStopErr) {
+          console.warn("Failed to switch Scandit camera off", camStopErr);
+        }
+ 
         await contextRef.current.dispose();
         contextRef.current = null;
       }
-
+ 
       console.log("Scandit cleanup completed");
     } catch (err) {
       console.error("Error during Scandit cleanup:", err);
