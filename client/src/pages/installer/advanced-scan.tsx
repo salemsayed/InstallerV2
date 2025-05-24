@@ -801,7 +801,7 @@ export default function AdvancedScanPage() {
         
         setLoadingStep("إعداد معاملات OCR...");
 
-        // Enhanced parameters for better OCR recognition
+        // Enhanced parameters for better OCR recognition - English only
         await worker.setParameters({
           tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
           preserve_interword_spaces: "1",
@@ -810,7 +810,11 @@ export default function AdvancedScanPage() {
           // Additional quality improvements
           tessjs_create_hocr: "0",
           tessjs_create_tsv: "0",
-          user_defined_dpi: "300"
+          user_defined_dpi: "300",
+          // Force English language
+          tessedit_enable_dict_correction: "1",
+          language_model_penalty_non_dict_word: "0.8",
+          language_model_penalty_non_freq_dict_word: "0.6"
         });
 
         setOcrWorker(worker);
@@ -1069,6 +1073,10 @@ export default function AdvancedScanPage() {
         console.log(`OCR completed in ${processingTime}ms. Raw text detected:`, JSON.stringify(data.text));
         console.log(`OCR confidence:`, data.confidence);
         
+        // Always update the last detected text, even if confidence is low
+        const detectedText = data.text || '';
+        setLastDetectedText(detectedText.trim());
+        
         // Only process if confidence is high enough
         if (data.confidence < minConfidence) {
           console.log(`❌ OCR confidence too low: ${data.confidence} < ${minConfidence}`);
@@ -1076,10 +1084,8 @@ export default function AdvancedScanPage() {
           return;
         }
         
-        setLastDetectedText(data.text.trim());
-        
         // Enhanced code detection with stricter validation
-        const cleanText = data.text.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
+        const cleanText = detectedText.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
         const codeRegex = /\b[A-Z0-9]{6}\b/g;
         const matches = cleanText.match(codeRegex);
 
@@ -1744,38 +1750,53 @@ export default function AdvancedScanPage() {
               className="hidden"
             />
             
-            {/* Real-time OCR Recognition Overlay - only in dev mode */}
-            {import.meta.env.DEV && lastDetectedText && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pointer-events-none">
-                <div className="text-white text-xs space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">OCR:</span>
-                    <span className="text-blue-300 font-mono bg-black/50 px-2 py-1 rounded">
-                      {lastDetectedText.substring(0, 100)}{lastDetectedText.length > 100 ? '...' : ''}
-                    </span>
+            {/* Real-time OCR Recognition Overlay - always show */}
+            {scannerMode === 'ocr' && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pointer-events-none">
+                <div className="text-white space-y-2">
+                  {/* Always show scanning status */}
+                  <div className="text-center">
+                    <div className="text-xs text-gray-300 mb-1">
+                      {ocrActivity ? 'جاري المسح...' : 'في انتظار النص...'}
+                    </div>
+                    {lastDetectedText ? (
+                      <div className="bg-black/60 rounded-lg p-3">
+                        <div className="text-xs text-gray-400 mb-1">النص المكتشف:</div>
+                        <div className="text-sm font-mono text-blue-300 break-all">
+                          {lastDetectedText.substring(0, 150)}{lastDetectedText.length > 150 ? '...' : ''}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400">
+                        لم يتم اكتشاف أي نص بعد
+                      </div>
+                    )}
                   </div>
-                  {(() => {
+                  
+                  {/* Show extracted codes if any */}
+                  {lastDetectedText && (() => {
                     const cleanText = lastDetectedText.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
                     const codeRegex = /\b[A-Z0-9]{6}\b/g;
                     const matches = cleanText.match(codeRegex);
                     if (matches && matches.length > 0) {
-                      const validCodes = matches.filter(isValidProductCode);
                       return (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">Codes:</span>
-                          {matches.map((code, idx) => {
-                            const isValid = isValidProductCode(code);
-                            return (
-                              <span 
-                                key={idx} 
-                                className={`font-mono px-2 py-1 rounded ${
-                                  isValid ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-300'
-                                }`}
-                              >
-                                {code}
-                              </span>
-                            );
-                          })}
+                        <div className="border-t border-white/20 pt-2">
+                          <div className="text-xs text-gray-400 mb-1">الرموز المستخرجة:</div>
+                          <div className="flex gap-2 flex-wrap justify-center">
+                            {matches.map((code, idx) => {
+                              const isValid = isValidProductCode(code);
+                              return (
+                                <span 
+                                  key={idx} 
+                                  className={`font-mono text-sm px-3 py-1 rounded ${
+                                    isValid ? 'bg-green-500/30 text-green-300 border border-green-500/50' : 'bg-red-500/30 text-red-300 border border-red-500/50'
+                                  }`}
+                                >
+                                  {code}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     }
@@ -1836,20 +1857,18 @@ export default function AdvancedScanPage() {
                       }}
                     ></div>
                     
-                    {/* Corner markers for ROI */}
-                    {import.meta.env.DEV && (
-                      <>
-                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-green-400"></div>
-                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-green-400"></div>
-                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-green-400"></div>
-                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-green-400"></div>
-                        
-                        {/* ROI label */}
-                        <div className="absolute -top-6 left-0 text-xs text-green-400 font-mono">
-                          ROI: 60% × 30%
-                        </div>
-                      </>
-                    )}
+                    {/* Corner markers for ROI - always show */}
+                    <>
+                      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-green-400"></div>
+                      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-green-400"></div>
+                      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-green-400"></div>
+                      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-green-400"></div>
+                      
+                      {/* ROI label */}
+                      <div className="absolute -top-6 left-0 text-xs text-green-400 font-mono">
+                        ROI: 60% × 30%
+                      </div>
+                    </>
                     
                     <div className="text-amber-500 text-sm font-medium px-4 text-center">
                       <div>ضع الرمز في وسط الإطار</div>
@@ -1877,8 +1896,8 @@ export default function AdvancedScanPage() {
             
             {/* Mode toggle buttons - control panel in top right - this needs pointer events to work! */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-              {/* OCR Debug Panel - only show in dev mode and OCR mode */}
-              {import.meta.env.DEV && scannerMode === 'ocr' && (
+              {/* OCR Debug Panel - always show in OCR mode */}
+              {scannerMode === 'ocr' && (
                 <div className="bg-black/80 backdrop-blur-sm text-white rounded-lg p-3 text-xs max-w-xs">
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`h-2 w-2 rounded-full ${ocrActivity ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
@@ -1894,6 +1913,23 @@ export default function AdvancedScanPage() {
                     <div className="flex justify-between">
                       <span>Scans:</span>
                       <span>{scanCount}</span>
+                    </div>
+                    
+                    {/* Always show last detected text */}
+                    <div className="border-t border-white/20 pt-1 mt-2">
+                      <div className="font-medium mb-1">Last OCR Result:</div>
+                      {lastDetectedText ? (
+                        <div className="bg-black/40 p-2 rounded max-h-32 overflow-y-auto">
+                          <div className="text-blue-300 text-xs font-mono break-all">
+                            "{lastDetectedText}"
+                          </div>
+                          <div className="text-gray-400 text-xs mt-1">
+                            Length: {lastDetectedText.length} chars
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-xs">No text detected yet</div>
+                      )}
                     </div>
                     
                     {/* Detection Buffer Status */}
