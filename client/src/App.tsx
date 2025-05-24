@@ -9,12 +9,10 @@ import AdvancedScanPage from "@/pages/installer/advanced-scan";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
-import DebugPage from "@/pages/developer/debug-page";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { UserRole } from "@shared/schema";
-import { DebugControls } from "@/components/debug/debug-controls";
 
 // Protected route components with authentication requirements
 const ProtectedInstallerDashboard = () => (
@@ -85,9 +83,6 @@ function Router() {
       <Route path="/admin/users" component={ProtectedAdminUsers} />
       <Route path="/admin/settings" component={ProtectedAdminSettings} />
       
-      {/* Developer Routes */}
-      <Route path="/developer/debug" component={DebugPage} />
-      
       <Route component={NotFound} />
     </Switch>
   );
@@ -97,7 +92,6 @@ function App() {
   return (
     <AuthProvider>
       <Router />
-      <DebugControls />
     </AuthProvider>
   );
 }

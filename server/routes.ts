@@ -18,13 +18,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import manufacturing database functions
   const { checkSerialNumber, getProductNameBySerialNumber } = await import('./manufacturing');
   
-  // Import debug services
-  const debugRouter = await import('./routes/debug').then(m => m.default);
-  const debugService = await import('./debug');
-  
-  // Initialize and use debug router
-  app.use('/api/debug', debugRouter);
-  
   // Import OpenAI functions
   const { generateInsight, generateAnalyticsSummary } = await import('./openai');
   
