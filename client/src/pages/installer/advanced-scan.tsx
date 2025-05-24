@@ -1743,6 +1743,47 @@ export default function AdvancedScanPage() {
               ref={ocrCanvasRef}
               className="hidden"
             />
+            
+            {/* Real-time OCR Recognition Overlay - only in dev mode */}
+            {import.meta.env.DEV && lastDetectedText && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pointer-events-none">
+                <div className="text-white text-xs space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">OCR:</span>
+                    <span className="text-blue-300 font-mono bg-black/50 px-2 py-1 rounded">
+                      {lastDetectedText.substring(0, 100)}{lastDetectedText.length > 100 ? '...' : ''}
+                    </span>
+                  </div>
+                  {(() => {
+                    const cleanText = lastDetectedText.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
+                    const codeRegex = /\b[A-Z0-9]{6}\b/g;
+                    const matches = cleanText.match(codeRegex);
+                    if (matches && matches.length > 0) {
+                      const validCodes = matches.filter(isValidProductCode);
+                      return (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">Codes:</span>
+                          {matches.map((code, idx) => {
+                            const isValid = isValidProductCode(code);
+                            return (
+                              <span 
+                                key={idx} 
+                                className={`font-mono px-2 py-1 rounded ${
+                                  isValid ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-300'
+                                }`}
+                              >
+                                {code}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Scanner overlay - changes based on scanner mode */}
@@ -1777,7 +1818,7 @@ export default function AdvancedScanPage() {
                     ></div>
                   </div>
                   
-                  {/* ROI frame */}
+                  {/* ROI frame with debug mode enhancements */}
                   <div 
                     className="relative border-2 border-amber-500 rounded-md flex items-center justify-center"
                     style={{
@@ -1786,6 +1827,7 @@ export default function AdvancedScanPage() {
                       height: '120px',
                     }}
                   >
+                    {/* Scanning animation */}
                     <div 
                       className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
                       style={{
@@ -1793,6 +1835,21 @@ export default function AdvancedScanPage() {
                         left: 0
                       }}
                     ></div>
+                    
+                    {/* Corner markers for ROI */}
+                    {import.meta.env.DEV && (
+                      <>
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-green-400"></div>
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-green-400"></div>
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-green-400"></div>
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-green-400"></div>
+                        
+                        {/* ROI label */}
+                        <div className="absolute -top-6 left-0 text-xs text-green-400 font-mono">
+                          ROI: 60% × 30%
+                        </div>
+                      </>
+                    )}
                     
                     <div className="text-amber-500 text-sm font-medium px-4 text-center">
                       <div>ضع الرمز في وسط الإطار</div>
@@ -1828,48 +1885,68 @@ export default function AdvancedScanPage() {
                     <span className="font-medium">OCR Debug</span>
                   </div>
                   <div className="space-y-1">
-                    <div>Scans: {scanCount}</div>
-                    <div>Activity: {ocrActivity ? 'Processing...' : 'Waiting'}</div>
-                    <div>Worker: {ocrWorker ? '✓' : '✗'}</div>
-                    <div>Video: {ocrVideoRef.current ? '✓' : '✗'}</div>
-                    <div>Canvas: {ocrCanvasRef.current ? '✓' : '✗'}</div>
-                    <div>Stream: {ocrStream ? '✓' : '✗'}</div>
-                    <div>Validating: {isValidating ? 'Yes' : 'No'}</div>
-                    <div>Mobile: {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
-                    <div>iOS: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Yes' : 'No'}</div>
-                    
-                    {/* Enhanced Video State */}
-                    <div className="border-t border-white/20 pt-1 mt-2">
-                      <div className="font-medium">Video State:</div>
-                      <div>Ready: {videoState.readyState}/4</div>
-                      <div>Paused: {videoState.paused ? 'Yes' : 'No'}</div>
-                      <div>Time: {videoState.currentTime.toFixed(1)}s</div>
-                      <div>Size: {videoState.videoWidth}x{videoState.videoHeight}</div>
-                      <div>HasStream: {videoState.hasStream ? 'Yes' : 'No'}</div>
+                    <div className="flex justify-between">
+                      <span>Status:</span>
+                      <span className={ocrActivity ? 'text-green-400' : 'text-gray-400'}>
+                        {ocrActivity ? 'Scanning...' : 'Idle'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Scans:</span>
+                      <span>{scanCount}</span>
                     </div>
                     
-                    {loadingStep && (
+                    {/* Detection Buffer Status */}
+                    {detectionBuffer.length > 0 && (
                       <div className="border-t border-white/20 pt-1 mt-2">
-                        <div className="font-medium">Loading:</div>
-                        <div className="text-blue-300 text-xs break-all">
-                          {loadingStep}
+                        <div className="font-medium text-green-400">Detection Buffer:</div>
+                        <div className="text-yellow-300">
+                          {detectionBuffer.join(', ')} ({detectionBuffer.length}/{DETECTION_BUFFER_SIZE})
                         </div>
                       </div>
                     )}
-                    {iosErrorDetails && (
-                      <div className="border-t border-white/20 pt-1 mt-2">
-                        <div className="font-medium">Error:</div>
-                        <div className="text-red-300 text-xs break-all max-h-16 overflow-y-auto">
-                          {iosErrorDetails}
-                        </div>
-                      </div>
-                    )}
+                    
+                    {/* Last Detected Raw Text */}
                     {lastDetectedText && (
                       <div className="border-t border-white/20 pt-1 mt-2">
-                        <div className="font-medium">Last Text:</div>
-                        <div className="text-yellow-300 text-xs break-all max-h-16 overflow-y-auto">
-                          {lastDetectedText || 'None'}
+                        <div className="font-medium">Raw OCR Text:</div>
+                        <div className="text-blue-300 text-xs break-all max-h-24 overflow-y-auto bg-black/40 p-1 rounded mt-1">
+                          {lastDetectedText}
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Extracted Codes */}
+                    {lastDetectedText && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium">Extracted Codes:</div>
+                        <div className="text-xs mt-1">
+                          {(() => {
+                            const cleanText = lastDetectedText.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
+                            const codeRegex = /\b[A-Z0-9]{6}\b/g;
+                            const matches = cleanText.match(codeRegex);
+                            if (matches && matches.length > 0) {
+                              return matches.map((code, idx) => (
+                                <div key={idx} className={`${isValidProductCode(code) ? 'text-green-400' : 'text-red-400'}`}>
+                                  {code} {isValidProductCode(code) ? '✓' : '✗'}
+                                </div>
+                              ));
+                            } else {
+                              return <span className="text-gray-400">No 6-char codes found</span>;
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Last Validated Code */}
+                    {lastValidatedCode && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium">Last Validated:</div>
+                        <div className="text-green-400">{lastValidatedCode}</div>
+                        {validationCooldown && (
+                          <div className="text-yellow-300 text-xs">Cooldown active</div>
+                        )}
                       </div>
                     )}
                   </div>
