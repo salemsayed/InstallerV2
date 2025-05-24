@@ -13,6 +13,7 @@ import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/hooks/auth-provider";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { UserRole } from "@shared/schema";
+import { DebugControls } from "@/components/debug/debug-controls";
 
 // Protected route components with authentication requirements
 const ProtectedInstallerDashboard = () => (
@@ -92,6 +93,7 @@ function App() {
   return (
     <AuthProvider>
       <Router />
+      <DebugControls />
     </AuthProvider>
   );
 }
