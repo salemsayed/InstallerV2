@@ -91,6 +91,9 @@ export default function AdvancedScanPage() {
     roiY: number;
     roiWidth: number;
     roiHeight: number;
+    scale: number;
+    cropX: number;
+    cropY: number;
   } | null>(null);
   
   // iOS debug state
@@ -1027,9 +1030,11 @@ export default function AdvancedScanPage() {
           return;
         }
 
-        // Get video dimensions - handle cases where they might be 0
-        const videoWidth = video.videoWidth || video.offsetWidth || 640;
-        const videoHeight = video.videoHeight || video.offsetHeight || 480;
+        // Get dimensions
+        const videoWidth = video.videoWidth || 640;
+        const videoHeight = video.videoHeight || 480;
+        const containerWidth = video.offsetWidth;
+        const containerHeight = video.offsetHeight;
         
         if (videoWidth === 0 || videoHeight === 0) {
           console.log("Video dimensions not available yet:", { videoWidth, videoHeight });
@@ -1037,39 +1042,56 @@ export default function AdvancedScanPage() {
           return;
         }
 
-        // Calculate the actual visible area when using object-fit: cover
-        // The video element fills the entire screen, so we need to calculate what portion is visible
-        const containerWidth = video.offsetWidth;
-        const containerHeight = video.offsetHeight;
-        const videoAspectRatio = videoWidth / videoHeight;
-        const containerAspectRatio = containerWidth / containerHeight;
+        // Simple approach: Draw the entire video to a temporary canvas,
+        // then extract only the ROI portion that matches the visual overlay
         
-        let actualVisibleWidth, actualVisibleHeight;
-        let offsetX = 0, offsetY = 0;
+        // First, create a temporary canvas with container dimensions
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = containerWidth;
+        tempCanvas.height = containerHeight;
+        const tempContext = tempCanvas.getContext('2d');
         
-        if (videoAspectRatio > containerAspectRatio) {
-          // Video is wider than container - crop sides
-          actualVisibleHeight = videoHeight;
-          actualVisibleWidth = videoHeight * containerAspectRatio;
-          offsetX = (videoWidth - actualVisibleWidth) / 2;
-          offsetY = 0;
-        } else {
-          // Video is taller than container - crop top/bottom
-          actualVisibleWidth = videoWidth;
-          actualVisibleHeight = videoWidth / containerAspectRatio;
-          offsetX = 0;
-          offsetY = (videoHeight - actualVisibleHeight) / 2;
+        if (!tempContext) {
+          setOcrActivity(false);
+          return;
         }
-
-        // OPTIMIZATION 1: Region of Interest (ROI) - Only scan the center region
-        // Define ROI as center 60% horizontally and center 30% vertically of VISIBLE area
-        const roiWidthPercent = 0.6;
-        const roiHeightPercent = 0.3;
         
-        const roiWidth = Math.floor(actualVisibleWidth * roiWidthPercent);
-        const roiHeight = Math.floor(actualVisibleHeight * roiHeightPercent);
-        const roiX = Math.floor(offsetX + (actualVisibleWidth - roiWidth) / 2);
-        const roiY = Math.floor(offsetY + (actualVisibleHeight - roiHeight) / 2);
+        // Draw the video scaled to fit the container (matching object-fit: cover)
+        const scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
+        const scaledWidth = videoWidth * scale;
+        const scaledHeight = videoHeight * scale;
+        const offsetX = (containerWidth - scaledWidth) / 2;
+        const offsetY = (containerHeight - scaledHeight) / 2;
+        
+        tempContext.drawImage(
+          video,
+          0, 0, videoWidth, videoHeight,           // Source (full video)
+          offsetX, offsetY, scaledWidth, scaledHeight  // Destination (scaled and centered)
+        );
+        
+        // Now extract the ROI from the temporary canvas
+        // These match the visual overlay exactly: 60% width, 30% height at (20%, 35%)
+        const roiX = Math.floor(containerWidth * 0.2);
+        const roiY = Math.floor(containerHeight * 0.35);
+        const roiWidth = Math.floor(containerWidth * 0.6);
+        const roiHeight = Math.floor(containerHeight * 0.3);
+        
+        // Set the main canvas to ROI size
+        canvas.width = roiWidth;
+        canvas.height = roiHeight;
+        
+        // Copy the ROI from temp canvas to main canvas
+        try {
+          context.drawImage(
+            tempCanvas,
+            roiX, roiY, roiWidth, roiHeight,    // Source (ROI from temp canvas)
+            0, 0, roiWidth, roiHeight           // Destination (full main canvas)
+          );
+        } catch (drawError) {
+          console.error("Failed to draw ROI:", drawError);
+          setOcrActivity(false);
+          return;
+        }
         
         // Update debug info
         setRoiDebugInfo({
@@ -1080,27 +1102,11 @@ export default function AdvancedScanPage() {
           roiX,
           roiY,
           roiWidth,
-          roiHeight
+          roiHeight,
+          scale,
+          cropX: offsetX,
+          cropY: offsetY
         });
-        
-        // Set canvas size to ROI dimensions
-        canvas.width = roiWidth;
-        canvas.height = roiHeight;
-        
-        console.log(`OCR Scan #${scanCount}: ROI ${roiWidth}x${roiHeight} at (${roiX}, ${roiY}) from video ${videoWidth}x${videoHeight} in container ${containerWidth}x${containerHeight}`);
-        
-        // Draw only the ROI region to canvas
-        try {
-          context.drawImage(
-            video, 
-            roiX, roiY, roiWidth, roiHeight,  // Source rectangle (from video)
-            0, 0, roiWidth, roiHeight         // Destination rectangle (on canvas)
-          );
-        } catch (drawError) {
-          console.error("Failed to draw video frame:", drawError);
-          setOcrActivity(false);
-          return;
-        }
 
         // OPTIMIZATION 2: Preprocess the image for better OCR accuracy
         preprocessImageForOCR(canvas, context);
@@ -1108,7 +1114,7 @@ export default function AdvancedScanPage() {
         // Get preprocessed image data for OCR
         const imageData = canvas.toDataURL('image/png', 1.0); // Max quality for text
 
-        console.log(`OCR Scan #${scanCount}: Processing ROI ${roiWidth}x${roiHeight} from position (${roiX}, ${roiY})`);
+        console.log(`OCR Scan #${scanCount}: ROI ${roiWidth}x${roiHeight} at (${roiX}, ${roiY})`);
 
         // Perform OCR on the image using the active worker
         const startTime = Date.now();
@@ -2058,6 +2064,8 @@ export default function AdvancedScanPage() {
                         <div className="text-xs space-y-0.5">
                           <div>Video: {roiDebugInfo.videoWidth}×{roiDebugInfo.videoHeight}</div>
                           <div>Container: {roiDebugInfo.containerWidth}×{roiDebugInfo.containerHeight}</div>
+                          <div>Scale: {roiDebugInfo.scale.toFixed(3)}</div>
+                          <div>Crop: ({roiDebugInfo.cropX.toFixed(0)}, {roiDebugInfo.cropY.toFixed(0)})</div>
                           <div>ROI: {roiDebugInfo.roiWidth}×{roiDebugInfo.roiHeight}</div>
                           <div>Position: ({roiDebugInfo.roiX}, {roiDebugInfo.roiY})</div>
                         </div>
