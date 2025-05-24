@@ -82,6 +82,16 @@ export default function AdvancedScanPage() {
   const [ocrActivity, setOcrActivity] = useState(false);
   const [lastDetectedText, setLastDetectedText] = useState<string>("");
   const [scanCount, setScanCount] = useState(0);
+  const [roiDebugInfo, setRoiDebugInfo] = useState<{
+    videoWidth: number;
+    videoHeight: number;
+    containerWidth: number;
+    containerHeight: number;
+    roiX: number;
+    roiY: number;
+    roiWidth: number;
+    roiHeight: number;
+  } | null>(null);
   
   // iOS debug state
   const [iosErrorDetails, setIosErrorDetails] = useState<string>("");
@@ -1027,19 +1037,57 @@ export default function AdvancedScanPage() {
           return;
         }
 
+        // Calculate the actual visible area when using object-fit: cover
+        // The video element fills the entire screen, so we need to calculate what portion is visible
+        const containerWidth = video.offsetWidth;
+        const containerHeight = video.offsetHeight;
+        const videoAspectRatio = videoWidth / videoHeight;
+        const containerAspectRatio = containerWidth / containerHeight;
+        
+        let actualVisibleWidth, actualVisibleHeight;
+        let offsetX = 0, offsetY = 0;
+        
+        if (videoAspectRatio > containerAspectRatio) {
+          // Video is wider than container - crop sides
+          actualVisibleHeight = videoHeight;
+          actualVisibleWidth = videoHeight * containerAspectRatio;
+          offsetX = (videoWidth - actualVisibleWidth) / 2;
+          offsetY = 0;
+        } else {
+          // Video is taller than container - crop top/bottom
+          actualVisibleWidth = videoWidth;
+          actualVisibleHeight = videoWidth / containerAspectRatio;
+          offsetX = 0;
+          offsetY = (videoHeight - actualVisibleHeight) / 2;
+        }
+
         // OPTIMIZATION 1: Region of Interest (ROI) - Only scan the center region
-        // Define ROI as center 60% horizontally and center 30% vertically
+        // Define ROI as center 60% horizontally and center 30% vertically of VISIBLE area
         const roiWidthPercent = 0.6;
         const roiHeightPercent = 0.3;
         
-        const roiWidth = Math.floor(videoWidth * roiWidthPercent);
-        const roiHeight = Math.floor(videoHeight * roiHeightPercent);
-        const roiX = Math.floor((videoWidth - roiWidth) / 2);
-        const roiY = Math.floor((videoHeight - roiHeight) / 2);
+        const roiWidth = Math.floor(actualVisibleWidth * roiWidthPercent);
+        const roiHeight = Math.floor(actualVisibleHeight * roiHeightPercent);
+        const roiX = Math.floor(offsetX + (actualVisibleWidth - roiWidth) / 2);
+        const roiY = Math.floor(offsetY + (actualVisibleHeight - roiHeight) / 2);
+        
+        // Update debug info
+        setRoiDebugInfo({
+          videoWidth,
+          videoHeight,
+          containerWidth,
+          containerHeight,
+          roiX,
+          roiY,
+          roiWidth,
+          roiHeight
+        });
         
         // Set canvas size to ROI dimensions
         canvas.width = roiWidth;
         canvas.height = roiHeight;
+        
+        console.log(`OCR Scan #${scanCount}: ROI ${roiWidth}x${roiHeight} at (${roiX}, ${roiY}) from video ${videoWidth}x${videoHeight} in container ${containerWidth}x${containerHeight}`);
         
         // Draw only the ROI region to canvas
         try {
@@ -1750,6 +1798,23 @@ export default function AdvancedScanPage() {
               className="hidden"
             />
             
+            {/* Debug ROI overlay - shows actual scanning area */}
+            {scannerMode === 'ocr' && roiDebugInfo && (
+              <div 
+                className="absolute border-2 border-red-500 pointer-events-none"
+                style={{
+                  width: '60%',
+                  height: '30%',
+                  left: '20%',
+                  top: '35%',
+                }}
+              >
+                <div className="absolute -top-6 left-0 text-xs text-red-500 font-mono bg-black/80 px-1">
+                  Actual ROI (should match green box)
+                </div>
+              </div>
+            )}
+            
             {/* Real-time OCR Recognition Overlay - always show */}
             {scannerMode === 'ocr' && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pointer-events-none">
@@ -1983,6 +2048,19 @@ export default function AdvancedScanPage() {
                         {validationCooldown && (
                           <div className="text-yellow-300 text-xs">Cooldown active</div>
                         )}
+                      </div>
+                    )}
+                    
+                    {/* ROI Debug Info */}
+                    {roiDebugInfo && (
+                      <div className="border-t border-white/20 pt-1 mt-2">
+                        <div className="font-medium text-yellow-400">ROI Debug:</div>
+                        <div className="text-xs space-y-0.5">
+                          <div>Video: {roiDebugInfo.videoWidth}×{roiDebugInfo.videoHeight}</div>
+                          <div>Container: {roiDebugInfo.containerWidth}×{roiDebugInfo.containerHeight}</div>
+                          <div>ROI: {roiDebugInfo.roiWidth}×{roiDebugInfo.roiHeight}</div>
+                          <div>Position: ({roiDebugInfo.roiX}, {roiDebugInfo.roiY})</div>
+                        </div>
                       </div>
                     )}
                   </div>
