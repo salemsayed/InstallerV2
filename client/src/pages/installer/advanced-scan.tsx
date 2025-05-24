@@ -106,6 +106,13 @@ export default function AdvancedScanPage() {
     hasStream: false
   });
 
+  // Add new state for OCR optimization
+  const [detectionBuffer, setDetectionBuffer] = useState<string[]>([]);
+  const [lastValidatedCode, setLastValidatedCode] = useState<string | null>(null);
+  const [validationCooldown, setValidationCooldown] = useState(false);
+  const DETECTION_BUFFER_SIZE = 3; // Require code to appear in 3 consecutive frames
+  const VALIDATION_COOLDOWN_MS = 5000; // 5 second cooldown after validation
+  
   // Helper function for haptic feedback
   const triggerHapticFeedback = (pattern: number[]) => {
     if ('vibrate' in navigator) {
@@ -874,7 +881,63 @@ export default function AdvancedScanPage() {
     }
   };
 
-  // Start OCR scanning process
+  // Helper function to preprocess image for better OCR
+  const preprocessImageForOCR = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Convert to grayscale and increase contrast
+    for (let i = 0; i < data.length; i += 4) {
+      // Grayscale conversion
+      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      
+      // Increase contrast
+      const contrast = 1.5; // Contrast factor
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      const newGray = factor * (gray - 128) + 128;
+      
+      // Apply threshold to make text clearer (simple binarization)
+      const threshold = 128;
+      const finalValue = newGray > threshold ? 255 : 0;
+      
+      data[i] = finalValue;
+      data[i + 1] = finalValue;
+      data[i + 2] = finalValue;
+    }
+    
+    context.putImageData(imageData, 0, 0);
+  };
+
+  // Enhanced code validation with stricter rules
+  const isValidProductCode = (code: string): boolean => {
+    // Must be exactly 6 characters
+    if (code.length !== 6) return false;
+    
+    // Must contain at least one letter and one number
+    const hasLetter = /[A-Z]/.test(code);
+    const hasNumber = /[0-9]/.test(code);
+    
+    // Avoid common OCR mistakes
+    // Exclude codes that are all the same character
+    const uniqueChars = new Set(code.split('')).size;
+    if (uniqueChars < 3) return false;
+    
+    // Exclude sequential patterns like "123456" or "ABCDEF"
+    const isSequential = (str: string) => {
+      for (let i = 1; i < str.length; i++) {
+        if (Math.abs(str.charCodeAt(i) - str.charCodeAt(i - 1)) !== 1) {
+          return false;
+        }
+      }
+      return true;
+    };
+    
+    if (isSequential(code)) return false;
+    
+    return hasLetter && hasNumber;
+  };
+
+  // Start OCR scanning process with optimizations
   const startOcrScanning = (workerOverride?: any) => {
     console.log("🚀 startOcrScanning called", { workerOverride: !!workerOverride });
     
@@ -889,6 +952,12 @@ export default function AdvancedScanPage() {
       
       // Use workerOverride if provided, otherwise use state
       const activeWorker = workerOverride || ocrWorker;
+      
+      // Check if we're in cooldown period
+      if (validationCooldown) {
+        console.log("❌ OCR scan skipped - in cooldown period");
+        return;
+      }
       
       // Debug the conditions
       console.log("OCR Conditions check:", {
@@ -954,79 +1023,137 @@ export default function AdvancedScanPage() {
           return;
         }
 
-        // Optimize canvas for mobile performance
-        const scale = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1;
-        const canvasWidth = Math.floor(videoWidth * scale);
-        const canvasHeight = Math.floor(videoHeight * scale);
+        // OPTIMIZATION 1: Region of Interest (ROI) - Only scan the center region
+        // Define ROI as center 60% horizontally and center 30% vertically
+        const roiWidthPercent = 0.6;
+        const roiHeightPercent = 0.3;
         
-        // Set canvas size
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
+        const roiWidth = Math.floor(videoWidth * roiWidthPercent);
+        const roiHeight = Math.floor(videoHeight * roiHeightPercent);
+        const roiX = Math.floor((videoWidth - roiWidth) / 2);
+        const roiY = Math.floor((videoHeight - roiHeight) / 2);
         
-        // Configure context for better quality
-        context.imageSmoothingEnabled = false; // Sharp edges for text
-        context.scale(scale, scale);
-
-        // Draw current video frame to canvas
+        // Set canvas size to ROI dimensions
+        canvas.width = roiWidth;
+        canvas.height = roiHeight;
+        
+        // Draw only the ROI region to canvas
         try {
-          context.drawImage(video, 0, 0, videoWidth, videoHeight);
+          context.drawImage(
+            video, 
+            roiX, roiY, roiWidth, roiHeight,  // Source rectangle (from video)
+            0, 0, roiWidth, roiHeight         // Destination rectangle (on canvas)
+          );
         } catch (drawError) {
           console.error("Failed to draw video frame:", drawError);
           setOcrActivity(false);
           return;
         }
 
-        // Get image data for OCR processing - optimize quality for text recognition
-        const imageQuality = isIOS ? 0.95 : 0.9; // Higher quality for iOS
-        const imageData = canvas.toDataURL('image/png', imageQuality); // Use PNG for text
+        // OPTIMIZATION 2: Preprocess the image for better OCR accuracy
+        preprocessImageForOCR(canvas, context);
 
-        console.log(`OCR Scan #${scanCount}: Processing frame ${videoWidth}x${videoHeight}, scale: ${scale}, quality: ${imageQuality}, mobile: ${isMobile}, iOS: ${isIOS}`);
+        // Get preprocessed image data for OCR
+        const imageData = canvas.toDataURL('image/png', 1.0); // Max quality for text
+
+        console.log(`OCR Scan #${scanCount}: Processing ROI ${roiWidth}x${roiHeight} from position (${roiX}, ${roiY})`);
 
         // Perform OCR on the image using the active worker
         const startTime = Date.now();
-        const { data: { text } } = await activeWorker.recognize(imageData);
+        const { data } = await activeWorker.recognize(imageData);
         const processingTime = Date.now() - startTime;
         
-        console.log(`OCR completed in ${processingTime}ms. Raw text detected:`, JSON.stringify(text));
-        setLastDetectedText(text.trim());
+        // OPTIMIZATION 3: Use confidence scores
+        const minConfidence = 70; // Minimum confidence threshold
         
-        // Enhanced code detection for better accuracy
-        const cleanText = text.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
+        console.log(`OCR completed in ${processingTime}ms. Raw text detected:`, JSON.stringify(data.text));
+        console.log(`OCR confidence:`, data.confidence);
+        
+        // Only process if confidence is high enough
+        if (data.confidence < minConfidence) {
+          console.log(`❌ OCR confidence too low: ${data.confidence} < ${minConfidence}`);
+          setOcrActivity(false);
+          return;
+        }
+        
+        setLastDetectedText(data.text.trim());
+        
+        // Enhanced code detection with stricter validation
+        const cleanText = data.text.replace(/[^A-Za-z0-9\s]/g, '').toUpperCase();
         const codeRegex = /\b[A-Z0-9]{6}\b/g;
         const matches = cleanText.match(codeRegex);
 
         if (matches && matches.length > 0) {
-          console.log("✅ OCR detected codes:", matches);
+          // Filter matches through validation
+          const validCodes = matches.filter(isValidProductCode);
           
-          // Take the first valid 6-character code
-          const detectedCode = matches[0];
-          console.log("🎯 Processing detected code:", detectedCode);
-          
-          // Stop scanning while validating
-          if (ocrScanIntervalRef.current) {
-            clearInterval(ocrScanIntervalRef.current);
-            ocrScanIntervalRef.current = null;
+          if (validCodes.length > 0) {
+            const detectedCode = validCodes[0];
+            console.log("✅ OCR detected valid code:", detectedCode);
+            
+            // OPTIMIZATION 4: Multi-frame validation
+            // Add to detection buffer
+            setDetectionBuffer(prev => {
+              const newBuffer = [...prev, detectedCode].slice(-DETECTION_BUFFER_SIZE);
+              
+              // Check if all codes in buffer are the same
+              if (newBuffer.length >= DETECTION_BUFFER_SIZE && 
+                  newBuffer.every(code => code === newBuffer[0])) {
+                
+                // All codes match - proceed with validation
+                const codeToValidate = newBuffer[0];
+                
+                // Check if this code was recently validated
+                if (codeToValidate !== lastValidatedCode) {
+                  console.log("🎯 Consistent code detected across frames:", codeToValidate);
+                  
+                  // Clear buffer and set cooldown
+                  setDetectionBuffer([]);
+                  setLastValidatedCode(codeToValidate);
+                  setValidationCooldown(true);
+                  
+                  // Stop scanning while validating
+                  if (ocrScanIntervalRef.current) {
+                    clearInterval(ocrScanIntervalRef.current);
+                    ocrScanIntervalRef.current = null;
+                  }
+                  
+                  setOcrActivity(false);
+                  
+                  // Validate the detected code
+                  validateExtractedCode(codeToValidate).finally(() => {
+                    // Resume scanning after a delay
+                    setTimeout(() => {
+                      setValidationCooldown(false);
+                      if (scannerMode === 'ocr' && !isValidating) {
+                        startOcrScanning(); // Resume with state-based worker
+                      }
+                    }, VALIDATION_COOLDOWN_MS);
+                  });
+                } else {
+                  console.log("❌ Code was recently validated, skipping:", codeToValidate);
+                }
+              }
+              
+              return newBuffer;
+            });
+          } else {
+            console.log("❌ No valid codes found after filtering");
+            // Clear buffer if no valid codes
+            setDetectionBuffer([]);
           }
-          
-          setOcrActivity(false);
-          
-          // Validate the detected code
-          await validateExtractedCode(detectedCode);
-          
-          // Resume scanning after a delay if still in OCR mode
-          setTimeout(() => {
-            if (scannerMode === 'ocr' && !isValidating) {
-              startOcrScanning(); // Resume with state-based worker
-            }
-          }, 2000);
         } else {
           console.log("❌ No 6-character codes found in cleaned text:", cleanText);
-          setOcrActivity(false);
+          // Clear buffer if no codes detected
+          setDetectionBuffer([]);
         }
+        
+        setOcrActivity(false);
 
       } catch (err) {
         console.error("OCR scanning error:", err);
         setOcrActivity(false);
+        setDetectionBuffer([]); // Clear buffer on error
         
         // If OCR fails repeatedly, try to restart the worker
         if (err && err.message && err.message.includes("Worker")) {
@@ -1633,19 +1760,49 @@ export default function AdvancedScanPage() {
                   <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-primary"></div>
                 </div>
               ) : (
-                /* OCR Mode - rectangle for text scanning */
-                <div className="relative w-[min(85vw,400px)] h-24 border-2 border-amber-500 rounded-md flex items-center justify-center bg-black/20">
-                  <div 
-                    className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
-                    style={{
-                      animation: 'pulse-slide 2s infinite ease-in-out',
-                      left: 0
-                    }}
-                  ></div>
+                /* OCR Mode - rectangle for text scanning with ROI indicator */
+                <div className="relative">
+                  {/* Semi-transparent overlay for areas outside ROI */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 bg-black/40"></div>
+                    {/* Clear ROI area */}
+                    <div 
+                      className="absolute bg-transparent"
+                      style={{
+                        width: '60%',
+                        height: '30%',
+                        top: '35%',
+                        left: '20%',
+                      }}
+                    ></div>
+                  </div>
                   
-                  <div className="text-amber-500 text-sm font-medium px-4 text-center">
-                    <div>وجه الكاميرا نحو الرمز المطبوع</div>
-                    <div className="text-xs opacity-70 mt-1">رمز من ٦ أحرف وأرقام</div>
+                  {/* ROI frame */}
+                  <div 
+                    className="relative border-2 border-amber-500 rounded-md flex items-center justify-center"
+                    style={{
+                      width: '60vw',
+                      maxWidth: '400px',
+                      height: '120px',
+                    }}
+                  >
+                    <div 
+                      className="absolute h-full w-1 bg-gradient-to-b from-transparent via-amber-500 to-transparent" 
+                      style={{
+                        animation: 'pulse-slide 2s infinite ease-in-out',
+                        left: 0
+                      }}
+                    ></div>
+                    
+                    <div className="text-amber-500 text-sm font-medium px-4 text-center">
+                      <div>ضع الرمز في وسط الإطار</div>
+                      <div className="text-xs opacity-70 mt-1">رمز من ٦ أحرف وأرقام</div>
+                      {detectionBuffer.length > 0 && (
+                        <div className="text-xs text-green-400 mt-1">
+                          جاري التحقق... ({detectionBuffer.length}/{DETECTION_BUFFER_SIZE})
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
