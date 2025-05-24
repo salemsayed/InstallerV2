@@ -22,6 +22,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const debugRouter = await import('./routes/debug').then(m => m.default);
   const debugService = await import('./debug');
   
+  // Initialize and use debug router
+  app.use('/api/debug', debugRouter);
+  
   // Import OpenAI functions
   const { generateInsight, generateAnalyticsSummary } = await import('./openai');
   
